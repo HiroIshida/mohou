@@ -20,6 +20,6 @@ class AutoEncoderDataset(Dataset):
         image_list: List[ImageBase] = []
         for sedata in chunk.sedata_list:
             image_seq: DataSequence[ImageBase] = sedata.filter_by_type(ImageBase)
-            image_list.extend(image_seq.data)
+            image_list.extend(image_seq)
 
         return AutoEncoderDataset(image_list)

@@ -22,11 +22,7 @@ class RGBDImage(ImageBase): ...
 
 DataT = TypeVar('DataT', bound=ElementBase)
 
-@dataclass
-class DataSequence(Generic[DataT]):
-    data: List[DataT]
-    def __len__(self): return len(self.data)
-    def __getitem__(self, indices): return self.data[indices]
+class DataSequence(list, Generic[DataT]): ...
 
 class SingleEpisodeData:
     types: List[Type] # https://docs.python.org/3/library/typing.html#typing.Type
