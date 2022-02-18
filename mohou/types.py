@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+import torchvision
 from dataclasses import dataclass
 from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type, NewType
 
@@ -6,11 +8,18 @@ from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type, NewT
 class ElementBase(np.ndarray):
     def __new__(cls, arr): return np.asarray(arr).view(cls)
 
-class AngleVector(ElementBase): ...
+    def to_tensor(self) -> torch.Tensor : assert False
+
+class AngleVector(ElementBase):
+
+    def to_tensor(self) -> torch.Tensor: return torch.from_numpy(self).float()
 
 class ImageBase(ElementBase): ...
 
-class RGBImage(ImageBase): ...
+class RGBImage(ImageBase):
+
+    def to_tensor(self) -> torch.Tensor:
+        return torchvision.transforms.ToTensor()(self).float()
 
 class DepthImage(ImageBase): ...
 
