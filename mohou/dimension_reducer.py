@@ -5,13 +5,13 @@ import torch
 import torchvision
 from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type
 
-from mohou.types import DataT, ImageBase
+from mohou.types import ElementT, ImageBase
 
-class DimensionReducer(Generic[DataT]):
+class DimensionReducer(Generic[ElementT]):
     input_shape: Tuple[int, ...]
     output_size: int
 
-    def __call__(self, inp: DataT, check_size: bool = True) -> np.ndarray:
+    def __call__(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
         if check_size:
             assert inp.shape == self.input_shape
 
@@ -23,7 +23,7 @@ class DimensionReducer(Generic[DataT]):
         return out
 
     @abstractmethod
-    def reducer_impl(self, inp: DataT) -> np.ndarray: ...
+    def reducer_impl(self, inp: ElementT) -> np.ndarray: ...
 
 class ImageDimensionReducer(DimensionReducer[ImageBase]):
     input_shape: Tuple[int, int, int]

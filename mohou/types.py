@@ -1,14 +1,10 @@
 import numpy as np
 from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type
+from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type, NewType
 
 
-class ElementBase:
-    data: np.ndarray
-
-    def __init__(self, data): self.data = data
-
-    def shape(self): return self.data.shape
+class ElementBase(np.ndarray):
+    def __new__(cls, arr): return np.asarray(arr).view(cls)
 
 class AngleVector(ElementBase): ...
 
@@ -20,37 +16,35 @@ class DepthImage(ImageBase): ...
 
 class RGBDImage(ImageBase): ...
 
-DataT = TypeVar('DataT', bound=ElementBase)
+ElementT = TypeVar('ElementT', bound=ElementBase)
 
-class DataSequence(list, Generic[DataT]): ...
+class ElementSequence(list, Generic[ElementT]): ...
 
 class SingleEpisodeData:
     types: List[Type] # https://docs.python.org/3/library/typing.html#typing.Type
-    sequence_list: List[DataSequence]
-    def __init__(self, sequence_list: List[DataSequence]):
+    sequence_list: Tuple[ElementSequence, ...]
+    def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
 
-        all_same_length = len(set(map(len, sequence_list))) == 1
+        all_same_length = len(set(map(len, sequence_tuple))) == 1
         assert all_same_length
 
-        types = set(map(lambda seq: type(seq[0]), sequence_list))
+        types = set(map(lambda seq: type(seq[0]), sequence_tuple))
         n_type = len(types)
-        all_different_type = n_type == len(sequence_list)
+        all_different_type = n_type == len(sequence_tuple)
         assert all_different_type
 
-        no_image_type_conflict = len([isinstance(seq[0], ImageBase) for seq in sequence_list]) == 1
+        # e.g. Having RGBImage and RGBDImage at the same time is not arrowed
+        no_image_type_conflict = sum([isinstance(seq[0], ImageBase) for seq in sequence_tuple]) == 1
         assert no_image_type_conflict
 
         self.types = list(types)
-        self.sequence_list = sequence_list
+        self.sequence_list = sequence_tuple
 
-    def filter_by_type(self, t: Type[DataT]) -> DataSequence[DataT]:
+    def filter_by_type(self, t: Type[ElementT]) -> ElementSequence[ElementT]:
         for seq in self.sequence_list:
             if isinstance(seq[0], t):
                 # thanks to all_different_type
                 return seq
         assert False
 
-@dataclass
-class MultiEpisodeDataChunk:
-    sedata_list: List[SingleEpisodeData]
-
+class MultiEpisodeDataChunk(List[SingleEpisodeData]): ...
