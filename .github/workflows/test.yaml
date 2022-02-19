@@ -1,0 +1,36 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v2
+
+            - name: Setup python
+              uses: actions/setup-python@v2
+              with:
+                  python-version: '3.7'
+
+            - name: pip install this package
+              run: |
+                  pip3 install -e .[test]
+
+            - name: pip install pytest and mypy
+              run: |
+                  pip3 install pytest
+                  pip3 install mypy==0.910
+
+            - name: Run mypy
+              run: mypy . --exclude setup.py
+
+            - name: Run pipeline
+              run: ./pipeline/test.sh
