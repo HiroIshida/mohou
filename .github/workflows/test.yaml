@@ -37,6 +37,10 @@ jobs:
             - name: Check format
               run: flake8 .
 
+            - name: Run Pytest
+              run: |
+                  pytest -v tests
+
             - name: Run mypy
               run: mypy . --exclude setup.py
 
