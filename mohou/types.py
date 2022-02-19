@@ -1,6 +1,6 @@
 import functools
 import operator
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict
 
 import numpy as np
 import torch
@@ -49,11 +49,16 @@ ElementT = TypeVar('ElementT', bound=ElementBase)
 
 
 class ElementSequence(list, Generic[ElementT]):
-    pass
+    # TODO(HiroIshida) make it custom list
+
+    @property
+    def element_shape(self):
+        return self.__getitem__(0).shape
 
 
 class EpisodeData:
-    types: List[Type]  # https://docs.python.org/3/library/typing.html#typing.Type
+    types: List[Type[ElementBase]]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     sequence_list: Tuple[ElementSequence, ...]
 
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
@@ -63,7 +68,9 @@ class EpisodeData:
         all_same_length = len(set(map(len, sequence_tuple))) == 1
         assert all_same_length
 
-        types = set(map(lambda seq: type(seq[0]), sequence_tuple))
+        types = list(map(lambda seq: type(seq[0]), sequence_tuple))
+        shapes = list(map(lambda seq: seq[0].shape, sequence_tuple))
+
         n_type = len(types)
         all_different_type = n_type == len(sequence_tuple)
         assert all_different_type
@@ -72,7 +79,8 @@ class EpisodeData:
         no_image_type_conflict = sum([isinstance(seq[0], ImageBase) for seq in sequence_tuple]) == 1
         assert no_image_type_conflict
 
-        self.types = list(types)
+        self.types = types
+        self.type_shape_table = {t: s for (t, s) in zip(types, shapes)}
         self.sequence_list = sequence_tuple
 
     def filter_by_type(self, t: Type[ElementT]) -> ElementSequence[ElementT]:
@@ -88,7 +96,8 @@ class EpisodeData:
 
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
-    types: List[Type]
+    types: List[Type[ElementBase]]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __init__(self, data_list: List[EpisodeData]):
         types = data_list[0].types
@@ -97,12 +106,16 @@ class MultiEpisodeChunk:
 
         self.data_list = data_list
         self.types = types
+        self.type_shape_table = data_list[0].type_shape_table
 
     def __iter__(self) -> Iterator:
         return self.data_list.__iter__()
 
     def __getitem__(self, index):
         return self.data_list.__getitem__(index)
+
+    def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
+        return self.type_shape_table[elem_type]
 
     @classmethod
     def load(cls, project_name: str) -> 'MultiEpisodeChunk':
