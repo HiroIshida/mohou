@@ -1,32 +1,33 @@
 import argparse
 import os
-import time
-import tqdm
-import numpy as np
-import tinyfk
-import pybullet as pb
-import pybullet_data 
-
-from typing import Union
 
 from moviepy.editor import ImageSequenceClip
+import numpy as np
+import pybullet as pb
+import pybullet_data
+import tinyfk
+import tqdm
 
-from mohou.types import AngleVector, RGBImage, ElementSequence
-from mohou.types import SingleEpisodeData, MultiEpisodeDataChunk
-from mohou.file import get_project_dir, dump_object
+from mohou.file import dump_object, get_project_dir
+from mohou.types import (AngleVector, ElementSequence, MultiEpisodeDataChunk,
+                         RGBImage, SingleEpisodeData)
+
 
 class BulletManager(object):
 
     def __init__(self, use_gui, urdf_path, end_effector_name):
         client = pb.connect(pb.GUI if use_gui else pb.DIRECT)
-        pb.configureDebugVisualizer(pb.COV_ENABLE_GUI,0)
+        pb.configureDebugVisualizer(pb.COV_ENABLE_GUI, 0)
         robot_id = pb.loadURDF(urdf_path)
         pbdata_path = pybullet_data.getDataPath()
         pb.loadURDF(os.path.join(pbdata_path, "samurai.urdf"))
 
-        link_table = {pb.getBodyInfo(robot_id, physicsClientId=client)[0].decode('UTF-8'):-1}
+        link_table = {pb.getBodyInfo(robot_id, physicsClientId=client)[0].decode('UTF-8'): -1}
         joint_table = {}
-        heck = lambda path: "_".join(path.split("/"))
+
+        def heck(path):
+            return "_".join(path.split("/"))
+
         for _id in range(pb.getNumJoints(robot_id, physicsClientId=client)):
             joint_info = pb.getJointInfo(robot_id, _id, physicsClientId=client)
             joint_id = joint_info[0]
@@ -64,26 +65,26 @@ class BulletManager(object):
         assert len(joint_angles) == len(self.joint_names)
         for joint_id, joint_angle in zip(self.joint_ids, joint_angles):
             pb.resetJointState(self._robot_id, joint_id, joint_angle,
-                    targetVelocity = 0.0,
-                    physicsClientId=self._client)
+                               targetVelocity=0.0,
+                               physicsClientId=self._client)
 
     def solve_ik(self, target_pos):
         assert len(target_pos) == 3
         return self._kin_solver.solve_inverse_kinematics(
-                target_pos, 
-                self.joint_angles(),
-                self._tinyfk_endeffector_id,
-                self._tinyfk_joint_ids,
-                with_base=False)
+            target_pos,
+            self.joint_angles(),
+            self._tinyfk_endeffector_id,
+            self._tinyfk_joint_ids,
+            with_base=False)
 
     def set_box(self, pos):
-        if self._box_id != None:
+        if self._box_id is not None:
             pb.removeBody(self._box_id)
         vis_box_id = pb.createVisualShape(
-                pb.GEOM_BOX, 
-                halfExtents=[0.05, 0.05, 0.05], 
-                rgbaColor=[0.0, 1.0, 0, 0.7], 
-                physicsClientId=self._client)
+            pb.GEOM_BOX,
+            halfExtents=[0.05, 0.05, 0.05],
+            rgbaColor=[0.0, 1.0, 0, 0.7],
+            physicsClientId=self._client)
         box_id = pb.createMultiBody(basePosition=pos, baseVisualShapeIndex=vis_box_id)
         self._box_id = box_id
 
@@ -100,7 +101,7 @@ class BulletManager(object):
             farVal=5.1)
 
         width, height, rgbImg, depthImg, segImg = pb.getCameraImage(
-            width=resolution, 
+            width=resolution,
             height=resolution,
             viewMatrix=viewMatrix,
             projectionMatrix=projectionMatrix)
@@ -109,10 +110,10 @@ class BulletManager(object):
     def kinematic_simulate(self, joint_angles_target, N=100, n_pixel=112, with_depth=False):
         N_rand = N + np.random.randint(10)
         angles_now = np.array(self.joint_angles())
-        step = (np.array(joint_angles_target) - angles_now)/(N_rand-1)
+        step = (np.array(joint_angles_target) - angles_now) / (N_rand - 1)
         angles_seq = ElementSequence[AngleVector]([AngleVector(angles_now + step * i) for i in range(N_rand)])
 
-        img_seq: ElementSequence[RGBImage] = [] 
+        img_seq: ElementSequence[RGBImage] = []
         for av in angles_seq:
             self.set_joint_angles(av)
             rgba, depth = self.take_photo(n_pixel)
@@ -123,22 +124,22 @@ class BulletManager(object):
                 image = rgba[:, :, :3]
             img_seq.append(RGBImage(image))
 
-        for i in range(30): # augument the data (after reaching)
+        for i in range(30):  # augument the data (after reaching)
             img_seq.append(RGBImage(image))
             angles_seq.append(AngleVector(angles_seq[-1]))
 
-        return img_seq, angles_seq 
+        return img_seq, angles_seq
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--depth', action='store_true', help='with depth channel')
     parser.add_argument('--predict', action='store_true', help='prediction mode')
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
     parser.add_argument('-model', type=str, default='lstm', help='propagator model name')
     parser.add_argument('-n', type=int, default=300, help='epoch num')
-    parser.add_argument('-m', type=int, default=224, help='pixel num') # same as mnist
-    parser.add_argument('-seed', type=int, default=1, help='seed') # same as mnist
+    parser.add_argument('-m', type=int, default=224, help='pixel num')  # same as mnist
+    parser.add_argument('-seed', type=int, default=1, help='seed')  # same as mnist
     args = parser.parse_args()
     n_epoch = args.n
     n_pixel = args.m

@@ -1,11 +1,11 @@
+from dataclasses import dataclass
+from typing import Tuple
+
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
-from typing import Dict, Tuple
 
-from mohou.model import LossDict
-from mohou.model import ModelConfigBase
-from mohou.model import ModelBase
+from mohou.model import LossDict, ModelBase, ModelConfigBase
+
 
 @dataclass
 class AutoEncoderConfig(ModelConfigBase):
@@ -28,43 +28,44 @@ class Reshape(nn.Module):
     def forward(self, x):
         return x.view(self.shape)
 
+
 class AutoEncoder(ModelBase[AutoEncoderConfig]):
     device: torch.device
     config: AutoEncoderConfig
     encoder: nn.Module
     decoder: nn.Module
 
-    def loss(self, sample : torch.Tensor) -> LossDict:
+    def loss(self, sample: torch.Tensor) -> LossDict:
         f_loss = nn.MSELoss()
         reconstructed = self.forward(sample)
         loss_value = f_loss(sample, reconstructed)
         return LossDict({'reconstruction': loss_value})
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return self.decoder(self.encoder(input)) 
+        return self.decoder(self.encoder(input))
 
     def _create_layers(self, config: AutoEncoderConfig):
         channel, n_pixel, m_pixel = config.image_shape
 
-        # TODO do it programatically
-        if n_pixel==224:
+        # TODO(HiroIshida) do it programatically
+        if n_pixel == 224:
             encoder = nn.Sequential(
-                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)), # 112x112
+                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)),  # 112x112
                 nn.ReLU(inplace=True),
-                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)), # 56x56
+                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 56x56
                 nn.ReLU(inplace=True),
-                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)), # 28x28
+                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)),  # 28x28
                 nn.ReLU(inplace=True),
-                nn.Conv2d(32, 64, 3, padding=1, stride=(2, 2)), # 14x14
-                nn.ReLU(inplace=True), # 64x4x4
-                nn.Conv2d(64, 128, 3, padding=1, stride=(2, 2)), # 7x7
-                nn.ReLU(inplace=True), # 64x4x4
-                nn.Conv2d(128, 256, 3, padding=1, stride=(2, 2)), # 4x4
-                nn.ReLU(inplace=True), # 64x4x4
+                nn.Conv2d(32, 64, 3, padding=1, stride=(2, 2)),  # 14x14
+                nn.ReLU(inplace=True),  # 64x4x4
+                nn.Conv2d(64, 128, 3, padding=1, stride=(2, 2)),  # 7x7
+                nn.ReLU(inplace=True),  # 64x4x4
+                nn.Conv2d(128, 256, 3, padding=1, stride=(2, 2)),  # 4x4
+                nn.ReLU(inplace=True),  # 64x4x4
                 nn.Flatten(),
                 nn.Linear(256 * 16, 512),
                 nn.Linear(512, config.n_bottleneck)
-                )
+            )
             decoder = nn.Sequential(
                 nn.Linear(config.n_bottleneck, 512),
                 nn.Linear(512, 256 * 16),
@@ -82,23 +83,23 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(8, channel, 4, stride=2, padding=1),
                 nn.Sigmoid(),
-                )
-        elif n_pixel==112:
+            )
+        elif n_pixel == 112:
             encoder = nn.Sequential(
-                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)), # 56x56
+                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)),  # 56x56
                 nn.ReLU(inplace=True),
-                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)), # 28x28
+                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 28x28
                 nn.ReLU(inplace=True),
-                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)), # 14x14
-                nn.ReLU(inplace=True), # 64x4x4
-                nn.Conv2d(32, 64, 3, padding=1, stride=(2, 2)), # 7x7
-                nn.ReLU(inplace=True), # 64x4x4
-                nn.Conv2d(64, 128, 3, padding=1, stride=(2, 2)), # 4x4
-                nn.ReLU(inplace=True), # 64x4x4
+                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)),  # 14x14
+                nn.ReLU(inplace=True),  # 64x4x4
+                nn.Conv2d(32, 64, 3, padding=1, stride=(2, 2)),  # 7x7
+                nn.ReLU(inplace=True),  # 64x4x4
+                nn.Conv2d(64, 128, 3, padding=1, stride=(2, 2)),  # 4x4
+                nn.ReLU(inplace=True),  # 64x4x4
                 nn.Flatten(),
                 nn.Linear(128 * 16, 512),
                 nn.Linear(512, config.n_bottleneck)
-                )
+            )
             decoder = nn.Sequential(
                 nn.Linear(config.n_bottleneck, 512),
                 nn.Linear(512, 128 * 16),
@@ -114,19 +115,19 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(8, channel, 4, stride=2, padding=1),
                 nn.Sigmoid(),
-                )
+            )
         else:
             encoder = nn.Sequential(
-                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)), # 14x14
+                nn.Conv2d(channel, 8, 3, padding=1, stride=(2, 2)),  # 14x14
                 nn.ReLU(inplace=True),
-                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)), # 7x7
-                nn.ReLU(inplace=True), # 64x4x4
-                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)), # 4x4
-                nn.ReLU(inplace=True), # 64x4x4
+                nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 7x7
+                nn.ReLU(inplace=True),  # 64x4x4
+                nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)),  # 4x4
+                nn.ReLU(inplace=True),  # 64x4x4
                 nn.Flatten(),
                 nn.Linear(32 * 16, 8 * 16),
                 nn.Linear(8 * 16, config.n_bottleneck)
-                )
+            )
             decoder = nn.Sequential(
                 nn.Linear(config.n_bottleneck, 8 * 16),
                 nn.Linear(8 * 16, 32 * 16),
@@ -138,6 +139,6 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(8, channel, 4, stride=2, padding=1),
                 nn.Sigmoid(),
-                )
+            )
         self.encoder = encoder
         self.decoder = decoder

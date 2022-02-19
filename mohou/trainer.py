@@ -1,29 +1,30 @@
 import copy
-from dataclasses import dataclass
+import logging
 import uuid
-import tqdm
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from torch.optim import Adam
-from typing import TypeVar, List, Generic, Optional, Tuple
+from dataclasses import dataclass
+from typing import Generic, List, Optional, Tuple, TypeVar
 
 import matplotlib.pyplot as plt
+import torch
+import tqdm
+from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset
 
-import logging
+from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
+
 logger = logging.getLogger(__name__)
 
-from mohou.model import LossDict, average_loss_dict
-from mohou.model import ModelT, ModelBase
 
 @dataclass
 class TrainConfig:
     batch_size: int = 200
-    learning_rate : float = 0.001
-    n_epoch : int = 1000
+    learning_rate: float = 0.001
+    n_epoch: int = 1000
+
 
 TrainCacheT = TypeVar('TrainCacheT', bound='TrainCache')
+
+
 class TrainCache(Generic[ModelT]):
     project_name: str
     epoch: int
@@ -33,13 +34,13 @@ class TrainCache(Generic[ModelT]):
     latest_model: ModelT
     cache_postfix: str
 
-    def __init__(self, project_name: str, cache_postfix: Optional[str]=None):
+    def __init__(self, project_name: str, cache_postfix: Optional[str] = None):
         if cache_postfix is None:
             cache_postfix = ""
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
-        self.cache_postfix = cache_postfix 
+        self.cache_postfix = cache_postfix
         self.uuid_str = str(uuid.uuid4())[-6:]
 
     def on_startof_epoch(self, epoch: int):
@@ -66,11 +67,11 @@ class TrainCache(Generic[ModelT]):
             logger.info('model is updated')
         """
         postfix = '-'.join([self.cache_postfix, model.hash_value, self.uuid_str])
-        dump_pickled_data(self, self.project_name, 
+        dump_pickled_data(self, self.project_name,
                 self.best_model.__class__.__name__, postfix)
         """
 
-    def visualize(self, fax: Optional[Tuple]=None):
+    def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
         fig, ax = fax
         train_loss_seq = [dic['total'] for dic in self.train_loss_dict_seq]
@@ -82,9 +83,9 @@ class TrainCache(Generic[ModelT]):
 
     """
     @classmethod
-    def load(cls: Type[TrainCacheT], project_name: str, model_type: type, 
+    def load(cls: Type[TrainCacheT], project_name: str, model_type: type,
             cache_postfix: Optional[str]=None) -> TrainCacheT:
-        # requiring "model_type" seems redundant but there is no way to 
+        # requiring "model_type" seems redundant but there is no way to
         # use info of ModelT from @classmethod
 
         # If multiple caches are found, choose best one respect to valid loss
@@ -95,9 +96,9 @@ class TrainCache(Generic[ModelT]):
 
     # TODO: probably has better design ...
     @classmethod
-    def load_multiple(cls: Type[TrainCacheT], project_name: str, model_type: type, 
+    def load_multiple(cls: Type[TrainCacheT], project_name: str, model_type: type,
             cache_postfix: Optional[str]=None) -> List[TrainCacheT]:
-        # requiring "model_type" seems redundant but there is no way to 
+        # requiring "model_type" seems redundant but there is no way to
         # use info of ModelT from @classmethod
         data_list = load_pickled_data(project_name, cls, model_type.__name__, cache_postfix)
         assert len(data_list) > 1, "data_list has {} elements.".format(len(data_list))
@@ -105,9 +106,8 @@ class TrainCache(Generic[ModelT]):
     """
 
 
-
 def train(
-        model: ModelBase, 
+        model: ModelBase,
         dataset_train: Dataset,
         dataset_validate: Dataset,
         tcache: TrainCache,
@@ -118,15 +118,15 @@ def train(
     def move_to_device(sample):
         if isinstance(sample, torch.Tensor):
             return sample.to(model.device)
-        elif isinstance(sample, list): # NOTE datalodaer return list type not tuple
+        elif isinstance(sample, list):  # NOTE datalodaer return list type not tuple
             return tuple([e.to(model.device) for e in sample])
         else:
             raise RuntimeError
 
     train_loader = DataLoader(
-            dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
+        dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
     validate_loader = DataLoader(
-            dataset=dataset_validate, batch_size=config.batch_size, shuffle=True)
+        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True)
     optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
     model.put_on_device()
@@ -134,7 +134,7 @@ def train(
         tcache.on_startof_epoch(epoch)
 
         model.train()
-        train_ld_list : List[LossDict] = []
+        train_ld_list: List[LossDict] = []
         for samples in train_loader:
             optimizer.zero_grad()
             samples = move_to_device(samples)
@@ -149,7 +149,7 @@ def train(
         tcache.on_train_loss(train_ld_mean, epoch)
 
         model.eval()
-        validate_ld_list : List[LossDict] = []
+        validate_ld_list: List[LossDict] = []
         for samples in validate_loader:
             samples = move_to_device(samples)
             loss_dict = model.loss(samples)

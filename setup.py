@@ -1,22 +1,21 @@
-import sys
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup_requires = []
 
 install_requires = [
-        "numpy",
-        "torch",
-        "torchvision",
-        "tinyfk",
-        "tqdm",
-        "matplotlib",
-        "albumentations"
-        ]
+    "numpy",
+    "torch",
+    "torchvision",
+    "tinyfk",
+    "tqdm",
+    "matplotlib",
+    "albumentations"
+]
 
 # for running demo
 extras_require = {
-        'test': ["pybullet", "moviepy"]
-        }
+    'test': ["pybullet", "moviepy"]
+}
 
 setup(
     name='mohou',

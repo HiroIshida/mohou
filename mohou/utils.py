@@ -1,22 +1,21 @@
-import time
-import os
 import logging
 from logging import Logger
+import os
+import time
 
-
-from torch.utils.data import Dataset
-from torch.utils.data import random_split
+from torch.utils.data import Dataset, random_split
 
 from mohou.file import get_project_dir
 
-def split_with_ratio(dataset: Dataset, valid_ratio: float=0.1):
-    """
-    split dataset into train and validation dataset with specified rat
-    """
-    n_total = len(dataset) # type: ignore
+
+def split_with_ratio(dataset: Dataset, valid_ratio: float = 0.1):
+    """split dataset into train and validation dataset with specified ratio"""
+
+    n_total = len(dataset)  # type: ignore
     n_validate = int(valid_ratio * n_total)
-    ds_train, ds_validate = random_split(dataset, [n_total-n_validate, n_validate])  
+    ds_train, ds_validate = random_split(dataset, [n_total - n_validate, n_validate])
     return ds_train, ds_validate
+
 
 def create_default_logger(project_name: str, prefix: str) -> Logger:
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
