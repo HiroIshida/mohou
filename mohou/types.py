@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torchvision
 
+from mohou.file import load_object
+
 
 class ElementBase(np.ndarray):
     def __new__(cls, arr):
@@ -101,3 +103,7 @@ class MultiEpisodeChunk:
 
     def __getitem__(self, index):
         return self.data_list.__getitem__(index)
+
+    @classmethod
+    def load(cls, project_name: str) -> 'MultiEpisodeChunk':
+        return load_object(cls, project_name)
