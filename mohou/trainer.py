@@ -10,6 +10,7 @@ import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
+from mohou.file import dump_object
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
 
 logger = logging.getLogger(__name__)
@@ -32,15 +33,11 @@ class TrainCache(Generic[ModelT]):
     validate_loss_dict_seq: List[LossDict]
     best_model: ModelT
     latest_model: ModelT
-    cache_postfix: str
 
-    def __init__(self, project_name: str, cache_postfix: Optional[str] = None):
-        if cache_postfix is None:
-            cache_postfix = ""
+    def __init__(self, project_name: str):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
-        self.cache_postfix = cache_postfix
         self.uuid_str = str(uuid.uuid4())[-6:]
 
     def on_startof_epoch(self, epoch: int):
@@ -65,11 +62,8 @@ class TrainCache(Generic[ModelT]):
         if(totals[-1] == min_loss):
             self.best_model = model
             logger.info('model is updated')
-        """
-        postfix = '-'.join([self.cache_postfix, model.hash_value, self.uuid_str])
-        dump_pickled_data(self, self.project_name,
-                self.best_model.__class__.__name__, postfix)
-        """
+        postfix = self.best_model.__class__.__name__
+        dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax

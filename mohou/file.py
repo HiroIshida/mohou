@@ -2,7 +2,7 @@ import logging
 import os
 import os.path as osp
 import pickle
-from typing import Any, Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,12 @@ def get_project_dir(project_name: str) -> str:
     return dirname
 
 
-def dump_object(obj: Any, project_name: str) -> None:
+def dump_object(obj: Any, project_name: str, postfix: Optional[str] = None) -> None:
     dir_path = get_project_dir(project_name)
-    file_name = osp.join(dir_path, obj.__class__.__name__ + '.pkl')
+    if postfix is None:
+        file_name = osp.join(dir_path, obj.__class__.__name__ + '.pkl')
+    else:
+        file_name = osp.join(dir_path, obj.__class__.__name__ + '-' + postfix + '.pkl')
     logger.info('dump pickle to {}'.format(file_name))
     with open(file_name, 'wb') as f:
         pickle.dump(obj, f)
