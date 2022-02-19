@@ -24,7 +24,7 @@ class EmbeddingRule(OrderedDict[Type[ElementBase], EmbeddingFunctor]):
         def embed(elem_type, reducer) -> np.ndarray:
             for sequence in episode_data:
                 if isinstance(sequence[0], elem_type):
-                    return np.concatenate([reducer(e) for e in sequence])
+                    return np.stack([reducer(e) for e in sequence])
             assert False
 
         vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
