@@ -31,14 +31,19 @@ def test_episode_data_assertion_type_inconsitency():
         EpisodeData((image_seq, depth_seq))
 
 
-def test_multi_episode_chunk_creation():
+@pytest.fixture(scope='session')
+def image_av_chunk():
     def create_sedata():
         image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
         data = EpisodeData((image_seq, av_seq))
         return data
     chunk = MultiEpisodeChunk([create_sedata() for _ in range(100)])
+    return chunk
 
+
+def test_multi_episode_chunk_creation(image_av_chunk):
+    chunk = image_av_chunk
     assert set(chunk.types) == set([AngleVector, RGBImage])
 
 
