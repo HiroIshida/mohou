@@ -13,10 +13,14 @@ class ElementBase(np.ndarray):
         assert False
 
 
-class AngleVector(ElementBase):
+class VectorBase(ElementBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
+
+
+class AngleVector(VectorBase):
+    pass
 
 
 class ImageBase(ElementBase):

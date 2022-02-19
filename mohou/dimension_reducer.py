@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torchvision
 
-from mohou.types import ElementT, ImageBase
+from mohou.types import ElementT, ImageBase, VectorBase
 
 
 class DimensionReducer(Generic[ElementT]):
@@ -57,3 +57,14 @@ class ImageDimensionReducer(DimensionReducer[ImageBase]):
         out_tensor = self.func(inp_tensor).squeeze()
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
+
+
+class IdenticalReducer(DimensionReducer[VectorBase]):
+    input_shape: Tuple[int]
+
+    def __init__(self, dimension):
+        self.input_shape = (dimension,)
+        self.output_size = dimension
+
+    def reducer_impl(self, inp: VectorBase) -> np.ndarray:
+        return inp
