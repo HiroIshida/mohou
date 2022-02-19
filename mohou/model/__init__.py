@@ -1,3 +1,5 @@
+# flake8: noqa
+
 from mohou.model.common import LossDict
 from mohou.model.common import average_loss_dict
 

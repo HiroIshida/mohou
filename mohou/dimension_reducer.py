@@ -1,11 +1,12 @@
-from abc import ABC
 from abc import abstractmethod
+from typing import Callable, Generic, Optional, Tuple
+
 import numpy as np
 import torch
 import torchvision
-from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type
 
 from mohou.types import ElementT, ImageBase
+
 
 class DimensionReducer(Generic[ElementT]):
     input_shape: Tuple[int, ...]
@@ -23,7 +24,9 @@ class DimensionReducer(Generic[ElementT]):
         return out
 
     @abstractmethod
-    def reducer_impl(self, inp: ElementT) -> np.ndarray: ...
+    def reducer_impl(self, inp: ElementT) -> np.ndarray:
+        pass
+
 
 class ImageDimensionReducer(DimensionReducer[ImageBase]):
     input_shape: Tuple[int, int, int]
@@ -31,12 +34,12 @@ class ImageDimensionReducer(DimensionReducer[ImageBase]):
     # https://stackoverflow.com/questions/51811024/mypy-type-checking-on-callable-thinks-that-member-variable-is-a-method
 
     def __init__(
-            self, 
-            func: Callable[[torch.Tensor], torch.Tensor], 
-            input_shape: Tuple[int, int, int], 
+            self,
+            func: Callable[[torch.Tensor], torch.Tensor],
+            input_shape: Tuple[int, int, int],
             output_size: int,
             check_size: bool = True
-            ):
+    ):
 
         self.func = func
         self.input_shape = input_shape
@@ -44,7 +47,7 @@ class ImageDimensionReducer(DimensionReducer[ImageBase]):
 
         if check_size:
             inp_dummy = np.zeros(input_shape)
-            out_dummy = self.reducer_impl(inp_dummy) # type: ignore
+            out_dummy = self.reducer_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
     def reducer_impl(self, inp: ImageBase) -> np.ndarray:

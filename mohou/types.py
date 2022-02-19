@@ -1,37 +1,53 @@
+from typing import Generic, List, Tuple, Type, TypeVar
+
 import numpy as np
 import torch
 import torchvision
-from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar, Callable, Type, NewType
 
 
 class ElementBase(np.ndarray):
-    def __new__(cls, arr): return np.asarray(arr).view(cls)
+    def __new__(cls, arr):
+        return np.asarray(arr).view(cls)
 
-    def to_tensor(self) -> torch.Tensor : assert False
+    def to_tensor(self) -> torch.Tensor:
+        assert False
+
 
 class AngleVector(ElementBase):
 
-    def to_tensor(self) -> torch.Tensor: return torch.from_numpy(self).float()
+    def to_tensor(self) -> torch.Tensor:
+        return torch.from_numpy(self).float()
 
-class ImageBase(ElementBase): ...
+
+class ImageBase(ElementBase):
+    pass
+
 
 class RGBImage(ImageBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self).float()
 
-class DepthImage(ImageBase): ...
 
-class RGBDImage(ImageBase): ...
+class DepthImage(ImageBase):
+    pass
+
+
+class RGBDImage(ImageBase):
+    pass
+
 
 ElementT = TypeVar('ElementT', bound=ElementBase)
 
-class ElementSequence(list, Generic[ElementT]): ...
+
+class ElementSequence(list, Generic[ElementT]):
+    pass
+
 
 class SingleEpisodeData:
-    types: List[Type] # https://docs.python.org/3/library/typing.html#typing.Type
+    types: List[Type]  # https://docs.python.org/3/library/typing.html#typing.Type
     sequence_list: Tuple[ElementSequence, ...]
+
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
 
         all_same_length = len(set(map(len, sequence_tuple))) == 1
@@ -56,4 +72,6 @@ class SingleEpisodeData:
                 return seq
         assert False
 
-class MultiEpisodeDataChunk(List[SingleEpisodeData]): ...
+
+class MultiEpisodeDataChunk(List[SingleEpisodeData]):
+    pass
