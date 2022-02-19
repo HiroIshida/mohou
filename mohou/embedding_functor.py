@@ -8,7 +8,7 @@ import torchvision
 from mohou.types import ElementT, ImageBase, VectorBase
 
 
-class DimensionReducer(Generic[ElementT]):
+class EmbeddingFunctor(Generic[ElementT]):
     input_shape: Tuple[int, ...]
     output_size: int
 
@@ -28,7 +28,7 @@ class DimensionReducer(Generic[ElementT]):
         pass
 
 
-class ImageDimensionReducer(DimensionReducer[ImageBase]):
+class ImageEmbeddingFunctor(EmbeddingFunctor[ImageBase]):
     input_shape: Tuple[int, int, int]
     func: Optional[Callable[[torch.Tensor], torch.Tensor]]
     # https://stackoverflow.com/questions/51811024/mypy-type-checking-on-callable-thinks-that-member-variable-is-a-method
@@ -59,7 +59,7 @@ class ImageDimensionReducer(DimensionReducer[ImageBase]):
         return out_numpy
 
 
-class IdenticalReducer(DimensionReducer[VectorBase]):
+class IdenticalEmbeddingFunctor(EmbeddingFunctor[VectorBase]):
     input_shape: Tuple[int]
 
     def __init__(self, dimension):
