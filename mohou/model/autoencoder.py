@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from mohou.embedding_functor import ImageEmbeddingFunctor
-from mohou.model import LossDict, ModelBase, ModelConfigBase
+from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
 
 @dataclass
@@ -22,6 +22,7 @@ class AutoEncoderConfig(ModelConfigBase):
 
 
 class Reshape(nn.Module):
+
     def __init__(self, *args):
         super(Reshape, self).__init__()
         self.shape = args
@@ -31,8 +32,6 @@ class Reshape(nn.Module):
 
 
 class AutoEncoder(ModelBase[AutoEncoderConfig]):
-    device: torch.device
-    config: AutoEncoderConfig
     encoder: nn.Module
     decoder: nn.Module
 

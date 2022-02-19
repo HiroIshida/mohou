@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 
+import torch
 from torch.utils.data import Dataset
 
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
@@ -14,10 +15,10 @@ class AutoEncoderDataset(Dataset):
     def __init__(self, image_list: List[ImageBase]):
         self.image_list = image_list
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_list)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> torch.Tensor:
         return self.image_list[idx].to_tensor()
 
     @classmethod
@@ -35,6 +36,12 @@ class AutoRegressiveDataset(Dataset):
 
     def __init__(self, state_seq_list: List[np.ndarray]):
         self.state_seq_list = self.attach_flag_info(state_seq_list)
+
+    def __len__(self) -> int:
+        return len(self.state_seq_list)
+
+    def __getitem__(self, idx) -> torch.Tensor:
+        return torch.from_numpy(self.state_seq_list[idx]).float()
 
     @classmethod
     def from_chunk(cls, chunk: MultiEpisodeChunk, embed_rule: EmbeddingRule) -> 'AutoRegressiveDataset':
