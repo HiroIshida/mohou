@@ -2,7 +2,7 @@ import copy
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar
+from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
 import torch
@@ -10,7 +10,7 @@ import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
-from mohou.file import dump_object
+from mohou.file import dump_object, load_object
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
 
 logger = logging.getLogger(__name__)
@@ -74,6 +74,11 @@ class TrainCache(Generic[ModelT]):
         ax.plot(valid_loss_seq)
         ax.set_yscale('log')
         ax.legend(['train', 'valid'])
+
+    @classmethod
+    def load(cls, project_name: str, model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
+        postfix = model_type.__name__
+        return load_object(TrainCache, project_name, postfix)
 
     """
     @classmethod
