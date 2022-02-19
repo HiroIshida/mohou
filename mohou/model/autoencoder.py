@@ -46,9 +46,11 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
         return self.decoder(self.encoder(input))
 
     def get_embedding_functor(self) -> ImageEmbeddingFunctor:
+        shape = self.config.image_shape
+        np_image_shape = (shape[1], shape[2], shape[0])
         return ImageEmbeddingFunctor(
             lambda image_tensor: self.encoder(image_tensor),
-            self.config.image_shape,
+            np_image_shape,
             self.config.n_bottleneck)
 
     def _create_layers(self, config: AutoEncoderConfig):

@@ -52,7 +52,7 @@ class ImageEmbeddingFunctor(EmbeddingFunctor[ImageBase]):
 
     def reducer_impl(self, inp: ImageBase) -> np.ndarray:
         tf = torchvision.transforms.ToTensor()
-        inp_tensor = tf(torch.from_numpy(inp).float()).unsqueeze(dim=0)
+        inp_tensor = tf(inp).unsqueeze(dim=0).float()
         assert self.func is not None
         out_tensor = self.func(inp_tensor).squeeze()
         out_numpy = out_tensor.cpu().detach().numpy()
