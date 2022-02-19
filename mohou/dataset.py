@@ -53,7 +53,7 @@ class AutoRegressiveDataset(Dataset):
             n_seq = len(state_seq)
             n_padding = n_max_in_dataset - n_seq
 
-            flag_seq = np.ones(n_max_in_dataset)
+            flag_seq = np.ones((n_max_in_dataset, 1))
             flag_seq[:n_seq] *= CONTINUE_FLAG_VALUE
             flag_seq[n_seq:] *= END_FLAG_VALUE
 
