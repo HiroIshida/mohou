@@ -50,7 +50,7 @@ class ElementSequence(list, Generic[ElementT]):
     pass
 
 
-class SingleEpisodeData:
+class EpisodeData:
     types: List[Type]  # https://docs.python.org/3/library/typing.html#typing.Type
     sequence_list: Tuple[ElementSequence, ...]
 
@@ -80,12 +80,15 @@ class SingleEpisodeData:
                 return seq
         assert False
 
+    def __iter__(self):
+        return self.sequence_list.__iter__()
 
-class MultiEpisodeDataChunk:
-    data_list: List[SingleEpisodeData]
+
+class MultiEpisodeChunk:
+    data_list: List[EpisodeData]
     types: List[Type]
 
-    def __init__(self, data_list: List[SingleEpisodeData]):
+    def __init__(self, data_list: List[EpisodeData]):
         types = data_list[0].types
         n_type_appeared = len(set(functools.reduce(operator.add, [d.types for d in data_list])))
         assert n_type_appeared == len(types)

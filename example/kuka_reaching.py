@@ -9,8 +9,8 @@ import tinyfk
 import tqdm
 
 from mohou.file import dump_object, get_project_dir
-from mohou.types import (AngleVector, ElementSequence, MultiEpisodeDataChunk,
-                         RGBImage, SingleEpisodeData)
+from mohou.types import (AngleVector, ElementSequence, MultiEpisodeChunk,
+                         RGBImage, EpisodeData)
 
 
 class BulletManager(object):
@@ -167,8 +167,8 @@ if __name__ == '__main__':
                 pass
         bm.set_box(target_pos)
         img_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel, with_depth=with_depth)
-        data_list.append(SingleEpisodeData((img_seq, cmd_seq)))
-        chunk = MultiEpisodeDataChunk(data_list)
+        data_list.append(EpisodeData((img_seq, cmd_seq)))
+        chunk = MultiEpisodeChunk(data_list)
         dump_object(chunk, project_name)
 
     filename = os.path.join(get_project_dir(project_name), "sample.gif")
