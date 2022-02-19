@@ -1,4 +1,6 @@
-from typing import Generic, List, Tuple, Type, TypeVar
+import functools
+import operator
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator
 
 import numpy as np
 import torch
@@ -53,6 +55,8 @@ class SingleEpisodeData:
     sequence_list: Tuple[ElementSequence, ...]
 
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
+        for sequence in sequence_tuple:
+            assert isinstance(sequence, ElementSequence)
 
         all_same_length = len(set(map(len, sequence_tuple))) == 1
         assert all_same_length
@@ -77,5 +81,20 @@ class SingleEpisodeData:
         assert False
 
 
-class MultiEpisodeDataChunk(List[SingleEpisodeData]):
-    pass
+class MultiEpisodeDataChunk:
+    data_list: List[SingleEpisodeData]
+    types: List[Type]
+
+    def __init__(self, data_list: List[SingleEpisodeData]):
+        types = data_list[0].types
+        n_type_appeared = len(set(functools.reduce(operator.add, [d.types for d in data_list])))
+        assert n_type_appeared == len(types)
+
+        self.data_list = data_list
+        self.types = types
+
+    def __iter__(self) -> Iterator:
+        return self.data_list.__iter__()
+
+    def __getitem__(self, index):
+        return self.data_list.__getitem__(index)

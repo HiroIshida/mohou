@@ -113,7 +113,7 @@ class BulletManager(object):
         step = (np.array(joint_angles_target) - angles_now) / (N_rand - 1)
         angles_seq = ElementSequence[AngleVector]([AngleVector(angles_now + step * i) for i in range(N_rand)])
 
-        img_seq: ElementSequence[RGBImage] = []
+        img_seq = ElementSequence[RGBImage]([])
         for av in angles_seq:
             self.set_joint_angles(av)
             rgba, depth = self.take_photo(n_pixel)
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     urdf_path = os.path.join(pbdata_path, 'kuka_iiwa', 'model.urdf')
     bm = BulletManager(False, urdf_path, 'lbr_iiwa_link_7')
 
-    chunk = MultiEpisodeDataChunk()
+    data_list = []
     for i in tqdm.tqdm(range(n_epoch)):
         bm.set_joint_angles([0.2 for _ in range(7)])
         while True:
@@ -167,7 +167,8 @@ if __name__ == '__main__':
                 pass
         bm.set_box(target_pos)
         img_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel, with_depth=with_depth)
-        chunk.append(SingleEpisodeData((img_seq, cmd_seq)))
+        data_list.append(SingleEpisodeData((img_seq, cmd_seq)))
+        chunk = MultiEpisodeDataChunk(data_list)
         dump_object(chunk, project_name)
 
     filename = os.path.join(get_project_dir(project_name), "sample.gif")
