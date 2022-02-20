@@ -12,11 +12,11 @@ class Embedder(Generic[ElementT]):
     input_shape: Tuple[int, ...]
     output_size: int
 
-    def __call__(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
+    def forward(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
         if check_size:
             assert inp.shape == self.input_shape
 
-        out = self.reducer_impl(inp)
+        out = self._forward_impl(inp)
 
         if check_size:
             assert out.shape == (self.output_size,)
@@ -24,7 +24,7 @@ class Embedder(Generic[ElementT]):
         return out
 
     @abstractmethod
-    def reducer_impl(self, inp: ElementT) -> np.ndarray:
+    def _forward_impl(self, inp: ElementT) -> np.ndarray:
         pass
 
 
@@ -47,10 +47,10 @@ class ImageEmbedder(Embedder[ImageBase]):
 
         if check_size:
             inp_dummy = np.zeros(input_shape)
-            out_dummy = self.reducer_impl(inp_dummy)  # type: ignore
+            out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
-    def reducer_impl(self, inp: ImageBase) -> np.ndarray:
+    def _forward_impl(self, inp: ImageBase) -> np.ndarray:
         tf = torchvision.transforms.ToTensor()
         inp_tensor = tf(inp).unsqueeze(dim=0).float()
         assert self.func is not None
@@ -66,5 +66,5 @@ class IdenticalEmbedder(Embedder[VectorBase]):
         self.input_shape = (dimension,)
         self.output_size = dimension
 
-    def reducer_impl(self, inp: VectorBase) -> np.ndarray:
+    def _forward_impl(self, inp: VectorBase) -> np.ndarray:
         return inp
