@@ -1,6 +1,6 @@
 import torch
 
-from mohou.embedding_functor import ImageEmbeddingFunctor
+from mohou.embedder import ImageEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule, IdenticalEmbeddingFunctor
 
 from test_types import image_av_chunk # noqa

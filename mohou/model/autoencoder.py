@@ -4,7 +4,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from mohou.embedding_functor import ImageEmbeddingFunctor
+from mohou.embedder import ImageEmbeddingFunctor
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
 
@@ -44,7 +44,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.decoder(self.encoder(input))
 
-    def get_embedding_functor(self) -> ImageEmbeddingFunctor:
+    def get_embedder(self) -> ImageEmbeddingFunctor:
         shape = self.config.image_shape
         np_image_shape = (shape[1], shape[2], shape[0])
         return ImageEmbeddingFunctor(

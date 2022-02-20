@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Type, List, OrderedDict
 
-from mohou.embedding_functor import EmbeddingFunctor, ImageEmbeddingFunctor, IdenticalEmbeddingFunctor
+from mohou.embedder import EmbeddingFunctor, ImageEmbeddingFunctor, IdenticalEmbeddingFunctor
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
 

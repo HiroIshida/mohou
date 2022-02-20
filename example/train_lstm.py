@@ -6,7 +6,7 @@ from mohou.types import MultiEpisodeChunk
 from mohou.types import AngleVector
 from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
-from mohou.embedding_functor import IdenticalEmbeddingFunctor
+from mohou.embedder import IdenticalEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
 from mohou.utils import create_default_logger, detect_device
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     chunk = MultiEpisodeChunk.load(project_name)
 
     tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-    image_embed_func = tcache_autoencoder.best_model.get_embedding_functor()
+    image_embed_func = tcache_autoencoder.best_model.get_embedder()
 
     av_idendical_func = IdenticalEmbeddingFunctor(chunk.get_element_shape(AngleVector)[0])
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)

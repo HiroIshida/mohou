@@ -5,7 +5,7 @@ from mohou.trainer import TrainCache
 from mohou.types import MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
 from mohou.model import AutoEncoder, LSTM
-from mohou.embedding_functor import IdenticalEmbeddingFunctor
+from mohou.embedder import IdenticalEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
 
 if __name__ == '__main__':
@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
     tcach_lstm = TrainCache.load(project_name, LSTM)
-    image_embed_func = tcache_autoencoder.best_model.get_embedding_functor()
+    image_embed_func = tcache_autoencoder.best_model.get_embedder()
 
     av_idendical_func = IdenticalEmbeddingFunctor(chunk.get_element_shape(AngleVector)[0])
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
