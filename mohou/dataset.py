@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
+import logging
 from typing import List, Generic, Type, TypeVar, Optional
 
 import albumentations as al
@@ -10,6 +11,8 @@ from torch.utils.data import Dataset
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.embedding_rule import EmbeddingRule
 from mohou.types import ElementSequence, ImageT, MultiEpisodeChunk, RGBImage
+
+logger = logging.getLogger(__name__)
 
 AutoEncoderDataestT = TypeVar('AutoEncoderDataestT', bound='AutoEncoderDataset')
 
@@ -37,6 +40,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         return self.image_list[idx].to_tensor()
 
     def update_dataset(self):
+        logger.info('randomizing data...')
         self.image_list_rand = self._randomize_data(self.image_list)
 
     @classmethod
