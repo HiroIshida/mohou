@@ -8,7 +8,7 @@ import torchvision
 from mohou.types import ElementT, ImageBase, VectorBase
 
 
-class EmbeddingFunctor(Generic[ElementT]):
+class Embedder(Generic[ElementT]):
     input_shape: Tuple[int, ...]
     output_size: int
 
@@ -28,7 +28,7 @@ class EmbeddingFunctor(Generic[ElementT]):
         pass
 
 
-class ImageEmbeddingFunctor(EmbeddingFunctor[ImageBase]):
+class ImageEmbedder(Embedder[ImageBase]):
     input_shape: Tuple[int, int, int]
     func: Optional[Callable[[torch.Tensor], torch.Tensor]]
     # https://stackoverflow.com/questions/51811024/mypy-type-checking-on-callable-thinks-that-member-variable-is-a-method
@@ -59,7 +59,7 @@ class ImageEmbeddingFunctor(EmbeddingFunctor[ImageBase]):
         return out_numpy
 
 
-class IdenticalEmbeddingFunctor(EmbeddingFunctor[VectorBase]):
+class IdenticalEmbedder(Embedder[VectorBase]):
     input_shape: Tuple[int]
 
     def __init__(self, dimension):

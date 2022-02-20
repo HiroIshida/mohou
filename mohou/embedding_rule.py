@@ -1,12 +1,12 @@
 import numpy as np
 from typing import Type, List, OrderedDict
 
-from mohou.embedder import EmbeddingFunctor, ImageEmbeddingFunctor, IdenticalEmbeddingFunctor
+from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
 
 
-class EmbeddingRule(OrderedDict[Type[ElementBase], EmbeddingFunctor]):
+class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
 
     def apply(self, elements: List[ElementBase]) -> np.ndarray:
 
@@ -54,6 +54,6 @@ class EmbeddingRule(OrderedDict[Type[ElementBase], EmbeddingFunctor]):
 
 class RGBAngelVectorEmbeddingRule(EmbeddingRule):
 
-    def __init__(self, image_reducer: ImageEmbeddingFunctor, identical_reducer: IdenticalEmbeddingFunctor):
+    def __init__(self, image_reducer: ImageEmbedder, identical_reducer: IdenticalEmbedder):
         self[RGBImage] = image_reducer
         self[AngleVector] = identical_reducer
