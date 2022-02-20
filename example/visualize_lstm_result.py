@@ -2,7 +2,7 @@ import argparse
 
 from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
-from mohou.types import MultiEpisodeChunk
+from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
 from mohou.model import AutoEncoder, LSTM
 from mohou.embedder import RGBImageEmbedder, AngleVectorIdenticalEmbedder
@@ -33,6 +33,6 @@ if __name__ == '__main__':
     iamge_seq = episode_data.filter_by_type(RGBImage)[:n_feed]
 
     for elem_tuple in zip(av_seq, iamge_seq):
-        propagator.feed(list(elem_tuple))
+        propagator.feed(ElementDict(elem_tuple))
 
-    elem_list_list = propagator.predict(100)
+    elem_dict_list = propagator.predict(100)

@@ -3,7 +3,7 @@ import torch
 from typing import List
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.types import ElementBase
+from mohou.types import ElementDict
 from mohou.model import LSTM
 from mohou.embedding_rule import EmbeddingRule
 
@@ -18,18 +18,18 @@ class Propagator:
         self.embed_rule = embed_rule
         self.fed_state_list = []
 
-    def feed(self, elem_list: List[ElementBase]):
-        state = self.embed_rule.apply(elem_list)
+    def feed(self, elem_dict: ElementDict):
+        state = self.embed_rule.apply(elem_dict)
         state_with_flag = np.hstack((state, CONTINUE_FLAG_VALUE))
         self.fed_state_list.append(state_with_flag)
 
-    def predict(self, n_prop: int) -> List[List[ElementBase]]:
+    def predict(self, n_prop: int) -> List[ElementDict]:
         pred_state_list = self._predict(n_prop)
-        elem_list_list = []
+        elem_dict_list = []
         for pred_state in pred_state_list:
-            elem_list = self.embed_rule.inverse_apply(pred_state)
-            elem_list_list.append(elem_list)
-        return elem_list_list
+            elem_dict = self.embed_rule.inverse_apply(pred_state)
+            elem_dict_list.append(elem_dict)
+        return elem_dict_list
 
     def _predict(self, n_prop: int) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []

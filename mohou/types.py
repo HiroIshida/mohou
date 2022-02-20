@@ -1,7 +1,7 @@
 import functools
 import operator
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict, Sequence
 
 import numpy as np
 import torch
@@ -50,6 +50,14 @@ class RGBDImage(ImageBase):
 ElementT = TypeVar('ElementT', bound=ElementBase)
 ImageT = TypeVar('ImageT', bound=ImageBase)
 VectorT = TypeVar('VectorT', bound=VectorBase)
+
+
+class ElementDict(Dict[Type[ElementBase], ElementBase]):
+
+    def __init__(self, elems: Sequence[ElementBase]):
+        for elem in elems:
+            self[elem.__class__] = elem
+        assert len(set(self.keys())) == len(elems)
 
 
 class ElementSequence(list, Generic[ElementT]):

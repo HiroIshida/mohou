@@ -2,24 +2,20 @@ import numpy as np
 from typing import Type, List, OrderedDict
 
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
-from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk
+from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
 from mohou.types import AngleVector, RGBImage
 
 
 class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
 
-    def apply(self, elements: List[ElementBase]) -> np.ndarray:
+    def apply(self, elem_dict: ElementDict) -> np.ndarray:
+        vector_list = []
+        for elem_type, embedder in self.items():
+            vector = embedder.forward(elem_dict[elem_type])
+            vector_list.append(vector)
+        return np.hstack(vector_list)
 
-        def embed(elem_type, embedder) -> np.ndarray:
-            for e in elements:
-                if isinstance(e, elem_type):
-                    return embedder.forward(e)
-            assert False
-
-        vector = np.hstack([embed(k, v) for k, v in self.items()])
-        return vector
-
-    def inverse_apply(self, vector: np.ndarray) -> List[ElementBase]:
+    def inverse_apply(self, vector: np.ndarray) -> ElementDict:
 
         def split_vector(vector: np.ndarray, size_list: List[int]):
             head = 0
@@ -33,10 +29,21 @@ class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
         size_list = [embedder.output_size for elem_type, embedder in self.items()]
         vector_list = split_vector(vector, size_list)
 
-        elem_list: List[ElementBase] = []
+        elem_dict = ElementDict([])
         for vec, (elem_type, embedder) in zip(vector_list, self.items()):
-            elem_list.append(embedder.backward(vec))
-        return elem_list
+            elem_dict[elem_type] = embedder.backward(vec)
+        return elem_dict
+
+    def apply_to_list(self, elements: List[ElementBase]) -> np.ndarray:
+
+        def embed(elem_type, embedder) -> np.ndarray:
+            for e in elements:
+                if isinstance(e, elem_type):
+                    return embedder.forward(e)
+            assert False
+
+        vector = np.hstack([embed(k, v) for k, v in self.items()])
+        return vector
 
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
