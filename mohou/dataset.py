@@ -39,12 +39,12 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
             image_list.extend(image_seq)
 
         # Note that image augmentation is to slow to do it online, so do here
-        auged_image_list = cls.augmentation(image_list, n_augmentation)
+        auged_image_list = cls.augment_data(image_list, n_augmentation)
         return cls(auged_image_list)
 
     @staticmethod
     @abstractmethod
-    def augmentation(image_list: List[ImageT], n: int) -> List[ImageT]:
+    def augment_data(image_list: List[ImageT], n: int) -> List[ImageT]:
         pass
 
 
@@ -52,7 +52,8 @@ class RGBAutoEncoderDataset(AutoEncoderDataset[RGBImage]):
     image_type = RGBImage
 
     @staticmethod
-    def augmentation(image_list: List[ImageT], n: int) -> List[ImageT]:
+    def augment_data(image_list: List[ImageT], n: int) -> List[ImageT]:
+        # TODO(HiroIshida) make them config
         aug_guass = al.GaussNoise(p=1)
         aug_rgbshit = al.RGBShift(r_shift_limit=40, g_shift_limit=40, b_shift_limit=40)
         aug_composed = al.Compose([aug_guass, aug_rgbshit])
@@ -94,7 +95,7 @@ class AutoRegressiveDataset(Dataset):
             augconfig = AutoRegressiveAugConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        state_auged_seq_list = cls.augmentation(state_seq_list, augconfig)
+        state_auged_seq_list = cls.augment_data(state_seq_list, augconfig)
         return cls(state_auged_seq_list)
 
     @staticmethod
@@ -133,7 +134,7 @@ class AutoRegressiveDataset(Dataset):
         return cov_mat
 
     @classmethod
-    def augmentation(
+    def augment_data(
             cls,
             state_seq_list: List[np.ndarray],
             augconfig: AutoRegressiveAugConfig) -> List[np.ndarray]:
