@@ -80,8 +80,8 @@ class TrainCache(Generic[ModelT]):
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
         fig, ax = fax
-        train_loss_seq = [dic['total'] for dic in self.train_loss_dict_seq]
-        valid_loss_seq = [dic['total'] for dic in self.validate_loss_dict_seq]
+        train_loss_seq = [dic.total() for dic in self.train_loss_dict_seq]
+        valid_loss_seq = [dic.total() for dic in self.validate_loss_dict_seq]
         ax.plot(train_loss_seq)
         ax.plot(valid_loss_seq)
         ax.set_yscale('log')

@@ -8,3 +8,5 @@ python3 $example_path/train_autoencoder.py -n 3 -timer-period 1
 python3 $example_path/visualize_autoencoder_result.py
 
 python3 $example_path/train_lstm.py -valid-ratio 0.5 -n 3
+
+python3 $example_path/visualize_train_history.py
