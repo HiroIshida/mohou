@@ -10,7 +10,10 @@ def test_embedding_rule(image_av_chunk): # noqa
     chunk = image_av_chunk
     n_image_embed = 5
     n_av_embed = 10
-    f1 = ImageEmbedder(lambda img: torch.zeros(n_image_embed), (100, 100, 3), n_image_embed)
+    f1 = ImageEmbedder(
+        lambda img: torch.zeros(n_image_embed),
+        lambda vec: torch.zeros(3, 100, 100),
+        (100, 100, 3), n_image_embed)
     f2 = IdenticalEmbedder(n_av_embed)
 
     rule = RGBAngelVectorEmbeddingRule(f1, f2)

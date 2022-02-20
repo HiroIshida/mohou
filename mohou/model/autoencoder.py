@@ -49,6 +49,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
         np_image_shape = (shape[1], shape[2], shape[0])
         return ImageEmbedder(
             lambda image_tensor: self.encoder(image_tensor),
+            lambda encoding: self.decoder(encoding),
             np_image_shape,
             self.config.n_bottleneck)
 
