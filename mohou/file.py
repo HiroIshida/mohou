@@ -21,6 +21,13 @@ def get_project_dir(project_name: str) -> str:
     return dirname
 
 
+def get_subproject_dir(project_name: str, directory_name: str):
+    dirname = osp.join(get_project_dir(project_name), directory_name)
+    if not osp.exists(dirname):
+        os.makedirs(dirname)
+    return dirname
+
+
 def resolve_file_name(obj_type: Type, project_name: str, postfix: Optional[str] = None) -> str:
     dir_path = get_project_dir(project_name)
     if postfix is None:
