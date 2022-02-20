@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torchvision
 
-from mohou.types import AngleVector, ElementT, ImageBase, RGBImage, VectorBase
+from mohou.types import AngleVector, ElementT, ImageT, RGBImage, VectorT
 
 
 class Embedder(Generic[ElementT]):
@@ -43,8 +43,7 @@ class Embedder(Generic[ElementT]):
         pass
 
 
-class ImageEmbedder(Embedder[ImageBase]):
-    image_type: Type[ImageBase]
+class ImageEmbedder(Embedder[ImageT]):
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -69,7 +68,12 @@ class ImageEmbedder(Embedder[ImageBase]):
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
-    def _forward_impl(self, inp: ImageBase) -> np.ndarray:
+    @property
+    @abstractmethod
+    def image_type(self) -> Type[ImageT]:
+        pass
+
+    def _forward_impl(self, inp: ImageT) -> np.ndarray:
         tf = torchvision.transforms.ToTensor()
         inp_tensor = tf(inp).unsqueeze(dim=0).float()
         assert self.func_forward is not None
@@ -77,7 +81,7 @@ class ImageEmbedder(Embedder[ImageBase]):
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
 
-    def _backward_impl(self, inp: np.ndarray) -> ImageBase:
+    def _backward_impl(self, inp: np.ndarray) -> ImageT:
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
@@ -87,24 +91,32 @@ class ImageEmbedder(Embedder[ImageBase]):
         return out
 
 
-class RGBImageEmbedder(Embedder[RGBImage]):
-    image_type = RGBImage
+class RGBImageEmbedder(ImageEmbedder[RGBImage]):
+
+    def image_type(self) -> Type[RGBImage]:
+        return RGBImage
 
 
-class IdenticalEmbedder(Embedder[VectorBase]):
-    vector_type: Type[VectorBase]
+class IdenticalEmbedder(Embedder[VectorT]):
     input_shape: Tuple[int]
 
     def __init__(self, dimension):
         self.input_shape = (dimension,)
         self.output_size = dimension
 
-    def _forward_impl(self, inp: VectorBase) -> np.ndarray:
+    @property
+    @abstractmethod
+    def vector_type(self) -> Type[VectorT]:
+        pass
+
+    def _forward_impl(self, inp: VectorT) -> np.ndarray:
         return inp
 
-    def _backward_impl(self, inp: np.ndarray) -> VectorBase:
+    def _backward_impl(self, inp: np.ndarray) -> VectorT:
         return self.vector_type(inp)
 
 
 class AngleVectorIdenticalEmbedder(IdenticalEmbedder):
-    vector_type = AngleVector
+
+    def vector_type(self) -> Type[AngleVector]:
+        return AngleVector

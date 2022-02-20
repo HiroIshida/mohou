@@ -49,6 +49,7 @@ class RGBDImage(ImageBase):
 
 ElementT = TypeVar('ElementT', bound=ElementBase)
 ImageT = TypeVar('ImageT', bound=ImageBase)
+VectorT = TypeVar('VectorT', bound=VectorBase)
 
 
 class ElementSequence(list, Generic[ElementT]):
