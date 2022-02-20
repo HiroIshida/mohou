@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from typing import List, Generic, Type, TypeVar
+from dataclasses import dataclass
+from typing import List, Generic, Type, TypeVar, Optional
 
 import albumentations as al
 import numpy as np
@@ -30,13 +31,14 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
     def from_chunk(
             cls: Type[AutoEncoderDataestT],
             chunk: MultiEpisodeChunk,
-            n_augmentation: int = 2
-    ) -> AutoEncoderDataestT:
+            n_augmentation: int = 2) -> AutoEncoderDataestT:
 
         image_list: List[ImageT] = []
         for episode_data in chunk:
             image_seq: ElementSequence[ImageT] = episode_data.filter_by_type(cls.image_type)
             image_list.extend(image_seq)
+
+        # Note that image augmentation is to slow to do it online, so do here
         auged_image_list = cls.augmentation(image_list, n_augmentation)
         return cls(auged_image_list)
 
@@ -63,6 +65,12 @@ class RGBAutoEncoderDataset(AutoEncoderDataset[RGBImage]):
         return image_list
 
 
+@dataclass
+class AutoRegressiveAugConfig:
+    n_augmentation: int = 20
+    cov_scale: float = 0.1
+
+
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]
 
@@ -76,9 +84,18 @@ class AutoRegressiveDataset(Dataset):
         return torch.from_numpy(self.state_seq_list[idx]).float()
 
     @classmethod
-    def from_chunk(cls, chunk: MultiEpisodeChunk, embed_rule: EmbeddingRule) -> 'AutoRegressiveDataset':
+    def from_chunk(
+            cls,
+            chunk: MultiEpisodeChunk,
+            embed_rule: EmbeddingRule,
+            augconfig: Optional[AutoRegressiveAugConfig] = None) -> 'AutoRegressiveDataset':
+
+        if augconfig is None:
+            augconfig = AutoRegressiveAugConfig()
+
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        return cls(state_seq_list)
+        state_auged_seq_list = cls.augmentation(state_seq_list, augconfig)
+        return cls(state_auged_seq_list)
 
     @staticmethod
     def attach_flag_info(state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
@@ -102,4 +119,34 @@ class AutoRegressiveDataset(Dataset):
 
             state_seq_list[i] = padded_state_flag_seq
 
+        return state_seq_list
+
+    @staticmethod
+    def trajectory_noise_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
+
+        state_diff_list = []
+        for state_seq in state_seq_list:
+            diff = state_seq[1:, :] - state_seq[:-1, :]
+            state_diff_list.append(diff)
+        state_diffs = np.vstack(state_diff_list)
+        cov_mat = np.cov(state_diffs.T)
+        return cov_mat
+
+    @classmethod
+    def augmentation(
+            cls,
+            state_seq_list: List[np.ndarray],
+            augconfig: AutoRegressiveAugConfig) -> List[np.ndarray]:
+        """Augment sequence by adding trajectry noise"""
+
+        cov_mat = cls.trajectory_noise_covariance(state_seq_list)
+
+        noised_state_seq_list = []
+        for state_seq in state_seq_list:
+            n_seq, n_dim = state_seq.shape
+            mean = np.zeros(n_dim)
+            noise_seq = np.random.multivariate_normal(mean, cov_mat, n_seq)
+            noised_state_seq_list.append(state_seq + noise_seq)
+
+        state_seq_list.extend(noised_state_seq_list)
         return state_seq_list
