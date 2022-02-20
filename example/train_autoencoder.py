@@ -5,7 +5,7 @@ from mohou.model import AutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import MultiEpisodeChunk
-from mohou.utils import create_default_logger, detect_device, split_with_ratio
+from mohou.utils import create_default_logger, detect_device
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -22,9 +22,8 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name)
     dataset = RGBAutoEncoderDataset.from_chunk(chunk)
-    dataset_train, dataset_valid = split_with_ratio(dataset, valid_ratio=valid_ratio)
 
     tcache = TrainCache[AutoEncoder](project_name)
     model = AutoEncoder(detect_device(), AutoEncoderConfig())
-    tconfig = TrainConfig(n_epoch=n_epoch)
-    train(model, dataset_train, dataset_valid, tcache, config=tconfig)
+    tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
+    train(model, dataset, tcache, config=tconfig)

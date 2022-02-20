@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from mohou.file import dump_object, load_object
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
+from mohou.utils import split_with_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TrainConfig:
     batch_size: int = 200
+    valid_data_ratio: float = 0.1
     learning_rate: float = 0.001
     n_epoch: int = 1000
 
@@ -107,8 +109,7 @@ class TrainCache(Generic[ModelT]):
 
 def train(
         model: ModelBase,
-        dataset_train: Dataset,
-        dataset_validate: Dataset,
+        dataset: Dataset,
         tcache: TrainCache,
         config: TrainConfig = TrainConfig()) -> None:
 
@@ -121,6 +122,8 @@ def train(
             return tuple([e.to(model.device) for e in sample])
         else:
             raise RuntimeError
+
+    dataset_train, dataset_validate = split_with_ratio(dataset, config.valid_data_ratio)
 
     train_loader = DataLoader(
         dataset=dataset_train, batch_size=config.batch_size, shuffle=True)

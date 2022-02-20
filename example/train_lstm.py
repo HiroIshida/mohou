@@ -8,7 +8,7 @@ from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedding_functor import IdenticalEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
-from mohou.utils import create_default_logger, detect_device, split_with_ratio
+from mohou.utils import create_default_logger, detect_device
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -32,10 +32,9 @@ if __name__ == '__main__':
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
 
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule)
-    dataset_train, dataset_valid = split_with_ratio(dataset, valid_ratio=valid_ratio)
 
     lstm_model = LSTM(detect_device(), LSTMConfig(embed_rule.dimension))
 
-    tconfig = TrainConfig(n_epoch=3)
+    tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     tcache = TrainCache[LSTM](project_name)
-    train(lstm_model, dataset_train, dataset_valid, tcache, config=tconfig)
+    train(lstm_model, dataset, tcache, config=tconfig)
