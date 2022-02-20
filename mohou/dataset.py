@@ -153,12 +153,13 @@ class AutoRegressiveDataset(MohouDataset):
         """Augment sequence by adding trajectry noise"""
 
         cov_mat = cls.trajectory_noise_covariance(state_seq_list)
+        cov_mat_scaled = cov_mat * augconfig.cov_scale ** 2
 
         noised_state_seq_list = []
         for state_seq in state_seq_list:
             n_seq, n_dim = state_seq.shape
             mean = np.zeros(n_dim)
-            noise_seq = np.random.multivariate_normal(mean, cov_mat, n_seq)
+            noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
             noised_state_seq_list.append(state_seq + noise_seq)
 
         state_seq_list.extend(noised_state_seq_list)
