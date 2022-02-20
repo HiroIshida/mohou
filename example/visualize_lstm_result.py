@@ -1,12 +1,16 @@
 import argparse
+import os
 
+from moviepy.editor import ImageSequenceClip
+
+from mohou.embedder import RGBImageEmbedder, AngleVectorIdenticalEmbedder
+from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
+from mohou.file import get_subproject_dir
 from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
 from mohou.model import AutoEncoder, LSTM
-from mohou.embedder import RGBImageEmbedder, AngleVectorIdenticalEmbedder
-from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -35,4 +39,10 @@ if __name__ == '__main__':
     for elem_tuple in zip(av_seq, iamge_seq):
         propagator.feed(ElementDict(elem_tuple))
 
-    elem_dict_list = propagator.predict(100)
+    elem_dict_list = propagator.predict(150)
+    pred_images = [elem_dict[RGBImage] for elem_dict in elem_dict_list]
+
+    save_dir = get_subproject_dir(project_name, 'lstm_result')
+    full_file_name = os.path.join(save_dir, 'result.gif')
+    clip = ImageSequenceClip(pred_images, fps=50)
+    clip.write_gif(full_file_name, fps=50)
