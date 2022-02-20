@@ -1,5 +1,6 @@
 import functools
 import operator
+import random
 from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict
 
 import numpy as np
@@ -7,6 +8,7 @@ import torch
 import torchvision
 
 from mohou.file import load_object
+from mohou.constant import N_DATA_INTACT
 
 
 class ElementBase(np.ndarray):
@@ -97,15 +99,21 @@ class EpisodeData:
 
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
+    data_list_intact: List[EpisodeData]
     types: List[Type[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
-    def __init__(self, data_list: List[EpisodeData]):
+    def __init__(self, data_list: List[EpisodeData], shuffle=True):
         types = data_list[0].types
         n_type_appeared = len(set(functools.reduce(operator.add, [d.types for d in data_list])))
         assert n_type_appeared == len(types)
 
-        self.data_list = data_list
+        if shuffle:
+            random.shuffle(data_list)
+
+        self.data_list = data_list[:N_DATA_INTACT]
+        self.data_list_intact = data_list[N_DATA_INTACT:]
+
         self.types = types
         self.type_shape_table = data_list[0].type_shape_table
 
