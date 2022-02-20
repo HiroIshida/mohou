@@ -1,6 +1,6 @@
 import argparse
 
-from mohou.dataset import AutoEncoderDataset
+from mohou.dataset import RGBAutoEncoderDataset
 from mohou.model import AutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.trainer import TrainCache, TrainConfig, train
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     valid_ratio = args.valid_ratio
 
     chunk = MultiEpisodeChunk.load(project_name)
-    dataset = AutoEncoderDataset.from_chunk(chunk)
+    dataset = RGBAutoEncoderDataset.from_chunk(chunk)
     dataset_train, dataset_valid = split_with_ratio(dataset, valid_ratio=valid_ratio)
 
     tcache = TrainCache[AutoEncoder](project_name)

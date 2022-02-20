@@ -1,18 +1,23 @@
-import numpy as np
-from typing import List
+from abc import abstractmethod
+from typing import List, Generic, Type, TypeVar
 
+import albumentations as al
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import ElementSequence, ImageBase, MultiEpisodeChunk
+from mohou.types import ElementSequence, ImageT, MultiEpisodeChunk, RGBImage
+
+AutoEncoderDataestT = TypeVar('AutoEncoderDataestT', bound='AutoEncoderDataset')
 
 
-class AutoEncoderDataset(Dataset):
-    image_list: List[ImageBase]
+class AutoEncoderDataset(Dataset, Generic[ImageT]):
+    image_type: Type[ImageT]
+    image_list: List[ImageT]
 
-    def __init__(self, image_list: List[ImageBase]):
+    def __init__(self, image_list: List[ImageT]):
         self.image_list = image_list
 
     def __len__(self) -> int:
@@ -22,13 +27,40 @@ class AutoEncoderDataset(Dataset):
         return self.image_list[idx].to_tensor()
 
     @classmethod
-    def from_chunk(cls, chunk: MultiEpisodeChunk) -> 'AutoEncoderDataset':
-        image_list: List[ImageBase] = []
-        for episode_data in chunk:
-            image_seq: ElementSequence[ImageBase] = episode_data.filter_by_type(ImageBase)
-            image_list.extend(image_seq)
+    def from_chunk(
+            cls: Type[AutoEncoderDataestT],
+            chunk: MultiEpisodeChunk,
+            n_augmentation: int = 2
+    ) -> AutoEncoderDataestT:
 
-        return cls(image_list)
+        image_list: List[ImageT] = []
+        for episode_data in chunk:
+            image_seq: ElementSequence[ImageT] = episode_data.filter_by_type(cls.image_type)
+            image_list.extend(image_seq)
+        auged_image_list = cls.augmentation(image_list, n_augmentation)
+        return cls(auged_image_list)
+
+    @staticmethod
+    @abstractmethod
+    def augmentation(image_list: List[ImageT], n: int) -> List[ImageT]:
+        pass
+
+
+class RGBAutoEncoderDataset(AutoEncoderDataset[RGBImage]):
+    image_type = RGBImage
+
+    @staticmethod
+    def augmentation(image_list: List[ImageT], n: int) -> List[ImageT]:
+        aug_guass = al.GaussNoise(p=1)
+        aug_rgbshit = al.RGBShift(r_shift_limit=40, g_shift_limit=40, b_shift_limit=40)
+        aug_composed = al.Compose([aug_guass, aug_rgbshit])
+
+        auged_list = []
+        for i in range(n):
+            auged_list.extend([aug_composed(image=img)['image'] for img in image_list])
+        image_list.extend(auged_list)
+
+        return image_list
 
 
 class AutoRegressiveDataset(Dataset):
