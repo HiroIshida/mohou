@@ -1,8 +1,13 @@
 import argparse
 import os
+import pickle
+import multiprocessing
+import tempfile
+import uuid
 
 from moviepy.editor import ImageSequenceClip
 import numpy as np
+import psutil
 import pybullet as pb
 import pybullet_data
 import tinyfk
@@ -151,26 +156,54 @@ if __name__ == '__main__':
 
     np.random.seed(seed)
 
-    pbdata_path = pybullet_data.getDataPath()
-    urdf_path = os.path.join(pbdata_path, 'kuka_iiwa', 'model.urdf')
-    bm = BulletManager(False, urdf_path, 'lbr_iiwa_link_7')
+    with tempfile.TemporaryDirectory() as td:
 
-    data_list = []
-    for i in tqdm.tqdm(range(n_epoch)):
-        bm.set_joint_angles([0.2 for _ in range(7)])
-        while True:
-            try:
-                target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.5, 0.1])
-                angles_solved = bm.solve_ik(target_pos)
-                break
-            except tinyfk._inverse_kinematics.IKFail:
-                pass
-        bm.set_box(target_pos)
-        img_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel, with_depth=with_depth)
-        data_list.append(EpisodeData((img_seq, cmd_seq)))
+        def data_generation_task(arg):
+            cpu_idx, n_data_gen = arg
+            disable_tqdm = (cpu_idx != 0)
+
+            pbdata_path = pybullet_data.getDataPath()
+            urdf_path = os.path.join(pbdata_path, 'kuka_iiwa', 'model.urdf')
+            bm = BulletManager(False, urdf_path, 'lbr_iiwa_link_7')
+
+            for i in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
+                bm.set_joint_angles([0.2 for _ in range(7)])
+                while True:
+                    try:
+                        target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.5, 0.1])
+                        angles_solved = bm.solve_ik(target_pos)
+                        break
+                    except tinyfk._inverse_kinematics.IKFail:
+                        pass
+                bm.set_box(target_pos)
+                img_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel, with_depth=with_depth)
+                episode_data = EpisodeData((img_seq, cmd_seq))
+
+                with open(os.path.join(td, str(uuid.uuid4()) + '.pkl'), 'wb') as f:
+                    pickle.dump(episode_data, f)
+
+        # Because data generation take long, we will use multiple cores if available
+        n_cpu = psutil.cpu_count(logical=False)
+        print('{} physical cpus are detected'.format(n_cpu))
+
+        def split_n_data(n_data, m_cpu):
+            average = n_data // m_cpu
+            remain = n_data - average * (m_cpu - 1)
+            return [average for _ in range(m_cpu - 1)] + [remain]
+
+        pool = multiprocessing.Pool(n_cpu)
+        pool.map(data_generation_task, zip(range(n_cpu), split_n_data(n_epoch, n_cpu)))
+
+        # Collect data and dump chunk of them
+        data_list = []
+        for file_name in os.listdir(td):
+            with open(os.path.join(td, file_name), 'rb') as f:
+                data_list.append(pickle.load(f))
         chunk = MultiEpisodeChunk(data_list)
         dump_object(chunk, project_name)
 
-    filename = os.path.join(get_project_dir(project_name), "sample.gif")
-    clip = ImageSequenceClip([img for img in img_seq], fps=50)
-    clip.write_gif(filename, fps=50)
+        # For debugging
+        img_seq = chunk[0].filter_by_type(RGBImage)
+        filename = os.path.join(get_project_dir(project_name), "sample.gif")
+        clip = ImageSequenceClip([img for img in img_seq], fps=50)
+        clip.write_gif(filename, fps=50)

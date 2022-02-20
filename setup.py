@@ -4,6 +4,7 @@ setup_requires = []
 
 install_requires = [
     "numpy",
+    "psutil",
     "torch",
     "torchvision",
     "tinyfk",
