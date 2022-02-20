@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import torch
 import tqdm
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
+from mohou.dataset import MohouDataset
 from mohou.file import dump_object, load_object
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
 from mohou.utils import split_with_ratio
@@ -31,20 +32,29 @@ TrainCacheT = TypeVar('TrainCacheT', bound='TrainCache')
 class TrainCache(Generic[ModelT]):
     project_name: str
     epoch: int
+    timer_period: int
     train_loss_dict_seq: List[LossDict]
     validate_loss_dict_seq: List[LossDict]
     best_model: ModelT
     latest_model: ModelT
 
-    def __init__(self, project_name: str):
+    def __init__(self, project_name: str, timer_period: int = 5):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.uuid_str = str(uuid.uuid4())[-6:]
+        self.timer_period = timer_period
 
-    def on_startof_epoch(self, epoch: int):
+    def on_startof_epoch(self, epoch: int, dataset: MohouDataset):
         logger.info('new epoch: {}'.format(epoch))
         self.epoch = epoch
+        self._on_period(dataset)
+
+    def _on_period(self, dataset: MohouDataset):
+        if self.epoch == 0:
+            return
+        if self.epoch % self.timer_period == 0:
+            dataset.update_dataset()
 
     def on_train_loss(self, loss_dict: LossDict, epoch: int):
         self.train_loss_dict_seq.append(loss_dict)
@@ -109,7 +119,7 @@ class TrainCache(Generic[ModelT]):
 
 def train(
         model: ModelBase,
-        dataset: Dataset,
+        dataset: MohouDataset,
         tcache: TrainCache,
         config: TrainConfig = TrainConfig()) -> None:
 
@@ -133,7 +143,7 @@ def train(
 
     model.put_on_device()
     for epoch in tqdm.tqdm(range(config.n_epoch)):
-        tcache.on_startof_epoch(epoch)
+        tcache.on_startof_epoch(epoch, dataset)
 
         model.train()
         train_ld_list: List[LossDict] = []
