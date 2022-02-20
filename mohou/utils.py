@@ -3,9 +3,15 @@ from logging import Logger
 import os
 import time
 
+import torch
 from torch.utils.data import Dataset, random_split
 
 from mohou.file import get_project_dir
+
+
+def detect_device() -> torch.device:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    return device
 
 
 def split_with_ratio(dataset: Dataset, valid_ratio: float = 0.1):

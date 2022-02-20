@@ -1,7 +1,5 @@
 import argparse
 
-import torch
-
 from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import MultiEpisodeChunk
@@ -10,7 +8,7 @@ from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedding_functor import IdenticalEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
-from mohou.utils import split_with_ratio
+from mohou.utils import detect_device, split_with_ratio
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -34,7 +32,7 @@ if __name__ == '__main__':
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule)
     dataset_train, dataset_valid = split_with_ratio(dataset, valid_ratio=valid_ratio)
 
-    lstm_model = LSTM(torch.device('cpu'), LSTMConfig(embed_rule.dimension))
+    lstm_model = LSTM(detect_device(), LSTMConfig(embed_rule.dimension))
 
     tconfig = TrainConfig(n_epoch=3)
     tcache = TrainCache[LSTM](project_name)
