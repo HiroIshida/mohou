@@ -103,7 +103,10 @@ class MultiEpisodeChunk:
     types: List[Type[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
-    def __init__(self, data_list: List[EpisodeData], shuffle=True):
+    def __init__(
+            self, data_list: List[EpisodeData],
+            shuffle: bool = True, with_intact_data: bool = True):
+
         types = data_list[0].types
         n_type_appeared = len(set(functools.reduce(operator.add, [d.types for d in data_list])))
         assert n_type_appeared == len(types)
@@ -111,8 +114,12 @@ class MultiEpisodeChunk:
         if shuffle:
             random.shuffle(data_list)
 
-        self.data_list = data_list[:N_DATA_INTACT]
-        self.data_list_intact = data_list[N_DATA_INTACT:]
+        if with_intact_data:
+            self.data_list_intact = data_list[:N_DATA_INTACT]
+            self.data_list = data_list[N_DATA_INTACT:]
+        else:
+            self.data_list_intact = []
+            self.data_list = data_list
 
         self.types = types
         self.type_shape_table = data_list[0].type_shape_table
@@ -129,3 +136,6 @@ class MultiEpisodeChunk:
     @classmethod
     def load(cls, project_name: str) -> 'MultiEpisodeChunk':
         return load_object(cls, project_name)
+
+    def get_intact_chunk(self) -> 'MultiEpisodeChunk':
+        return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)

@@ -46,7 +46,7 @@ if __name__ == '__main__':
     project_name = args.pn
     n_vis = args.n
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
     dataset = RGBAutoEncoderDataset.from_chunk(chunk)
     tcache = TrainCache.load(project_name, AutoEncoder)
     debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)
