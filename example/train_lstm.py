@@ -8,7 +8,7 @@ from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedding_functor import IdenticalEmbeddingFunctor
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
-from mohou.utils import detect_device, split_with_ratio
+from mohou.utils import create_default_logger, detect_device, split_with_ratio
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -20,6 +20,8 @@ if __name__ == '__main__':
     project_name = args.pn
     n_epoch = args.n
     valid_ratio = args.valid_ratio
+
+    logger = create_default_logger(project_name, 'lstm')
 
     chunk = MultiEpisodeChunk.load(project_name)
 
