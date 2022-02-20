@@ -19,6 +19,25 @@ class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
         vector = np.hstack([embed(k, v) for k, v in self.items()])
         return vector
 
+    def inverse_apply(self, vector: np.ndarray) -> List[ElementBase]:
+
+        def split_vector(vector: np.ndarray, size_list: List[int]):
+            head = 0
+            vector_list = []
+            for i, size in enumerate(size_list):
+                tail = head + size
+                vector_list.append(vector[head:tail])
+                head = tail
+            return vector_list
+
+        size_list = [embedder.output_size for elem_type, embedder in self.items()]
+        vector_list = split_vector(vector, size_list)
+
+        elem_list: List[ElementBase] = []
+        for vec, (elem_type, embedder) in zip(vector_list, self.items()):
+            elem_list.append(embedder.backward(vec))
+        return elem_list
+
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
         def embed(elem_type, embedder) -> np.ndarray:

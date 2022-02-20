@@ -23,7 +23,15 @@ class Propagator:
         state_with_flag = np.hstack((state, CONTINUE_FLAG_VALUE))
         self.fed_state_list.append(state_with_flag)
 
-    def predict(self, n_prop: int) -> List[np.ndarray]:
+    def predict(self, n_prop: int) -> List[List[ElementBase]]:
+        pred_state_list = self._predict(n_prop)
+        elem_list_list = []
+        for pred_state in pred_state_list:
+            elem_list = self.embed_rule.inverse_apply(pred_state)
+            elem_list_list.append(elem_list)
+        return elem_list_list
+
+    def _predict(self, n_prop: int) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
         for i in range(n_prop):

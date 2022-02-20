@@ -68,7 +68,6 @@ class ImageEmbedder(Embedder[ImageT]):
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
-    @property
     @abstractmethod
     def image_type(self) -> Type[ImageT]:
         pass
@@ -87,7 +86,8 @@ class ImageEmbedder(Embedder[ImageT]):
         out_tensor = self.func_backward(inp_tensor).squeeze()
 
         tf = torchvision.transforms.ToPILImage()
-        out = self.image_type(tf(out_tensor))
+        image_type: Type = self.image_type()
+        out = image_type(tf(out_tensor))
         return out
 
 
@@ -104,7 +104,6 @@ class IdenticalEmbedder(Embedder[VectorT]):
         self.input_shape = (dimension,)
         self.output_size = dimension
 
-    @property
     @abstractmethod
     def vector_type(self) -> Type[VectorT]:
         pass
@@ -113,7 +112,7 @@ class IdenticalEmbedder(Embedder[VectorT]):
         return inp
 
     def _backward_impl(self, inp: np.ndarray) -> VectorT:
-        return self.vector_type(inp)
+        return self.vector_type()(inp)
 
 
 class AngleVectorIdenticalEmbedder(IdenticalEmbedder):
