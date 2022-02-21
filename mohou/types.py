@@ -103,6 +103,9 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
             self[elem.__class__] = elem
         assert len(set(self.keys())) == len(elems)
 
+    def __getitem__(self, key: Type[ElementT]) -> ElementT:
+        return super().__getitem__(key)  # type: ignore
+
 
 class ElementSequence(list, Generic[ElementT]):
     # TODO(HiroIshida) make it custom list
