@@ -17,17 +17,15 @@ ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
 
 
-class ElementBase(np.ndarray, ABC):
-    def __new__(cls, arr):
-        # instantiationg blocking hack. Different but similar to
-        # https://stackoverflow.com/a/7990308/7624196
-        assert cls.is_concrete_type(),\
-            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
-        return np.asarray(arr).view(cls)
+class ElementBase(ABC):
 
     @classmethod
     def is_concrete_type(cls):
         return len(cls.__abstractmethods__) == 0
+
+    @abstractmethod
+    def shape(self) -> Tuple[int, ...]:
+        pass
 
     @abstractmethod
     def to_tensor(self) -> torch.Tensor:
@@ -38,7 +36,10 @@ class ElementBase(np.ndarray, ABC):
         pass
 
 
-class VectorBase(ElementBase):
+class VectorBase(np.ndarray, ElementBase):
+
+    def __new__(cls, arr):
+        return np.asarray(arr).view(cls)
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
@@ -53,8 +54,11 @@ class AngleVector(VectorBase):
     pass
 
 
-class ImageBase(ElementBase):
+class ImageBase(np.ndarray, ElementBase):
     channel: ClassVar[int]
+
+    def __new__(cls, arr):
+        return np.asarray(arr).view(cls)
 
     @abstractmethod
     def randomize(self) -> 'ImageBase':
