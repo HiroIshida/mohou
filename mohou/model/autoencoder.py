@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Tuple, Type
+from typing import Tuple
 
 import torch
 import torch.nn as nn
 
 from mohou.embedder import ImageEmbedder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
+from mohou.types import RGBImage
 
 
 @dataclass
@@ -44,10 +45,11 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.decoder(self.encoder(input))
 
-    def get_embedder(self, embedder_type: Type[ImageEmbedder]) -> ImageEmbedder:
+    def get_embedder(self) -> ImageEmbedder:
         shape = self.config.image_shape
         np_image_shape = (shape[1], shape[2], shape[0])
-        return embedder_type(
+        return ImageEmbedder(
+            RGBImage,
             lambda image_tensor: self.encoder(image_tensor),
             lambda encoding: self.decoder(encoding),
             np_image_shape,

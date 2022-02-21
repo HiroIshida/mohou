@@ -4,7 +4,7 @@ from typing import Callable, Generic, Optional, Tuple, Type
 import numpy as np
 import torch
 
-from mohou.types import AngleVector, ElementT, ImageT, RGBImage, VectorT
+from mohou.types import ElementT, ImageT, VectorT
 
 
 class Embedder(ABC, Generic[ElementT]):
@@ -43,6 +43,7 @@ class Embedder(ABC, Generic[ElementT]):
 
 
 class ImageEmbedder(Embedder[ImageT]):
+    image_type: Type[ImageT]
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -50,30 +51,26 @@ class ImageEmbedder(Embedder[ImageT]):
 
     def __init__(
             self,
+            image_type: Type[ImageT],
             func_forward: Callable[[torch.Tensor], torch.Tensor],
             func_backward: Callable[[torch.Tensor], torch.Tensor],
             input_shape: Tuple[int, int, int],
             output_size: int,
             check_callables: bool = True
     ):
-
+        self.image_type = image_type
         self.func_forward = func_forward
         self.func_backward = func_backward
         self.input_shape = input_shape
         self.output_size = output_size
 
         if check_callables:
-            image_type: Type = self.image_type()
-            inp_dummy = image_type(np.zeros(input_shape))
+            inp_dummy = self.image_type(np.zeros(input_shape))
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
             inp_reconstucted = self._backward_impl(out_dummy)
-            assert isinstance(inp_reconstucted, self.image_type())
-
-    @abstractmethod
-    def image_type(self) -> Type[ImageT]:
-        pass
+            assert isinstance(inp_reconstucted, self.image_type)
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
@@ -86,37 +83,21 @@ class ImageEmbedder(Embedder[ImageT]):
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
-
-        image_type = self.image_type()
-        out: ImageT = image_type.from_tensor(out_tensor)  # type: ignore
+        out: ImageT = self.image_type.from_tensor(out_tensor)  # type: ignore
         return out
 
 
-class RGBImageEmbedder(ImageEmbedder[RGBImage]):
-
-    def image_type(self) -> Type[RGBImage]:
-        return RGBImage
-
-
 class IdenticalEmbedder(Embedder[VectorT]):
+    vector_type: Type[VectorT]
     input_shape: Tuple[int]
 
-    def __init__(self, dimension):
+    def __init__(self, vector_type: Type[VectorT], dimension: int):
+        self.vector_type = vector_type
         self.input_shape = (dimension,)
         self.output_size = dimension
-
-    @abstractmethod
-    def vector_type(self) -> Type[VectorT]:
-        pass
 
     def _forward_impl(self, inp: VectorT) -> np.ndarray:
         return inp
 
     def _backward_impl(self, inp: np.ndarray) -> VectorT:
-        return self.vector_type()(inp)
-
-
-class AngleVectorIdenticalEmbedder(IdenticalEmbedder):
-
-    def vector_type(self) -> Type[AngleVector]:
-        return AngleVector
+        return self.vector_type(inp)

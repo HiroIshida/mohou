@@ -3,7 +3,7 @@ import os
 
 from moviepy.editor import ImageSequenceClip
 
-from mohou.embedder import RGBImageEmbedder, AngleVectorIdenticalEmbedder
+from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
 from mohou.file import get_subproject_dir
 from mohou.propagator import Propagator
@@ -26,9 +26,9 @@ if __name__ == '__main__':
 
     tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
     tcach_lstm = TrainCache.load(project_name, LSTM)
-    image_embed_func = tcache_autoencoder.best_model.get_embedder(RGBImageEmbedder)
+    image_embed_func = tcache_autoencoder.best_model.get_embedder()
 
-    av_idendical_func = AngleVectorIdenticalEmbedder(chunk.get_element_shape(AngleVector)[0])
+    av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
 
     propagator = Propagator(tcach_lstm.best_model, embed_rule)

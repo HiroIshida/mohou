@@ -83,9 +83,11 @@ class AutoRegressiveAugConfig:
 
 class AutoRegressiveDataset(MohouDataset):
     state_seq_list: List[np.ndarray]
+    embed_rule: EmbeddingRule
 
-    def __init__(self, state_seq_list: List[np.ndarray]):
+    def __init__(self, state_seq_list: List[np.ndarray], embed_rule: EmbeddingRule):
         self.state_seq_list = self.attach_flag_info(state_seq_list)
+        self.embed_rule = embed_rule
 
     def __len__(self) -> int:
         return len(self.state_seq_list)
@@ -108,7 +110,7 @@ class AutoRegressiveDataset(MohouDataset):
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
         state_auged_seq_list = cls.augment_data(state_seq_list, augconfig)
-        return cls(state_auged_seq_list)
+        return cls(state_auged_seq_list, embed_rule)
 
     @staticmethod
     def attach_flag_info(state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
