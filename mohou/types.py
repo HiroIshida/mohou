@@ -80,10 +80,6 @@ class DepthImage(ImageBase):
         return cls(array)
 
 
-class RGBDImage(ImageBase):
-    pass
-
-
 class ElementDict(Dict[Type[ElementBase], ElementBase]):
 
     def __init__(self, elems: Sequence[ElementBase]):
@@ -118,10 +114,6 @@ class EpisodeData:
         n_type = len(types)
         all_different_type = n_type == len(sequence_tuple)
         assert all_different_type
-
-        # e.g. Having RGBImage and RGBDImage at the same time is not arrowed
-        no_image_type_conflict = sum([isinstance(seq[0], ImageBase) for seq in sequence_tuple]) == 1
-        assert no_image_type_conflict
 
         self.types = types
         self.type_shape_table = {t: s for (t, s) in zip(types, shapes)}
