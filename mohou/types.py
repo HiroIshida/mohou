@@ -4,14 +4,13 @@ import operator
 import random
 from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict, Sequence
 
-import albumentations as al
 import numpy as np
 import torch
 import torchvision
 
-from mohou.file import load_object
 from mohou.constant import N_DATA_INTACT
-
+from mohou.file import load_object
+from mohou.image_randomizer import _f_randomize_rgb_image
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
@@ -61,13 +60,6 @@ class ImageBase(ElementBase):
         pass
 
 
-def rgb_image_randomizer(image_arr: np.ndarray):
-    aug_guass = al.GaussNoise(p=1)
-    aug_rgbshit = al.RGBShift(r_shift_limit=40, g_shift_limit=40, b_shift_limit=40)
-    aug_composed = al.Compose([aug_guass, aug_rgbshit])
-    return aug_composed(image=image_arr)['image']
-
-
 class RGBImage(ImageBase):
 
     def to_tensor(self) -> torch.Tensor:
@@ -80,7 +72,8 @@ class RGBImage(ImageBase):
         return cls(pil_iamge)
 
     def randomize(self) -> 'RGBImage':
-        rand_image_arr = rgb_image_randomizer(self)
+        assert _f_randomize_rgb_image is not None
+        rand_image_arr = _f_randomize_rgb_image(self)
         return RGBImage(rand_image_arr)
 
 
