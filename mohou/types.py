@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod, abstractclassmethod
 import functools
 import operator
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict, Sequence
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict, Sequence, ClassVar
 
 import numpy as np
 import torch
@@ -54,6 +54,7 @@ class AngleVector(VectorBase):
 
 
 class ImageBase(ElementBase):
+    channel: ClassVar[int]
 
     @abstractmethod
     def randomize(self) -> 'ImageBase':
@@ -61,6 +62,7 @@ class ImageBase(ElementBase):
 
 
 class RGBImage(ImageBase):
+    channel: ClassVar[int] = 3
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self).float()
@@ -78,6 +80,7 @@ class RGBImage(ImageBase):
 
 
 class DepthImage(ImageBase):
+    channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
