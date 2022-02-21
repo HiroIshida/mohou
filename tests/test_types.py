@@ -2,9 +2,16 @@ import pytest
 
 import numpy as np
 
-from mohou.types import AngleVector, ElementSequence, RGBImage, DepthImage
+from mohou.types import AngleVector, ElementSequence, RGBImage, DepthImage, VectorBase, UniformImageBase
 from mohou.types import EpisodeData
 from mohou.types import MultiEpisodeChunk
+
+
+def test_elements():
+    with pytest.raises(Exception):
+        VectorBase(np.zeros(3))
+    with pytest.raises(Exception):
+        UniformImageBase(np.zeros((3, 3)))
 
 
 def test_episode_data_creation():

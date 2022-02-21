@@ -2,11 +2,28 @@ import logging
 from logging import Logger
 import os
 import time
+from typing import List, Iterator, TypeVar
 
 import torch
 from torch.utils.data import Dataset, random_split
 
 from mohou.file import get_project_dir
+
+
+def splitting_slices(n_elem_list: List[int]) -> Iterator[slice]:
+    head = 0
+    for n_elem in n_elem_list:
+        tail = head + n_elem
+        yield slice(head, tail)
+        head = tail
+
+
+SequenceT = TypeVar('SequenceT')  # TODO(HiroIshida) bound?
+
+
+def split_sequence(seq: SequenceT, n_elem_list: List[int]) -> Iterator[SequenceT]:
+    for sl in splitting_slices(n_elem_list):
+        yield seq[sl]  # type: ignore
 
 
 def detect_device() -> torch.device:

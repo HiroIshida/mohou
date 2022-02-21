@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import ElementSequence, ImageBase, MultiEpisodeChunk
+from mohou.types import ElementSequence, UniformImageBase, MultiEpisodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class MohouDataset(Dataset):
 
 
 class ImageMixin:
-    images: List[ImageBase]
+    images: List[UniformImageBase]
 
-    def __init__(self, images: List[ImageBase]):
+    def __init__(self, images: List[UniformImageBase]):
         self.images = images
 
     def to_tensor(self) -> torch.Tensor:
@@ -58,11 +58,11 @@ class AutoEncoderDataset(MohouDataset):
     def from_chunk(
             cls: Type[AutoEncoderDataestT],
             chunk: MultiEpisodeChunk,
-            image_types: Tuple[Type[ImageBase], ...]) -> AutoEncoderDataestT:
+            image_types: Tuple[Type[UniformImageBase], ...]) -> AutoEncoderDataestT:
 
         imgmix_list: List[ImageMixin] = []
         for episode_data in chunk:
-            image_seq_list: List[ElementSequence[ImageBase]] = []
+            image_seq_list: List[ElementSequence[UniformImageBase]] = []
 
             for image_type in image_types:
                 image_seq_list.append(episode_data.filter_by_type(image_type))

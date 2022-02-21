@@ -11,9 +11,11 @@ import torchvision
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
+from mohou.utils import split_sequence
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
-ImageT = TypeVar('ImageT', bound='ImageBase')
+UniformImageT = TypeVar('UniformImageT', bound='UniformImageBase')
+MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
 
 
@@ -21,7 +23,7 @@ class ElementBase(ABC):
 
     @classmethod
     def is_concrete_type(cls):
-        return len(cls.__abstractmethods__) == 0
+        return len(cls.__abstractmethods__) == 0 and len(cls.__subclasses__()) == 0
 
     @abstractmethod
     def shape(self) -> Tuple[int, ...]:
@@ -36,10 +38,17 @@ class ElementBase(ABC):
         pass
 
 
-class VectorBase(np.ndarray, ElementBase):
+class UniformElementBase(np.ndarray, ElementBase):
 
     def __new__(cls, arr):
+        # instantiationg blocking hack. Different but similar to
+        # https://stackoverflow.com/a/7990308/7624196
+        assert cls.is_concrete_type(),\
+            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
         return np.asarray(arr).view(cls)
+
+
+class VectorBase(UniformElementBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
@@ -54,19 +63,27 @@ class AngleVector(VectorBase):
     pass
 
 
-class ImageBase(np.ndarray, ElementBase):
-    channel: ClassVar[int]
+class ImageBase(ElementBase):
 
-    def __new__(cls, arr):
-        return np.asarray(arr).view(cls)
+    @abstractclassmethod
+    def channel(cls) -> int:
+        pass
 
     @abstractmethod
-    def randomize(self) -> 'ImageBase':
+    def randomize(self) -> 'UniformImageBase':
         pass
 
 
-class RGBImage(ImageBase):
-    channel: ClassVar[int] = 3
+class UniformImageBase(UniformElementBase, ImageBase):
+    _channel: ClassVar[int]
+
+    @classmethod
+    def channel(cls) -> int:
+        return cls._channel
+
+
+class RGBImage(UniformImageBase):
+    _channel: ClassVar[int] = 3
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self).float()
@@ -83,8 +100,8 @@ class RGBImage(ImageBase):
         return RGBImage(rand_image_arr)
 
 
-class DepthImage(ImageBase):
-    channel: ClassVar[int] = 1
+class DepthImage(UniformImageBase):
+    _channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
@@ -98,6 +115,43 @@ class DepthImage(ImageBase):
         assert _f_randomize_depth_image is not None
         rand_depth_arr = _f_randomize_depth_image(self)
         return DepthImage(rand_depth_arr)
+
+
+class MixedImageBase(ImageBase):
+    image_types: ClassVar[List[Type[UniformImageBase]]]
+    images: List[UniformImageBase]
+    _shape: Tuple[int, int, int]
+
+    def __init__(self, images, check_size=False):
+
+        image_shape = images.shape[:2]
+
+        if check_size:
+            for image in images:
+                assert image.shape[:2] == image_shape
+
+        self.images = images
+        self._shape = (image_shape[0], image_shape[1], self.channel())
+
+    def to_tensor(self) -> torch.Tensor:
+        return torch.cat([im.to_tensor() for im in self.images])
+
+    def shape(self) -> Tuple[int, int, int]:
+        return self._shape
+
+    @classmethod
+    def channel(cls) -> int:
+        return sum([t.channel() for t in cls.image_types])
+
+    @classmethod
+    def from_tensor(cls: Type[MixedImageT], tensor: torch.Tensor) -> MixedImageT:
+        channel_list = [t.channel() for t in cls.image_types]
+        images = list(split_sequence(tensor, channel_list))
+        return cls(images)
+
+
+class RGBDImage(MixedImageBase):
+    image_types = [RGBImage, DepthImage]
 
 
 class ElementDict(Dict[Type[ElementBase], ElementBase]):
