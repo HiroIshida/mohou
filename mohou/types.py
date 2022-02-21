@@ -10,7 +10,7 @@ import torchvision
 
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object
-from mohou.image_randomizer import _f_randomize_rgb_image
+from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
@@ -88,7 +88,9 @@ class DepthImage(ImageBase):
         return cls(array)
 
     def randomize(self) -> 'DepthImage':
-        return self
+        assert _f_randomize_depth_image is not None
+        rand_depth_arr = _f_randomize_depth_image(self)
+        return DepthImage(rand_depth_arr)
 
 
 class ElementDict(Dict[Type[ElementBase], ElementBase]):
