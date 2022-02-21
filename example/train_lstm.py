@@ -4,7 +4,7 @@ from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import MultiEpisodeChunk
 from mohou.types import AngleVector
-from mohou.model import AutoEncoder, LSTM
+from mohou.model import RGBImageAutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name)
 
-    tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
+    tcache_autoencoder = TrainCache.load(project_name, RGBImageAutoEncoder)
+    (image_embed_func,) = tcache_autoencoder.best_model.get_embedders()
 
     av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
@@ -38,5 +38,5 @@ if __name__ == '__main__':
     lstm_model = LSTM(detect_device(), LSTMConfig(embed_rule.dimension))
 
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
-    tcache = TrainCache[AutoEncoder](project_name, timer_period=timer_period)
+    tcache = TrainCache[RGBImageAutoEncoder](project_name, timer_period=timer_period)
     train(lstm_model, dataset, tcache, config=tconfig)

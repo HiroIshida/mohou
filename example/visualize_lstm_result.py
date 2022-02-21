@@ -10,7 +10,7 @@ from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, RGBImage
-from mohou.model import AutoEncoder, LSTM
+from mohou.model import RGBImageAutoEncoder, LSTM
 
 from utils import add_text_to_image
 
@@ -24,9 +24,9 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
 
-    tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
+    tcache_autoencoder = TrainCache.load(project_name, RGBImageAutoEncoder)
     tcach_lstm = TrainCache.load(project_name, LSTM)
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
+    (image_embed_func,) = tcache_autoencoder.best_model.get_embedders()
 
     av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
     embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)

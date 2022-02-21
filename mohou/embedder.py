@@ -8,10 +8,13 @@ from mohou.types import ElementT, ImageT, VectorT
 
 
 class Embedder(ABC, Generic[ElementT]):
+    elem_type: Type[ElementT]
     input_shape: Tuple[int, ...]
     output_size: int
 
     def forward(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
+        assert isinstance(inp, self.elem_type)
+
         if check_size:
             assert inp.shape == self.input_shape
 
@@ -43,7 +46,6 @@ class Embedder(ABC, Generic[ElementT]):
 
 
 class ImageEmbedder(Embedder[ImageT]):
-    image_type: Type[ImageT]
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -58,19 +60,19 @@ class ImageEmbedder(Embedder[ImageT]):
             output_size: int,
             check_callables: bool = True
     ):
-        self.image_type = image_type
+        self.elem_type = image_type
         self.func_forward = func_forward
         self.func_backward = func_backward
         self.input_shape = input_shape
         self.output_size = output_size
 
         if check_callables:
-            inp_dummy = self.image_type(np.zeros(input_shape))
+            inp_dummy = self.elem_type(np.zeros(input_shape))
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
             inp_reconstucted = self._backward_impl(out_dummy)
-            assert isinstance(inp_reconstucted, self.image_type)
+            assert isinstance(inp_reconstucted, self.elem_type)
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
@@ -83,16 +85,15 @@ class ImageEmbedder(Embedder[ImageT]):
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
-        out: ImageT = self.image_type.from_tensor(out_tensor)  # type: ignore
+        out: ImageT = self.elem_type.from_tensor(out_tensor)  # type: ignore
         return out
 
 
 class IdenticalEmbedder(Embedder[VectorT]):
-    vector_type: Type[VectorT]
     input_shape: Tuple[int]
 
     def __init__(self, vector_type: Type[VectorT], dimension: int):
-        self.vector_type = vector_type
+        self.elem_type = vector_type
         self.input_shape = (dimension,)
         self.output_size = dimension
 
@@ -100,4 +101,4 @@ class IdenticalEmbedder(Embedder[VectorT]):
         return inp
 
     def _backward_impl(self, inp: np.ndarray) -> VectorT:
-        return self.vector_type(inp)
+        return self.elem_type(inp)

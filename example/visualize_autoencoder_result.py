@@ -7,7 +7,7 @@ import torchvision
 
 from mohou.dataset import AutoEncoderDataset
 from mohou.file import get_subproject_dir
-from mohou.model import AutoEncoder
+from mohou.model import RGBImageAutoEncoder
 from mohou.trainer import TrainCache
 from mohou.types import RGBImage, MultiEpisodeChunk
 
@@ -48,5 +48,5 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
     dataset = AutoEncoderDataset.from_chunk(chunk, (RGBImage,))
-    tcache = TrainCache.load(project_name, AutoEncoder)
+    tcache = TrainCache.load(project_name, RGBImageAutoEncoder)
     debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)

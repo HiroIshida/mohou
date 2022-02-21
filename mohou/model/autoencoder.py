@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -32,7 +33,7 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-class AutoEncoder(ModelBase[AutoEncoderConfig]):
+class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
     encoder: nn.Module
     decoder: nn.Module
 
@@ -45,15 +46,9 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.decoder(self.encoder(input))
 
-    def get_embedder(self) -> ImageEmbedder:
-        shape = self.config.image_shape
-        np_image_shape = (shape[1], shape[2], shape[0])
-        return ImageEmbedder(
-            RGBImage,
-            lambda image_tensor: self.encoder(image_tensor),
-            lambda encoding: self.decoder(encoding),
-            np_image_shape,
-            self.config.n_bottleneck)
+    @abstractmethod
+    def get_embedders(self) -> Tuple[ImageEmbedder]:
+        pass
 
     def _create_layers(self, config: AutoEncoderConfig):
         channel, n_pixel, m_pixel = config.image_shape
@@ -153,3 +148,17 @@ class AutoEncoder(ModelBase[AutoEncoderConfig]):
             )
         self.encoder = encoder
         self.decoder = decoder
+
+
+class RGBImageAutoEncoder(AutoEncoderBase):
+
+    def get_embedders(self) -> Tuple[ImageEmbedder[RGBImage]]:
+        shape = self.config.image_shape
+        np_image_shape = (shape[1], shape[2], shape[0])
+        embedder = ImageEmbedder[RGBImage](
+            RGBImage,
+            lambda image_tensor: self.encoder(image_tensor),
+            lambda encoding: self.decoder(encoding),
+            np_image_shape,
+            self.config.n_bottleneck)
+        return (embedder,)
