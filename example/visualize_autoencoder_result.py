@@ -5,15 +5,15 @@ import random
 import matplotlib.pyplot as plt
 import torchvision
 
-from mohou.dataset import RGBAutoEncoderDataset
+from mohou.dataset import AutoEncoderDataset
 from mohou.file import get_subproject_dir
 from mohou.model import AutoEncoder
 from mohou.trainer import TrainCache
-from mohou.types import MultiEpisodeChunk
+from mohou.types import RGBImage, MultiEpisodeChunk
 
 
 def debug_visualize_reconstruction(
-        project_name: str, dataset: RGBAutoEncoderDataset, tcache: TrainCache, n_vis: int = 5):
+        project_name: str, dataset: AutoEncoderDataset, tcache: TrainCache, n_vis: int = 5):
 
     idxes = list(range(len(dataset)))
     random.shuffle(idxes)
@@ -47,6 +47,6 @@ if __name__ == '__main__':
     n_vis = args.n
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    dataset = RGBAutoEncoderDataset.from_chunk(chunk)
+    dataset = AutoEncoderDataset.from_chunk(chunk, (RGBImage,))
     tcache = TrainCache.load(project_name, AutoEncoder)
     debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)

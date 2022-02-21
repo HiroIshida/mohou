@@ -4,6 +4,7 @@ import operator
 import random
 from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Dict, Sequence
 
+import albumentations as al
 import numpy as np
 import torch
 import torchvision
@@ -54,7 +55,17 @@ class AngleVector(VectorBase):
 
 
 class ImageBase(ElementBase):
-    pass
+
+    @abstractmethod
+    def randomize(self) -> 'ImageBase':
+        pass
+
+
+def rgb_image_randomizer(image_arr: np.ndarray):
+    aug_guass = al.GaussNoise(p=1)
+    aug_rgbshit = al.RGBShift(r_shift_limit=40, g_shift_limit=40, b_shift_limit=40)
+    aug_composed = al.Compose([aug_guass, aug_rgbshit])
+    return aug_composed(image=image_arr)['image']
 
 
 class RGBImage(ImageBase):
@@ -68,6 +79,10 @@ class RGBImage(ImageBase):
         pil_iamge = tf(tensor)
         return cls(pil_iamge)
 
+    def randomize(self) -> 'RGBImage':
+        rand_image_arr = rgb_image_randomizer(self)
+        return RGBImage(rand_image_arr)
+
 
 class DepthImage(ImageBase):
 
@@ -78,6 +93,9 @@ class DepthImage(ImageBase):
     def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
         array = tensor.detach().clone().numpy()
         return cls(array)
+
+    def randomize(self) -> 'DepthImage':
+        return self
 
 
 class ElementDict(Dict[Type[ElementBase], ElementBase]):
