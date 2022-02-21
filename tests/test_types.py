@@ -25,10 +25,9 @@ def test_episode_data_assertion_different_size():
 
 def test_episode_data_assertion_type_inconsitency():
     image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
-    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100))) for _ in range(10)])
 
     with pytest.raises(AssertionError):
-        EpisodeData((image_seq, depth_seq))
+        EpisodeData((image_seq, image_seq))
 
 
 @pytest.fixture(scope='session')
