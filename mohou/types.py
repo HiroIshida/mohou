@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractclassmethod
 import functools
 import operator
 import random
@@ -10,6 +10,11 @@ import torchvision
 
 from mohou.file import load_object
 from mohou.constant import N_DATA_INTACT
+
+
+ElementT = TypeVar('ElementT', bound='ElementBase')
+ImageT = TypeVar('ImageT', bound='ImageBase')
+VectorT = TypeVar('VectorT', bound='VectorBase')
 
 
 class ElementBase(np.ndarray, ABC):
@@ -26,13 +31,22 @@ class ElementBase(np.ndarray, ABC):
 
     @abstractmethod
     def to_tensor(self) -> torch.Tensor:
-        raise NotImplementedError
+        pass
+
+    @abstractclassmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'ElementBase':
+        pass
 
 
 class VectorBase(ElementBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
+
+    @classmethod
+    def from_tensor(cls: Type[VectorT], tensor: torch.Tensor) -> VectorT:
+        array = tensor.detach().clone().numpy()
+        return cls(array)
 
 
 class AngleVector(VectorBase):
@@ -48,20 +62,26 @@ class RGBImage(ImageBase):
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self).float()
 
+    @classmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
+        tf = torchvision.transforms.ToPILImage()
+        pil_iamge = tf(tensor)
+        return cls(pil_iamge)
+
 
 class DepthImage(ImageBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
 
+    @classmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
+        array = tensor.detach().clone().numpy()
+        return cls(array)
+
 
 class RGBDImage(ImageBase):
     pass
-
-
-ElementT = TypeVar('ElementT', bound=ElementBase)
-ImageT = TypeVar('ImageT', bound=ImageBase)
-VectorT = TypeVar('VectorT', bound=VectorBase)
 
 
 class ElementDict(Dict[Type[ElementBase], ElementBase]):

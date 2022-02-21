@@ -3,7 +3,6 @@ from typing import Callable, Generic, Optional, Tuple, Type
 
 import numpy as np
 import torch
-import torchvision
 
 from mohou.types import AngleVector, ElementT, ImageT, RGBImage, VectorT
 
@@ -88,9 +87,8 @@ class ImageEmbedder(Embedder[ImageT]):
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
 
-        tf = torchvision.transforms.ToPILImage()
-        image_type: Type = self.image_type()
-        out = image_type(tf(out_tensor))
+        image_type = self.image_type()
+        out: ImageT = image_type.from_tensor(out_tensor)  # type: ignore
         return out
 
 
