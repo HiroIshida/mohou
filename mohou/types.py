@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import functools
 import operator
 import random
@@ -11,12 +12,21 @@ from mohou.file import load_object
 from mohou.constant import N_DATA_INTACT
 
 
-class ElementBase(np.ndarray):
+class ElementBase(np.ndarray, ABC):
     def __new__(cls, arr):
+        # instantiationg blocking hack. Different but similar to
+        # https://stackoverflow.com/a/7990308/7624196
+        assert cls.is_concrete_type(),\
+            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
         return np.asarray(arr).view(cls)
 
+    @classmethod
+    def is_concrete_type(cls):
+        return len(cls.__abstractmethods__) == 0
+
+    @abstractmethod
     def to_tensor(self) -> torch.Tensor:
-        assert False
+        raise NotImplementedError
 
 
 class VectorBase(ElementBase):
@@ -40,7 +50,9 @@ class RGBImage(ImageBase):
 
 
 class DepthImage(ImageBase):
-    pass
+
+    def to_tensor(self) -> torch.Tensor:
+        return torch.from_numpy(self).float()
 
 
 class RGBDImage(ImageBase):
