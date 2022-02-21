@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Callable, Generic, Optional, Tuple, Type
 
 import numpy as np
@@ -8,7 +8,7 @@ import torchvision
 from mohou.types import AngleVector, ElementT, ImageT, RGBImage, VectorT
 
 
-class Embedder(Generic[ElementT]):
+class Embedder(ABC, Generic[ElementT]):
     input_shape: Tuple[int, ...]
     output_size: int
 
@@ -55,7 +55,7 @@ class ImageEmbedder(Embedder[ImageT]):
             func_backward: Callable[[torch.Tensor], torch.Tensor],
             input_shape: Tuple[int, int, int],
             output_size: int,
-            check_size: bool = True
+            check_callables: bool = True
     ):
 
         self.func_forward = func_forward
@@ -63,18 +63,21 @@ class ImageEmbedder(Embedder[ImageT]):
         self.input_shape = input_shape
         self.output_size = output_size
 
-        if check_size:
-            inp_dummy = np.zeros(input_shape)
+        if check_callables:
+            image_type: Type = self.image_type()
+            inp_dummy = image_type(np.zeros(input_shape))
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
+
+            inp_reconstucted = self._backward_impl(out_dummy)
+            assert isinstance(inp_reconstucted, self.image_type())
 
     @abstractmethod
     def image_type(self) -> Type[ImageT]:
         pass
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
-        tf = torchvision.transforms.ToTensor()
-        inp_tensor = tf(inp).unsqueeze(dim=0).float()
+        inp_tensor = inp.to_tensor().unsqueeze(dim=0)
         assert self.func_forward is not None
         out_tensor = self.func_forward(inp_tensor).squeeze()
         out_numpy = out_tensor.cpu().detach().numpy()
