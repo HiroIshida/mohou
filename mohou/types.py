@@ -184,6 +184,12 @@ class MixedImageBase(ImageBase):
         images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
         return cls(images)
 
+    def get_single_image(self, image_type: Type[UniformImageT]) -> UniformImageT:
+        for image in self.images:
+            if isinstance(image, image_type):
+                return image
+        assert False
+
 
 class RGBDImage(MixedImageBase):
     image_types = [RGBImage, DepthImage]
