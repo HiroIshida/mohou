@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC, abstractmethod
 import copy
 import functools
 import operator
@@ -36,8 +36,9 @@ class ElementBase(ABC):
     def to_tensor(self) -> torch.Tensor:
         pass
 
-    @abstractclassmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'ElementBase':
+    @classmethod
+    @abstractmethod
+    def from_tensor(cls: Type[ElementT], tensor: torch.Tensor) -> ElementT:
         pass
 
 
@@ -68,7 +69,8 @@ class AngleVector(VectorBase):
 
 class ImageBase(ElementBase):
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def channel(cls) -> int:
         pass
 
@@ -76,8 +78,9 @@ class ImageBase(ElementBase):
     def randomize(self: ImageT) -> ImageT:
         pass
 
-    @abstractclassmethod
-    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'ImageBase':
+    @classmethod
+    @abstractmethod
+    def dummy_from_shape(cls: Type[ImageT], shape2d: Tuple[int, int]) -> ImageT:
         # TODO(HiroIshida) I'm currently asking here
         # https://stackoverflow.com/questions/71214808/
         pass
