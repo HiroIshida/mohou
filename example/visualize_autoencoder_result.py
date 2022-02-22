@@ -9,7 +9,7 @@ from mohou.dataset import AutoEncoderDataset
 from mohou.file import get_subproject_dir
 from mohou.model import AutoEncoder
 from mohou.trainer import TrainCache
-from mohou.types import RGBImage, MultiEpisodeChunk
+from mohou.types import RGBDImage, MultiEpisodeChunk
 
 
 def debug_visualize_reconstruction(
@@ -47,6 +47,6 @@ if __name__ == '__main__':
     n_vis = args.n
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    dataset = AutoEncoderDataset.from_chunk(chunk, (RGBImage,))
+    dataset = AutoEncoderDataset.from_chunk(chunk, RGBDImage)
     tcache = TrainCache.load(project_name, AutoEncoder)
     debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)

@@ -7,7 +7,7 @@ from mohou.types import AngleVector
 from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import RGBAngelVectorEmbeddingRule
+from mohou.embedding_rule import RGBAngelVectorEmbeddingRule, RGBDAngelVectorEmbeddingRule
 from mohou.utils import create_default_logger, detect_device
 
 if __name__ == '__main__':
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
 
     av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
-    embed_rule = RGBAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
+    embed_rule = RGBDAngelVectorEmbeddingRule(image_embed_func, av_idendical_func)
 
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule)
 
