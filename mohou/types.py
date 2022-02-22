@@ -3,7 +3,7 @@ import copy
 import functools
 import operator
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, OrderedDict, Any
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
 
 import numpy as np
 import torch
@@ -195,25 +195,7 @@ class RGBDImage(MixedImageBase):
     image_types = [RGBImage, DepthImage]
 
 
-def compare_type(t1: Type[ElementBase], t2: Type[ElementBase]):
-    return -1 if t1.__name__ < t2.__name__ else 1
-
-
-def sort_type_list(type_list: List[Type[ElementBase]]) -> List[Type[ElementBase]]:
-    return sorted(type_list, key=functools.cmp_to_key(compare_type))
-
-
-def sort_type_table(type_table: Dict[Type[ElementBase], Any]) -> Dict[Type[ElementBase], Any]:
-
-    def compare_item(x, y):
-        key_x, _ = x
-        key_y, _ = y
-        return -1 if compare_type(key_x, key_y) else 1
-
-    return OrderedDict(sorted(type_table.items(), key=functools.cmp_to_key(compare_item)))
-
-
-class ElementDict(Dict[Type[ElementBase], ElementBase]):
+class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
 
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
@@ -243,8 +225,7 @@ def create_mixed_image_sequence(mixed_image_type: MixedImageT, elem_seqs: List[E
 
 
 class EpisodeData:
-    types_sorted: List[Type[ElementBase]]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    type_shape_table: OrderedDict[Type[ElementBase], Tuple[int, ...]]
     sequence_list: Tuple[ElementSequence, ...]
 
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
@@ -256,13 +237,13 @@ class EpisodeData:
 
         types = [type(seq[0]) for seq in sequence_tuple]
         shapes = [seq[0].shape for seq in sequence_tuple]
+        type_shape_table = OrderedDict({t: s for (t, s) in zip(types, shapes)})
 
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_tuple)
         assert all_different_type, 'all sequences must have different type'
 
-        self.types_sorted = sort_type_list(list(types))
-        self.type_shape_table = sort_type_table({t: s for (t, s) in zip(types, shapes)})
+        self.type_shape_table = type_shape_table
         self.sequence_list = sequence_tuple
 
     def filter_by_single_type(self, elem_type: Type[SingleElementT]) -> ElementSequence[SingleElementT]:
@@ -289,16 +270,18 @@ class EpisodeData:
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
-    types_sorted: List[Type[ElementBase]]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    type_shape_table: OrderedDict[Type[ElementBase], Tuple[int, ...]]
 
     def __init__(
             self, data_list: List[EpisodeData],
             shuffle: bool = True, with_intact_data: bool = True):
 
-        types = data_list[0].types_sorted
-        n_type_appeared = len(set(functools.reduce(operator.add, [d.types_sorted for d in data_list])))
-        assert n_type_appeared == len(types)
+        set_types = set(functools.reduce(
+            operator.add,
+            [list(data.type_shape_table.keys()) for data in data_list]))
+
+        n_type_appeared = len(set_types)
+        assert n_type_appeared == len(data_list[0].type_shape_table.keys())
 
         if shuffle:
             random.shuffle(data_list)
@@ -310,7 +293,6 @@ class MultiEpisodeChunk:
             self.data_list_intact = []
             self.data_list = data_list
 
-        self.types_sorted = sort_type_list(list(types))
         self.type_shape_table = data_list[0].type_shape_table
 
     def __iter__(self) -> Iterator:

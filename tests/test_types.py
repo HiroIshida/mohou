@@ -19,7 +19,7 @@ def test_episode_data_creation():
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     data = EpisodeData((image_seq, av_seq))
 
-    assert set(data.types_sorted) == set([AngleVector, RGBImage])
+    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage])
 
 
 def test_episode_data_assertion_different_size():
@@ -50,7 +50,7 @@ def image_av_chunk():
 
 def test_multi_episode_chunk_creation(image_av_chunk):
     chunk = image_av_chunk
-    assert set(chunk.types_sorted) == set([AngleVector, RGBImage])
+    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage])
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():

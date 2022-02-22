@@ -60,7 +60,7 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
 
-        assert set(self.keys()) <= set(chunk.types_sorted)
+        assert set(self.keys()) <= set(chunk.type_shape_table.keys())
 
         vector_seq_list = [self.apply_to_episode_data(data) for data in chunk]
 
