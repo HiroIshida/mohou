@@ -15,8 +15,8 @@ from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_im
 from mohou.utils import split_sequence
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
-UniformElementT = TypeVar('UniformElementT', bound='UniformElementBase')
-UniformImageT = TypeVar('UniformImageT', bound='UniformImageBase')
+SingleElementT = TypeVar('SingleElementT', bound='SingleElementBase')
+SingleImageT = TypeVar('SingleImageT', bound='SingleImageBase')
 MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
@@ -42,7 +42,7 @@ class ElementBase(ABC):
         pass
 
 
-class UniformElementBase(np.ndarray, ElementBase):
+class SingleElementBase(np.ndarray, ElementBase):
 
     def __new__(cls, arr):
         # instantiationg blocking hack. Different but similar to
@@ -52,7 +52,7 @@ class UniformElementBase(np.ndarray, ElementBase):
         return np.asarray(arr).view(cls)
 
 
-class VectorBase(UniformElementBase):
+class VectorBase(SingleElementBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
@@ -86,7 +86,7 @@ class ImageBase(ElementBase):
         pass
 
 
-class UniformImageBase(UniformElementBase, ImageBase):
+class SingleImageBase(SingleElementBase, ImageBase):
     _channel: ClassVar[int]
 
     @classmethod
@@ -94,7 +94,7 @@ class UniformImageBase(UniformElementBase, ImageBase):
         return cls._channel
 
 
-class RGBImage(UniformImageBase):
+class RGBImage(SingleImageBase):
     _channel: ClassVar[int] = 3
 
     def to_tensor(self) -> torch.Tensor:
@@ -118,7 +118,7 @@ class RGBImage(UniformImageBase):
         return cls(dummy_array)
 
 
-class DepthImage(UniformImageBase):
+class DepthImage(SingleImageBase):
     _channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
@@ -142,8 +142,8 @@ class DepthImage(UniformImageBase):
 
 
 class MixedImageBase(ImageBase):
-    image_types: ClassVar[List[Type[UniformImageBase]]]
-    images: List[UniformImageBase]
+    image_types: ClassVar[List[Type[SingleImageBase]]]
+    images: List[SingleImageBase]
     _shape: Tuple[int, int, int]
 
     def __init__(self, images, check_size=False):
@@ -184,7 +184,7 @@ class MixedImageBase(ImageBase):
         images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
         return cls(images)
 
-    def get_single_image(self, image_type: Type[UniformImageT]) -> UniformImageT:
+    def get_single_image(self, image_type: Type[SingleImageT]) -> SingleImageT:
         for image in self.images:
             if isinstance(image, image_type):
                 return image
@@ -265,7 +265,7 @@ class EpisodeData:
         self.type_shape_table = sort_type_table({t: s for (t, s) in zip(types, shapes)})
         self.sequence_list = sequence_tuple
 
-    def filter_by_uniform_type(self, elem_type: Type[UniformElementT]) -> ElementSequence[UniformElementT]:
+    def filter_by_single_type(self, elem_type: Type[SingleElementT]) -> ElementSequence[SingleElementT]:
         for seq in self.sequence_list:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
@@ -274,10 +274,10 @@ class EpisodeData:
 
     def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
-        if issubclass(elem_type, UniformElementBase):
-            return self.filter_by_uniform_type(elem_type)  # type: ignore
+        if issubclass(elem_type, SingleElementBase):
+            return self.filter_by_single_type(elem_type)  # type: ignore
         elif issubclass(elem_type, MixedImageBase):
-            seqs = [self.filter_by_uniform_type(t) for t in elem_type.image_types]
+            seqs = [self.filter_by_single_type(t) for t in elem_type.image_types]
             return create_mixed_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False
