@@ -58,7 +58,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         return embedder
 
     def channel(self) -> int:
-        return self.image_type.channel()  # type: ignore
+        return self.image_type.channel()
 
     def _create_layers(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore

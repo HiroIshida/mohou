@@ -67,8 +67,8 @@ class ImageEmbedder(Embedder[ImageT]):
         self.output_size = output_size
 
         if check_callables:
-            inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])  # type: ignore
-            out_dummy = self._forward_impl(inp_dummy)  # type: ignore
+            inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
+            out_dummy = self._forward_impl(inp_dummy)
             assert out_dummy.shape == (output_size,)
 
             inp_reconstucted = self._backward_impl(out_dummy)
@@ -85,7 +85,7 @@ class ImageEmbedder(Embedder[ImageT]):
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
-        out: ImageT = self.elem_type.from_tensor(out_tensor)  # type: ignore
+        out: ImageT = self.elem_type.from_tensor(out_tensor)
         return out
 
 

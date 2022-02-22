@@ -181,7 +181,7 @@ class MixedImageBase(ImageBase):
 
     @classmethod
     def dummy_from_shape(cls: Type[MixedImageT], shape2d: Tuple[int, int]) -> MixedImageT:
-        images = [t.dummy_from_shape(shape2d) for t in cls.image_types]  # type: ignore
+        images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
         return cls(images)
 
 
