@@ -15,6 +15,7 @@ from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_im
 from mohou.utils import split_sequence
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
+UniformElementT = TypeVar('UniformElementT', bound='UniformElementBase')
 UniformImageT = TypeVar('UniformImageT', bound='UniformImageBase')
 MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
@@ -204,6 +205,16 @@ class ElementSequence(list, Generic[ElementT]):
         return self.__getitem__(0).shape
 
 
+def create_mixed_image_sequence(mixed_image_type: MixedImageT, elem_seqs: List[ElementSequence]) -> ElementSequence[MixedImageT]:
+    # TODO(HiroIshida) extend this to 'mixed_element_sequence'
+    n_len_seq = len(elem_seqs[0])
+    mixed_image_seq = ElementSequence[MixedImageT]([])
+    for i in range(n_len_seq):
+        mixed_image = mixed_image_type.__init__([seq[i] for seq in elem_seqs])  # type: ignore
+        mixed_image_seq.append(mixed_image)
+    return mixed_image_seq
+
+
 class EpisodeData:
     types: List[Type[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -227,12 +238,22 @@ class EpisodeData:
         self.type_shape_table = {t: s for (t, s) in zip(types, shapes)}
         self.sequence_list = sequence_tuple
 
-    def filter_by_type(self, t: Type[ElementT]) -> ElementSequence[ElementT]:
+    def filter_by_uniform_type(self, elem_type: Type[UniformElementT]) -> ElementSequence[UniformElementT]:
         for seq in self.sequence_list:
-            if isinstance(seq[0], t):
+            if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
                 return seq
         assert False
+
+    def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
+
+        if issubclass(elem_type, UniformElementBase):
+            return self.filter_by_uniform_type(elem_type)
+        elif issubclass(elem_type, MixedImageBase):
+            seqs = [self.filter_by_uniform_type(t) for t in elem_type.image_types]
+            return create_mixed_image_sequence(elem_type, seqs)
+        else:
+            assert False
 
     def __iter__(self):
         return self.sequence_list.__iter__()
