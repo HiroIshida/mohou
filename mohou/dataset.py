@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 import logging
-from typing import List, Tuple, Type, TypeVar, Optional
+from typing import Generic, List, Type, TypeVar, Optional
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import ElementSequence, SingleImageBase, MultiEpisodeChunk
+from mohou.types import ImageT, MultiEpisodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -23,56 +23,33 @@ class MohouDataset(Dataset):
         pass
 
 
-class ImageMixin:
-    images: List[SingleImageBase]
+class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
+    image_list: List[ImageT]
+    image_list_rand: List[ImageT]
 
-    def __init__(self, images: List[SingleImageBase]):
-        self.images = images
-
-    def to_tensor(self) -> torch.Tensor:
-        return torch.cat([im.to_tensor() for im in self.images])
-
-    def randomize(self) -> 'ImageMixin':
-        return ImageMixin([img.randomize() for img in self.images])
-
-
-class AutoEncoderDataset(MohouDataset):
-    imgmix_list: List[ImageMixin]
-    imgmix_list_rand: List[ImageMixin]
-
-    def __init__(self, imgmix_list: List[ImageMixin]):
-        self.imgmix_list = imgmix_list
+    def __init__(self, image_list: List[ImageT]):
+        self.image_list = image_list
         self.update_dataset()
 
     def __len__(self) -> int:
-        return len(self.imgmix_list)
+        return len(self.image_list)
 
     def __getitem__(self, idx) -> torch.Tensor:
-        return self.imgmix_list[idx].to_tensor()
+        return self.image_list[idx].to_tensor()
 
     def update_dataset(self):
         logger.info('randomizing data...')
-        self.imgmix_list_rand = [imgmix.randomize() for imgmix in self.imgmix_list]
+        self.image_list_rand = [image.randomize() for image in self.image_list]
 
     @classmethod
     def from_chunk(
             cls: Type[AutoEncoderDataestT],
             chunk: MultiEpisodeChunk,
-            image_types: Tuple[Type[SingleImageBase], ...]) -> AutoEncoderDataestT:
-
-        imgmix_list: List[ImageMixin] = []
+            image_type: Type[ImageT]) -> 'AutoEncoderDataset[ImageT]':
+        image_list: List[ImageT] = []
         for episode_data in chunk:
-            image_seq_list: List[ElementSequence[SingleImageBase]] = []
-
-            for image_type in image_types:
-                image_seq_list.append(episode_data.filter_by_type(image_type))
-
-            n_seq_len = len(image_seq_list[0])
-            for i in range(n_seq_len):  # Because zip does not work as expected...
-                imgmix = ImageMixin([seq[i] for seq in image_seq_list])
-                imgmix_list.append(imgmix)
-
-        return cls(imgmix_list)
+            image_list.extend(episode_data.filter_by_type(image_type))
+        return cls(image_list)
 
 
 @dataclass
