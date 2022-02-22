@@ -146,9 +146,9 @@ class MixedImageBase(ImageBase):
     images: List[SingleImageBase]
     _shape: Tuple[int, int, int]
 
-    def __init__(self, images, check_size=False):
+    def __init__(self, images: List[SingleImageBase], check_size=False):
 
-        image_shape = images.shape[:2]
+        image_shape = images[0].shape[:2]
 
         if check_size:
             for image in images:
@@ -176,7 +176,10 @@ class MixedImageBase(ImageBase):
     @classmethod
     def from_tensor(cls: Type[MixedImageT], tensor: torch.Tensor) -> MixedImageT:
         channel_list = [t.channel() for t in cls.image_types]
-        images = list(split_sequence(tensor, channel_list))
+        images = []
+        for image_type, sub_tensor in zip(cls.image_types, split_sequence(tensor, channel_list)):
+            image = image_type.from_tensor(sub_tensor)
+            images.append(image)
         return cls(images)
 
     @classmethod
@@ -219,7 +222,7 @@ def create_mixed_image_sequence(mixed_image_type: MixedImageT, elem_seqs: List[E
     n_len_seq = len(elem_seqs[0])
     mixed_image_seq = ElementSequence[MixedImageT]([])
     for i in range(n_len_seq):
-        mixed_image = mixed_image_type.__init__([seq[i] for seq in elem_seqs])  # type: ignore
+        mixed_image = mixed_image_type([seq[i] for seq in elem_seqs])  # type: ignore
         mixed_image_seq.append(mixed_image)
     return mixed_image_seq
 
