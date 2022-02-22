@@ -4,7 +4,7 @@ from typing import Callable, Generic, Optional, Tuple, Type
 import numpy as np
 import torch
 
-from mohou.types import ElementT, UniformImageT, VectorT
+from mohou.types import ElementT, ImageT, VectorT
 
 
 class Embedder(ABC, Generic[ElementT]):
@@ -45,7 +45,7 @@ class Embedder(ABC, Generic[ElementT]):
         pass
 
 
-class ImageEmbedder(Embedder[UniformImageT]):
+class ImageEmbedder(Embedder[ImageT]):
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -53,7 +53,7 @@ class ImageEmbedder(Embedder[UniformImageT]):
 
     def __init__(
             self,
-            image_type: Type[UniformImageT],
+            image_type: Type[ImageT],
             func_forward: Callable[[torch.Tensor], torch.Tensor],
             func_backward: Callable[[torch.Tensor], torch.Tensor],
             input_shape: Tuple[int, int, int],
@@ -67,25 +67,25 @@ class ImageEmbedder(Embedder[UniformImageT]):
         self.output_size = output_size
 
         if check_callables:
-            inp_dummy = self.elem_type(np.zeros(input_shape))
+            inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])  # type: ignore
             out_dummy = self._forward_impl(inp_dummy)  # type: ignore
             assert out_dummy.shape == (output_size,)
 
             inp_reconstucted = self._backward_impl(out_dummy)
             assert isinstance(inp_reconstucted, self.elem_type)
 
-    def _forward_impl(self, inp: UniformImageT) -> np.ndarray:
+    def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
         assert self.func_forward is not None
         out_tensor = self.func_forward(inp_tensor).squeeze()
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
 
-    def _backward_impl(self, inp: np.ndarray) -> UniformImageT:
+    def _backward_impl(self, inp: np.ndarray) -> ImageT:
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
         out_tensor = self.func_backward(inp_tensor).squeeze()
-        out: UniformImageT = self.elem_type.from_tensor(out_tensor)  # type: ignore
+        out: ImageT = self.elem_type.from_tensor(out_tensor)  # type: ignore
         return out
 
 

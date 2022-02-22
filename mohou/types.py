@@ -75,6 +75,12 @@ class ImageBase(ElementBase):
     def randomize(self: ImageT) -> ImageT:
         pass
 
+    @abstractclassmethod
+    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'ImageBase':
+        # TODO(HiroIshida) I'm currently asking here
+        # https://stackoverflow.com/questions/71214808/
+        pass
+
 
 class UniformImageBase(UniformElementBase, ImageBase):
     _channel: ClassVar[int]
@@ -101,6 +107,12 @@ class RGBImage(UniformImageBase):
         rand_image_arr = _f_randomize_rgb_image(self)
         return RGBImage(rand_image_arr)
 
+    @classmethod
+    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'RGBImage':
+        shape = (shape2d[0], shape2d[1], cls.channel())
+        dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
+        return cls(dummy_array)
+
 
 class DepthImage(UniformImageBase):
     _channel: ClassVar[int] = 1
@@ -117,6 +129,12 @@ class DepthImage(UniformImageBase):
         assert _f_randomize_depth_image is not None
         rand_depth_arr = _f_randomize_depth_image(self)
         return DepthImage(rand_depth_arr)
+
+    @classmethod
+    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'DepthImage':
+        shape = (shape2d[0], shape2d[1], cls.channel())
+        dummy_array = np.random.randn(*shape)
+        return cls(dummy_array)
 
 
 class MixedImageBase(ImageBase):
@@ -155,6 +173,11 @@ class MixedImageBase(ImageBase):
     def from_tensor(cls: Type[MixedImageT], tensor: torch.Tensor) -> MixedImageT:
         channel_list = [t.channel() for t in cls.image_types]
         images = list(split_sequence(tensor, channel_list))
+        return cls(images)
+
+    @classmethod
+    def dummy_from_shape(cls: Type[MixedImageT], shape2d: Tuple[int, int]) -> MixedImageT:
+        images = [t.dummy_from_shape(shape2d) for t in cls.image_types]  # type: ignore
         return cls(images)
 
 
