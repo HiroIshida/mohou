@@ -1,7 +1,7 @@
 import argparse
 
 from mohou.dataset import AutoEncoderDataset
-from mohou.model import RGBImageAutoEncoder
+from mohou.model import AutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import RGBImage, MultiEpisodeChunk
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     chunk = MultiEpisodeChunk.load(project_name)
     dataset = AutoEncoderDataset.from_chunk(chunk, (RGBImage,))
 
-    tcache = TrainCache[RGBImageAutoEncoder](project_name, timer_period=timer_period)
-    model = RGBImageAutoEncoder(detect_device(), AutoEncoderConfig())
+    tcache = TrainCache[AutoEncoder](project_name, timer_period=timer_period)
+    model = AutoEncoder[RGBImage](detect_device(), AutoEncoderConfig(image_type=RGBImage))
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     train(model, dataset, tcache, config=tconfig)
