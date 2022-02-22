@@ -122,7 +122,7 @@ class DepthImage(SingleImageBase):
     _channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
-        return torch.from_numpy(self).float()
+        return torch.from_numpy(self.transpose((2, 0, 1))).contiguous().float()
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
