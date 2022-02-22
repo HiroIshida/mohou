@@ -160,6 +160,7 @@ class MixedImageBase(ImageBase):
     def to_tensor(self) -> torch.Tensor:
         return torch.cat([im.to_tensor() for im in self.images])
 
+    @property
     def shape(self) -> Tuple[int, int, int]:
         return self._shape
 
