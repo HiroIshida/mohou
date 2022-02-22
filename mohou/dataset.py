@@ -24,10 +24,12 @@ class MohouDataset(Dataset):
 
 
 class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
+    image_type: Type[ImageT]
     image_list: List[ImageT]
     image_list_rand: List[ImageT]
 
-    def __init__(self, image_list: List[ImageT]):
+    def __init__(self, image_type: Type[ImageT], image_list: List[ImageT]):
+        self.image_type = image_type
         self.image_list = image_list
         self.update_dataset()
 
@@ -49,7 +51,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         image_list: List[ImageT] = []
         for episode_data in chunk:
             image_list.extend(episode_data.filter_by_type(image_type))
-        return cls(image_list)
+        return cls(image_type, image_list)
 
 
 @dataclass

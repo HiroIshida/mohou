@@ -44,6 +44,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         return LossDict({'reconstruction': loss_value})
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        assert self.image_type.channel() == input.shape[1], 'channel mismatch'
         return self.decoder(self.encoder(input))
 
     def get_embedder(self) -> ImageEmbedder[ImageT]:
