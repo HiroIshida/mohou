@@ -2,7 +2,7 @@ import argparse
 
 from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.types import MultiEpisodeChunk, RGBImage
+from mohou.types import MultiEpisodeChunk
 from mohou.types import AngleVector
 from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
