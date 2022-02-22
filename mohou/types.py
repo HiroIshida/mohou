@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod, abstractclassmethod
+import copy
 import functools
 import operator
 import random
@@ -16,6 +17,7 @@ from mohou.utils import split_sequence
 ElementT = TypeVar('ElementT', bound='ElementBase')
 UniformImageT = TypeVar('UniformImageT', bound='UniformImageBase')
 MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
+ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
 
 
@@ -70,7 +72,7 @@ class ImageBase(ElementBase):
         pass
 
     @abstractmethod
-    def randomize(self) -> 'UniformImageBase':
+    def randomize(self: ImageT) -> ImageT:
         pass
 
 
@@ -138,6 +140,12 @@ class MixedImageBase(ImageBase):
 
     def shape(self) -> Tuple[int, int, int]:
         return self._shape
+
+    def randomize(self: MixedImageT) -> MixedImageT:
+        rand = copy.deepcopy(self)
+        for i in range(len(rand.images)):
+            rand.images[i] = self.images[i].randomize()
+        return rand
 
     @classmethod
     def channel(cls) -> int:
