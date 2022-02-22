@@ -1,12 +1,12 @@
 import numpy as np
-from typing import Type, List, OrderedDict
+from typing import Type, List, Dict
 
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
 from mohou.types import AngleVector, RGBImage
 
 
-class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
+class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
@@ -60,7 +60,7 @@ class EmbeddingRule(OrderedDict[Type[ElementBase], Embedder]):
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
 
-        assert set(self.keys()) <= set(chunk.types)
+        assert set(self.keys()) <= set(chunk.types_sorted)
 
         vector_seq_list = [self.apply_to_episode_data(data) for data in chunk]
 
