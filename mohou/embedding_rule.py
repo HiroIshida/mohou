@@ -3,7 +3,7 @@ from typing import Type, List, Dict
 
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
-from mohou.types import AngleVector, RGBImage
+from mohou.types import AngleVector, RGBImage, RGBDImage
 
 
 class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
@@ -82,4 +82,11 @@ class RGBAngelVectorEmbeddingRule(EmbeddingRule):
 
     def __init__(self, image_embedder: ImageEmbedder, identical_embedder: IdenticalEmbedder):
         self[RGBImage] = image_embedder
+        self[AngleVector] = identical_embedder
+
+
+class RGBDAngelVectorEmbeddingRule(EmbeddingRule):
+
+    def __init__(self, image_embedder: ImageEmbedder, identical_embedder: IdenticalEmbedder):
+        self[RGBDImage] = image_embedder
         self[AngleVector] = identical_embedder
