@@ -34,33 +34,36 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
             elem_dict[elem_type] = embedder.backward(vec)
         return elem_dict
 
-    def apply_to_list(self, elements: List[ElementBase]) -> np.ndarray:
-
-        def embed(elem_type, embedder) -> np.ndarray:
-            for e in elements:
-                if isinstance(e, elem_type):
-                    return embedder.forward(e)
-            assert False
-
-        vector = np.hstack([embed(k, v) for k, v in self.items()])
-        return vector
-
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
         def embed(elem_type, embedder) -> np.ndarray:
-            for sequence in episode_data:
-                if isinstance(sequence[0], elem_type):
-                    return np.stack([embedder.forward(e) for e in sequence])
-            assert False
+            sequence = episode_data.filter_by_type(elem_type)
+            return np.stack([embedder.forward(e) for e in sequence])
 
         vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
-
         assert vector_seq.ndim == 2
         return vector_seq
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
 
-        assert set(self.keys()) <= set(chunk.type_shape_table.keys())
+        # TODO(HiroIshida) check chunk compatibility
+        """
+        def elem_types_to_primitive_elem_set(elem_type_list: Sequence[Type[ElementBase]]):
+            primitve_elem_type_list = []
+            for elem_type in elem_type_list:
+                if isinstance(elem_type, SingleElementBase):
+                    primitve_elem_type_list.append(elem_type)
+                elif isinstance(elem_type, MixedImageBase):
+                    primitve_elem_type_list.extend(elem_type.image_types)
+                print(elem_type)
+                print(isinstance(elem_type, SingleImageBase))
+                assert False
+            return set(primitve_elem_type_list)
+
+        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.type_shape_table.keys()))
+        required_elem_types = elem_types_to_primitive_elem_set(list(self.keys()))
+        assert required_elem_types <= chunk_elem_types
+        """
 
         vector_seq_list = [self.apply_to_episode_data(data) for data in chunk]
 
