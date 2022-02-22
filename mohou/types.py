@@ -254,10 +254,10 @@ class EpisodeData:
         all_same_length = len(set(map(len, sequence_tuple))) == 1
         assert all_same_length
 
-        types = set(map(lambda seq: type(seq[0]), sequence_tuple))
-        shapes = list(map(lambda seq: seq[0].shape, sequence_tuple))
+        types = [type(seq[0]) for seq in sequence_tuple]
+        shapes = [seq[0].shape for seq in sequence_tuple]
 
-        n_type = len(types)
+        n_type = len(set(types))
         all_different_type = n_type == len(sequence_tuple)
         assert all_different_type, 'all sequences must have different type'
 
