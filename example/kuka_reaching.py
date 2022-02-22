@@ -125,6 +125,7 @@ class BulletManager(object):
             rgba, depth = self.take_photo(n_pixel)
             rgb = rgba[:, :, :3]
             rgbimg_seq.append(RGBImage(rgb))
+            depth = np.expand_dims(depth, axis=0)
             dimg_seq.append(DepthImage(depth))
 
         for i in range(30):  # augument the data (after reaching)
