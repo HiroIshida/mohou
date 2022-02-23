@@ -19,12 +19,25 @@ def test_rdb_image():
     tensor = rgb.to_tensor()
     assert list(tensor.shape) == [3, 100, 100]
 
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100))
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100, 1))
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100, 2))
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100, 4))
+
 
 def test_depth_image():
     dimage = DepthImage.dummy_from_shape((100, 100))
     for _ in range(10):
         tensor = dimage.to_tensor()
         assert list(tensor.shape) == [1, 100, 100]
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100))
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100, 2))
 
 
 def test_rdbd_image():
@@ -75,7 +88,7 @@ def test_multi_episode_chunk_creation(image_av_chunk):
 def test_multi_episode_chunk_assertion_type_inconsitency():
     image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
-    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100))) for _ in range(10)])
+    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
 
     data1 = EpisodeData((image_seq, av_seq))
     data2 = EpisodeData((depth_seq, av_seq))

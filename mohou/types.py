@@ -110,6 +110,12 @@ class ImageBase(ElementBase):
 class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
 
+    def __new__(cls, data: np.ndarray):
+        assert isinstance(data, np.ndarray)
+        assert data.ndim == 3
+        assert np.array(data).shape[2] == cls.channel(), 'channel does not match'
+        return super(PrimitiveImageBase, cls).__new__(cls)
+
     @classmethod
     def channel(cls) -> int:
         return cls._channel
@@ -125,7 +131,7 @@ class RGBImage(PrimitiveImageBase):
     def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
         tf = torchvision.transforms.ToPILImage()
         pil_iamge = tf(tensor)
-        return cls(pil_iamge)
+        return cls(np.array(pil_iamge))
 
     def randomize(self) -> 'RGBImage':
         assert _f_randomize_rgb_image is not None
