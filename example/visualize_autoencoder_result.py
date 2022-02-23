@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+from typing import Type
 
 import matplotlib.pyplot as plt
 import torchvision
@@ -9,7 +10,7 @@ from mohou.dataset import AutoEncoderDataset
 from mohou.file import get_subproject_dir
 from mohou.model import AutoEncoder
 from mohou.trainer import TrainCache
-from mohou.types import RGBDImage, MultiEpisodeChunk
+from mohou.types import ImageBase, MultiEpisodeChunk, get_element_type
 
 
 def debug_visualize_reconstruction(
@@ -42,11 +43,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
     parser.add_argument('-n', type=int, default=5, help='number of visualization')
+    parser.add_argument('-image', type=str, default='RGBImage', help='image type')
     args = parser.parse_args()
     project_name = args.pn
     n_vis = args.n
+    image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    dataset = AutoEncoderDataset.from_chunk(chunk, RGBDImage)
+    dataset = AutoEncoderDataset.from_chunk(chunk, image_type)
     tcache = TrainCache.load(project_name, AutoEncoder)
     debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)
