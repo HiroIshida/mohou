@@ -56,7 +56,7 @@ class ModelBase(nn.Module, Generic[ModelConfigT]):
 
     def __init__(self, device: torch.device, config: ModelConfigT):
         super().__init__()
-        self._create_layers(config)
+        self._setup_from_config(config)
         self.device = device
         self.config = config
         logger.info('model name: {}'.format(self.__class__.__name__))
@@ -71,7 +71,7 @@ class ModelBase(nn.Module, Generic[ModelConfigT]):
         return self.config.hash_value
 
     @abstractmethod
-    def _create_layers(self, config: ModelConfigT) -> None:
+    def _setup_from_config(self, config: ModelConfigT) -> None:
         pass
 
     @abstractmethod

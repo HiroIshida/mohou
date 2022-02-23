@@ -18,7 +18,7 @@ class LSTM(ModelBase[LSTMConfig]):
     lstm_layer: nn.LSTM
     output_layer: nn.Sequential
 
-    def _create_layers(self, config: LSTMConfig) -> None:
+    def _setup_from_config(self, config: LSTMConfig) -> None:
         n_state = config.n_state_without_flag + 1
         self.lstm_layer = nn.LSTM(n_state, config.n_hidden, config.n_layer, batch_first=True)
         output_layers = []
