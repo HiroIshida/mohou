@@ -1,17 +1,17 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple, ClassVar
+from typing import Generic, Tuple, Type
 
 import torch
 import torch.nn as nn
 
 from mohou.embedder import ImageEmbedder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
-from mohou.types import RGBImage, DepthImage
+from mohou.types import ImageT, ImageBase
 
 
 @dataclass
 class AutoEncoderConfig(ModelConfigBase):
+    image_type: Type[ImageBase]
     n_bottleneck: int = 16
     input_shape: Tuple[int, int] = (224, 224)
 
@@ -32,8 +32,8 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
-    channel: ClassVar[int]
+class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
+    image_type: Type[ImageT]
     encoder: nn.Module
     decoder: nn.Module
 
@@ -44,19 +44,31 @@ class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
         return LossDict({'reconstruction': loss_value})
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        assert self.image_type.channel() == input.shape[1], 'channel mismatch'
         return self.decoder(self.encoder(input))
 
-    @abstractmethod
-    def get_embedders(self) -> Tuple[ImageEmbedder]:
-        pass
+    def get_embedder(self) -> ImageEmbedder[ImageT]:
+        shape = self.config.input_shape
+        np_image_shape = (shape[0], shape[1], self.channel())
+        embedder = ImageEmbedder[ImageT](
+            self.image_type,
+            lambda image_tensor: self.encoder(image_tensor),
+            lambda encoding: self.decoder(encoding),
+            np_image_shape,
+            self.config.n_bottleneck)
+        return embedder
 
-    def _create_layers(self, config: AutoEncoderConfig):
+    def channel(self) -> int:
+        return self.image_type.channel()
+
+    def _setup_from_config(self, config: AutoEncoderConfig):
+        self.image_type = config.image_type  # type: ignore
         n_pixel, m_pixel = config.input_shape
 
         # TODO(HiroIshida) do it programatically
         if n_pixel == 224:
             encoder = nn.Sequential(
-                nn.Conv2d(self.channel, 8, 3, padding=1, stride=(2, 2)),  # 112x112
+                nn.Conv2d(self.channel(), 8, 3, padding=1, stride=(2, 2)),  # 112x112
                 nn.ReLU(inplace=True),
                 nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 56x56
                 nn.ReLU(inplace=True),
@@ -87,12 +99,12 @@ class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(16, 8, 4, stride=2, padding=1),
                 nn.ReLU(inplace=True),
-                nn.ConvTranspose2d(8, self.channel, 4, stride=2, padding=1),
+                nn.ConvTranspose2d(8, self.channel(), 4, stride=2, padding=1),
                 nn.Sigmoid(),
             )
         elif n_pixel == 112:
             encoder = nn.Sequential(
-                nn.Conv2d(self.channel, 8, 3, padding=1, stride=(2, 2)),  # 56x56
+                nn.Conv2d(self.channel(), 8, 3, padding=1, stride=(2, 2)),  # 56x56
                 nn.ReLU(inplace=True),
                 nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 28x28
                 nn.ReLU(inplace=True),
@@ -119,12 +131,12 @@ class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(16, 8, 4, stride=2, padding=1),
                 nn.ReLU(inplace=True),
-                nn.ConvTranspose2d(8, self.channel, 4, stride=2, padding=1),
+                nn.ConvTranspose2d(8, self.channel(), 4, stride=2, padding=1),
                 nn.Sigmoid(),
             )
         else:
             encoder = nn.Sequential(
-                nn.Conv2d(self.channel, 8, 3, padding=1, stride=(2, 2)),  # 14x14
+                nn.Conv2d(self.channel(), 8, 3, padding=1, stride=(2, 2)),  # 14x14
                 nn.ReLU(inplace=True),
                 nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 7x7
                 nn.ReLU(inplace=True),  # 64x4x4
@@ -143,38 +155,8 @@ class AutoEncoderBase(ABC, ModelBase[AutoEncoderConfig]):
                 nn.ReLU(inplace=True),
                 nn.ConvTranspose2d(16, 8, 4, stride=2, padding=1),
                 nn.ReLU(inplace=True),
-                nn.ConvTranspose2d(8, self.channel, 4, stride=2, padding=1),
+                nn.ConvTranspose2d(8, self.channel(), 4, stride=2, padding=1),
                 nn.Sigmoid(),
             )
         self.encoder = encoder
         self.decoder = decoder
-
-
-class RGBImageAutoEncoder(AutoEncoderBase):
-    channel: ClassVar[int] = 3
-
-    def get_embedders(self) -> Tuple[ImageEmbedder[RGBImage]]:
-        shape = self.config.input_shape
-        np_image_shape = (shape[0], shape[1], self.channel)
-        embedder = ImageEmbedder[RGBImage](
-            RGBImage,
-            lambda image_tensor: self.encoder(image_tensor),
-            lambda encoding: self.decoder(encoding),
-            np_image_shape,
-            self.config.n_bottleneck)
-        return (embedder,)
-
-
-class DepthImageAutoEncoder(AutoEncoderBase):
-    channel: ClassVar[int] = 1
-
-    def get_embedders(self) -> Tuple[ImageEmbedder[DepthImage]]:
-        shape = self.config.input_shape
-        np_image_shape = (shape[0], shape[1], self.channel)
-        embedder = ImageEmbedder[DepthImage](
-            DepthImage,
-            lambda image_tensor: self.encoder(image_tensor),
-            lambda encoding: self.decoder(encoding),
-            np_image_shape,
-            self.config.n_bottleneck)
-        return (embedder,)

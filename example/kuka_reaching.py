@@ -15,7 +15,7 @@ import tqdm
 
 from mohou.file import dump_object, get_project_dir
 from mohou.types import (AngleVector, ElementSequence, MultiEpisodeChunk,
-                         RGBImage, EpisodeData)
+                         RGBImage, DepthImage, EpisodeData)
 
 
 class BulletManager(object):
@@ -112,28 +112,28 @@ class BulletManager(object):
             projectionMatrix=projectionMatrix)
         return rgbImg, depthImg
 
-    def kinematic_simulate(self, joint_angles_target, N=100, n_pixel=112, with_depth=False):
+    def kinematic_simulate(self, joint_angles_target, N=100, n_pixel=112):
         N_rand = N + np.random.randint(10)
         angles_now = np.array(self.joint_angles())
         step = (np.array(joint_angles_target) - angles_now) / (N_rand - 1)
         angles_seq = ElementSequence[AngleVector]([AngleVector(angles_now + step * i) for i in range(N_rand)])
 
-        img_seq = ElementSequence[RGBImage]([])
+        rgbimg_seq = ElementSequence[RGBImage]([])
+        dimg_seq = ElementSequence[DepthImage]([])
         for av in angles_seq:
             self.set_joint_angles(av)
             rgba, depth = self.take_photo(n_pixel)
-            if with_depth:
-                depth = depth.reshape(*depth.shape, 1)
-                image = np.concatenate((rgba[:, :, :3], depth), axis=2)
-            else:
-                image = rgba[:, :, :3]
-            img_seq.append(RGBImage(image))
+            rgb = rgba[:, :, :3]
+            rgbimg_seq.append(RGBImage(rgb))
+            depth = np.expand_dims(depth, axis=2)
+            dimg_seq.append(DepthImage(depth))
 
         for i in range(30):  # augument the data (after reaching)
-            img_seq.append(RGBImage(image))
+            rgbimg_seq.append(RGBImage(rgb))
+            dimg_seq.append(DepthImage(depth))
             angles_seq.append(AngleVector(angles_seq[-1]))
 
-        return img_seq, angles_seq
+        return rgbimg_seq, dimg_seq, angles_seq
 
 
 if __name__ == '__main__':
@@ -176,8 +176,8 @@ if __name__ == '__main__':
                     except tinyfk._inverse_kinematics.IKFail:
                         pass
                 bm.set_box(target_pos)
-                img_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel, with_depth=with_depth)
-                episode_data = EpisodeData((img_seq, cmd_seq))
+                rgbimg_seq, dimg_seq, cmd_seq = bm.kinematic_simulate(angles_solved, n_pixel=n_pixel)
+                episode_data = EpisodeData((rgbimg_seq, dimg_seq, cmd_seq))
 
                 with open(os.path.join(td, str(uuid.uuid4()) + '.pkl'), 'wb') as f:
                     pickle.dump(episode_data, f)

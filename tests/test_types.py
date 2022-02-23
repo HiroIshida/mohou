@@ -2,21 +2,62 @@ import pytest
 
 import numpy as np
 
-from mohou.types import AngleVector, ElementSequence, RGBImage, DepthImage
+from mohou.types import AngleVector, ElementSequence, RGBDImage, RGBImage, DepthImage, VectorBase, PrimitiveImageBase
 from mohou.types import EpisodeData
 from mohou.types import MultiEpisodeChunk
 
 
+def test_elements():
+    with pytest.raises(Exception):
+        VectorBase(np.zeros(3))
+    with pytest.raises(Exception):
+        PrimitiveImageBase(np.zeros((3, 3)))
+
+
+def test_rdb_image():
+    rgb = RGBImage.dummy_from_shape((100, 100))
+    tensor = rgb.to_tensor()
+    assert list(tensor.shape) == [3, 100, 100]
+
+    RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
+
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
+    with pytest.raises(AssertionError):
+        RGBImage(np.random.randn(100, 100, 3))
+
+
+def test_depth_image():
+    dimage = DepthImage.dummy_from_shape((100, 100))
+    for _ in range(10):
+        tensor = dimage.to_tensor()
+        assert list(tensor.shape) == [1, 100, 100]
+
+    DepthImage(np.random.randn(100, 100, 1))
+    with pytest.raises(AssertionError):
+        DepthImage(np.random.randn(100, 100))
+    with pytest.raises(AssertionError):
+        DepthImage(np.random.randn(100, 100, 2))
+    with pytest.raises(AssertionError):
+        DepthImage(np.random.randint(0, 255, (100, 100, 1)))
+
+
+def test_rdbd_image():
+    rgbd = RGBDImage.dummy_from_shape((100, 100))
+    tensor = rgbd.to_tensor()
+    assert list(tensor.shape) == [4, 100, 100]
+
+
 def test_episode_data_creation():
-    image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     data = EpisodeData((image_seq, av_seq))
 
-    assert set(data.types) == set([AngleVector, RGBImage])
+    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage])
 
 
 def test_episode_data_assertion_different_size():
-    image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(3)])
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(3)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
 
     with pytest.raises(AssertionError):
@@ -24,7 +65,7 @@ def test_episode_data_assertion_different_size():
 
 
 def test_episode_data_assertion_type_inconsitency():
-    image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
 
     with pytest.raises(AssertionError):
         EpisodeData((image_seq, image_seq))
@@ -33,7 +74,7 @@ def test_episode_data_assertion_type_inconsitency():
 @pytest.fixture(scope='session')
 def image_av_chunk():
     def create_sedata():
-        image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
+        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
         data = EpisodeData((image_seq, av_seq))
         return data
@@ -43,13 +84,13 @@ def image_av_chunk():
 
 def test_multi_episode_chunk_creation(image_av_chunk):
     chunk = image_av_chunk
-    assert set(chunk.types) == set([AngleVector, RGBImage])
+    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage])
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():
-    image_seq = ElementSequence([RGBImage(np.zeros((100, 100, 3))) for _ in range(10)])
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
-    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100))) for _ in range(10)])
+    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
 
     data1 = EpisodeData((image_seq, av_seq))
     data2 = EpisodeData((depth_seq, av_seq))
