@@ -268,7 +268,7 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     for t in get_all_concrete_types():
         if type_name == t.__name__:
             return t
-    assert False
+    assert False, 'type {} not found'.format(type_name)
 
 
 class ElementSequence(list, Generic[ElementT]):
