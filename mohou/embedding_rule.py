@@ -2,8 +2,7 @@ import numpy as np
 from typing import Type, List, Dict
 
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
-from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
-from mohou.types import AngleVector, RGBImage, RGBDImage
+from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, MixedImageBase
 from mohou.utils import assert_with_message
 
 
@@ -48,23 +47,18 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
 
         # TODO(HiroIshida) check chunk compatibility
-        """
-        def elem_types_to_primitive_elem_set(elem_type_list: Sequence[Type[ElementBase]]):
+        def elem_types_to_primitive_elem_set(elem_type_list: List[Type[ElementBase]]):
             primitve_elem_type_list = []
             for elem_type in elem_type_list:
-                if isinstance(elem_type, PrimitiveElementBase):
+                if issubclass(elem_type, PrimitiveElementBase):
                     primitve_elem_type_list.append(elem_type)
-                elif isinstance(elem_type, MixedImageBase):
+                elif issubclass(elem_type, MixedImageBase):
                     primitve_elem_type_list.extend(elem_type.image_types)
-                print(elem_type)
-                print(isinstance(elem_type, PrimitiveImageBase))
-                assert False
             return set(primitve_elem_type_list)
 
         chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.type_shape_table.keys()))
         required_elem_types = elem_types_to_primitive_elem_set(list(self.keys()))
         assert required_elem_types <= chunk_elem_types
-        """
 
         vector_seq_list = [self.apply_to_episode_data(data) for data in chunk]
 
