@@ -24,6 +24,14 @@ VectorT = TypeVar('VectorT', bound='VectorBase')
 
 class ElementBase(ABC):
 
+    def __new__(cls, *args, **kwargs):
+        # instantiationg blocking hack. Different but similar to
+        # https://stackoverflow.com/a/7990308/7624196
+        assert cls.is_concrete_type(),\
+            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
+        # https://stackoverflow.com/questions/59217884/
+        return super(ElementBase, cls).__new__(cls)
+
     @classmethod
     def is_concrete_type(cls):
         return len(cls.__abstractmethods__) == 0 and len(cls.__subclasses__()) == 0
@@ -42,25 +50,38 @@ class ElementBase(ABC):
         pass
 
 
-class PrimitiveElementBase(np.ndarray, ElementBase):
+class PrimitiveElementBase(ElementBase):
+    _data: np.ndarray  # cmposition over inheritance!
 
-    def __new__(cls, arr):
-        # instantiationg blocking hack. Different but similar to
-        # https://stackoverflow.com/a/7990308/7624196
-        assert cls.is_concrete_type(),\
-            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
-        return np.asarray(arr).view(cls)
+    def __init__(self, data: np.ndarray) -> None:
+        self._data = np.array(data)
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        return self._data.shape
+
+    def numpy(self):
+        return self._data
+
+    def __iter__(self) -> Iterator:
+        return self._data.__iter__()
+
+    def __getitem__(self, index):
+        return self._data[index]
 
 
 class VectorBase(PrimitiveElementBase):
 
     def to_tensor(self) -> torch.Tensor:
-        return torch.from_numpy(self).float()
+        return torch.from_numpy(self._data).float()
 
     @classmethod
     def from_tensor(cls: Type[VectorT], tensor: torch.Tensor) -> VectorT:
         array = tensor.detach().clone().numpy()
         return cls(array)
+
+    def __len__(self):
+        return len(self._data)
 
 
 class AngleVector(VectorBase):
@@ -98,7 +119,7 @@ class RGBImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 3
 
     def to_tensor(self) -> torch.Tensor:
-        return torchvision.transforms.ToTensor()(self).float()
+        return torchvision.transforms.ToTensor()(self._data).float()
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
@@ -108,7 +129,7 @@ class RGBImage(PrimitiveImageBase):
 
     def randomize(self) -> 'RGBImage':
         assert _f_randomize_rgb_image is not None
-        rand_image_arr = _f_randomize_rgb_image(self)
+        rand_image_arr = _f_randomize_rgb_image(self._data)
         return RGBImage(rand_image_arr)
 
     @classmethod
@@ -122,7 +143,7 @@ class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
-        return torch.from_numpy(self.transpose((2, 0, 1))).contiguous().float()
+        return torch.from_numpy(self._data.transpose((2, 0, 1))).contiguous().float()
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
@@ -131,7 +152,7 @@ class DepthImage(PrimitiveImageBase):
 
     def randomize(self) -> 'DepthImage':
         assert _f_randomize_depth_image is not None
-        rand_depth_arr = _f_randomize_depth_image(self)
+        rand_depth_arr = _f_randomize_depth_image(self._data)
         return DepthImage(rand_depth_arr)
 
     @classmethod

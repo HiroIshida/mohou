@@ -98,7 +98,7 @@ class IdenticalEmbedder(Embedder[VectorT]):
         self.output_size = dimension
 
     def _forward_impl(self, inp: VectorT) -> np.ndarray:
-        return inp
+        return inp.numpy()
 
     def _backward_impl(self, inp: np.ndarray) -> VectorT:
         return self.elem_type(inp)
