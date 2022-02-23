@@ -54,6 +54,7 @@ class PrimitiveElementBase(ElementBase):
     _data: np.ndarray  # cmposition over inheritance!
 
     def __init__(self, data: np.ndarray) -> None:
+        assert isinstance(data, np.ndarray)
         self._data = np.array(data)
 
     @property
@@ -71,6 +72,10 @@ class PrimitiveElementBase(ElementBase):
 
 
 class VectorBase(PrimitiveElementBase):
+
+    def __init__(self, data: np.ndarray) -> None:
+        super().__init__(data)
+        assert data.ndim == 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data).float()
@@ -110,11 +115,10 @@ class ImageBase(ElementBase):
 class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
 
-    def __new__(cls, data: np.ndarray):
-        assert isinstance(data, np.ndarray)
+    def __init__(self, data: np.ndarray) -> None:
+        super().__init__(data)
         assert data.ndim == 3
-        assert np.array(data).shape[2] == cls.channel(), 'channel does not match'
-        return super(PrimitiveImageBase, cls).__new__(cls)
+        assert np.array(data).shape[2] == self.channel(), 'channel does not match'
 
     @classmethod
     def channel(cls) -> int:
@@ -245,12 +249,12 @@ class ElementSequence(list, Generic[ElementT]):
         return self.__getitem__(0).shape
 
 
-def create_mixed_image_sequence(mixed_image_type: MixedImageT, elem_seqs: List[ElementSequence]) -> ElementSequence[MixedImageT]:
+def create_mixed_image_sequence(mixed_image_type: Type[MixedImageT], elem_seqs: List[ElementSequence]) -> ElementSequence[MixedImageT]:
     # TODO(HiroIshida) extend this to 'mixed_element_sequence'
     n_len_seq = len(elem_seqs[0])
     mixed_image_seq = ElementSequence[MixedImageT]([])
     for i in range(n_len_seq):
-        mixed_image = mixed_image_type([seq[i] for seq in elem_seqs])  # type: ignore
+        mixed_image = mixed_image_type([seq[i] for seq in elem_seqs])
         mixed_image_seq.append(mixed_image)
     return mixed_image_seq
 
