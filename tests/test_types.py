@@ -2,7 +2,7 @@ import pytest
 
 import numpy as np
 
-from mohou.types import AngleVector, ElementSequence, RGBDImage, RGBImage, DepthImage, VectorBase, SingleImageBase
+from mohou.types import AngleVector, ElementSequence, RGBDImage, RGBImage, DepthImage, VectorBase, PrimitiveImageBase
 from mohou.types import EpisodeData
 from mohou.types import MultiEpisodeChunk
 
@@ -11,7 +11,7 @@ def test_elements():
     with pytest.raises(Exception):
         VectorBase(np.zeros(3))
     with pytest.raises(Exception):
-        SingleImageBase(np.zeros((3, 3)))
+        PrimitiveImageBase(np.zeros((3, 3)))
 
 
 def test_rdb_image():
@@ -22,8 +22,9 @@ def test_rdb_image():
 
 def test_depth_image():
     dimage = DepthImage.dummy_from_shape((100, 100))
-    tensor = dimage.to_tensor()
-    assert list(tensor.shape) == [1, 100, 100]
+    for _ in range(10):
+        tensor = dimage.to_tensor()
+        assert list(tensor.shape) == [1, 100, 100]
 
 
 def test_rdbd_image():

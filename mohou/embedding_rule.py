@@ -51,12 +51,12 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
         def elem_types_to_primitive_elem_set(elem_type_list: Sequence[Type[ElementBase]]):
             primitve_elem_type_list = []
             for elem_type in elem_type_list:
-                if isinstance(elem_type, SingleElementBase):
+                if isinstance(elem_type, PrimitiveElementBase):
                     primitve_elem_type_list.append(elem_type)
                 elif isinstance(elem_type, MixedImageBase):
                     primitve_elem_type_list.extend(elem_type.image_types)
                 print(elem_type)
-                print(isinstance(elem_type, SingleImageBase))
+                print(isinstance(elem_type, PrimitiveImageBase))
                 assert False
             return set(primitve_elem_type_list)
 

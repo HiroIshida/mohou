@@ -15,8 +15,8 @@ from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_im
 from mohou.utils import split_sequence
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
-SingleElementT = TypeVar('SingleElementT', bound='SingleElementBase')
-SingleImageT = TypeVar('SingleImageT', bound='SingleImageBase')
+PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
+PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
 MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
@@ -42,7 +42,7 @@ class ElementBase(ABC):
         pass
 
 
-class SingleElementBase(np.ndarray, ElementBase):
+class PrimitiveElementBase(np.ndarray, ElementBase):
 
     def __new__(cls, arr):
         # instantiationg blocking hack. Different but similar to
@@ -52,7 +52,7 @@ class SingleElementBase(np.ndarray, ElementBase):
         return np.asarray(arr).view(cls)
 
 
-class VectorBase(SingleElementBase):
+class VectorBase(PrimitiveElementBase):
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self).float()
@@ -86,7 +86,7 @@ class ImageBase(ElementBase):
         pass
 
 
-class SingleImageBase(SingleElementBase, ImageBase):
+class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
 
     @classmethod
@@ -94,7 +94,7 @@ class SingleImageBase(SingleElementBase, ImageBase):
         return cls._channel
 
 
-class RGBImage(SingleImageBase):
+class RGBImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 3
 
     def to_tensor(self) -> torch.Tensor:
@@ -118,7 +118,7 @@ class RGBImage(SingleImageBase):
         return cls(dummy_array)
 
 
-class DepthImage(SingleImageBase):
+class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
 
     def to_tensor(self) -> torch.Tensor:
@@ -142,11 +142,11 @@ class DepthImage(SingleImageBase):
 
 
 class MixedImageBase(ImageBase):
-    image_types: ClassVar[List[Type[SingleImageBase]]]
-    images: List[SingleImageBase]
+    image_types: ClassVar[List[Type[PrimitiveImageBase]]]
+    images: List[PrimitiveImageBase]
     _shape: Tuple[int, int, int]
 
-    def __init__(self, images: List[SingleImageBase], check_size=False):
+    def __init__(self, images: List[PrimitiveImageBase], check_size=False):
 
         image_shape = images[0].shape[:2]
 
@@ -188,7 +188,7 @@ class MixedImageBase(ImageBase):
         images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
         return cls(images)
 
-    def get_single_image(self, image_type: Type[SingleImageT]) -> SingleImageT:
+    def get_primitive_image(self, image_type: Type[PrimitiveImageT]) -> PrimitiveImageT:
         for image in self.images:
             if isinstance(image, image_type):
                 return image
@@ -250,7 +250,7 @@ class EpisodeData:
         self.type_shape_table = type_shape_table
         self.sequence_list = sequence_tuple
 
-    def filter_by_single_type(self, elem_type: Type[SingleElementT]) -> ElementSequence[SingleElementT]:
+    def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
         for seq in self.sequence_list:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
@@ -259,10 +259,10 @@ class EpisodeData:
 
     def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
-        if issubclass(elem_type, SingleElementBase):
-            return self.filter_by_single_type(elem_type)  # type: ignore
+        if issubclass(elem_type, PrimitiveElementBase):
+            return self.filter_by_primitive_type(elem_type)  # type: ignore
         elif issubclass(elem_type, MixedImageBase):
-            seqs = [self.filter_by_single_type(t) for t in elem_type.image_types]
+            seqs = [self.filter_by_primitive_type(t) for t in elem_type.image_types]
             return create_mixed_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False
