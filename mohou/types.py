@@ -167,7 +167,7 @@ class DepthImage(PrimitiveImageBase):
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
         array = tensor.detach().clone().numpy()
-        return cls(array)
+        return cls(array.transpose((1, 2, 0)))
 
     def randomize(self) -> 'DepthImage':
         assert _f_randomize_depth_image is not None
