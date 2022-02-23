@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import copy
 import functools
 import operator
+import queue
 import random
 from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
 
@@ -247,6 +248,27 @@ class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         return super().__getitem__(key)  # type: ignore
+
+
+def get_all_concrete_types() -> List[Type[ElementBase]]:
+    concrete_types: List[Type] = []
+    q = queue.Queue()  # type: ignore
+    q.put(ElementBase)
+    while not q.empty():
+        t: Type = q.get()
+        if len(t.__subclasses__()) == 0:
+            concrete_types.append(t)
+
+        for st in t.__subclasses__():
+            q.put(st)
+    return list(set(concrete_types))
+
+
+def get_element_type(type_name: str) -> Type[ElementBase]:
+    for t in get_all_concrete_types():
+        if type_name == t.__name__:
+            return t
+    assert False
 
 
 class ElementSequence(list, Generic[ElementT]):
