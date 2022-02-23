@@ -4,6 +4,7 @@ from typing import Type, List, Dict
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
 from mohou.types import AngleVector, RGBImage, RGBDImage
+from mohou.utils import assert_with_message
 
 
 class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
@@ -41,7 +42,7 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
             return np.stack([embedder.forward(e) for e in sequence])
 
         vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
-        assert vector_seq.ndim == 2
+        assert_with_message(vector_seq.ndim, 2, 'vector_seq dim')
         return vector_seq
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:

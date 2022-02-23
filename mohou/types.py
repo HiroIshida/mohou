@@ -13,6 +13,7 @@ from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.utils import split_sequence
+from mohou.utils import assert_with_message
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
 PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
@@ -116,10 +117,8 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert self._data.ndim == 3
-        channel = self._data.shape[2]
-        message = 'channel is {} but expected {}'.format(channel, self.channel())
-        assert channel == self.channel(), message
+        assert_with_message(self._data.ndim, 3, 'image_dim')
+        assert_with_message(data.shape[2], self.channel(), 'channel')
 
     @classmethod
     def channel(cls) -> int:
@@ -131,7 +130,7 @@ class RGBImage(PrimitiveImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert self._data.dtype.type == np.uint8, 'np.uint8 is expected'
+        assert_with_message(self._data.dtype.type, np.uint8, 'numpy type')
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self._data).float()
@@ -159,7 +158,7 @@ class DepthImage(PrimitiveImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert self._data.dtype.type in (np.float16, np.float32, np.float64, np.float128)
+        assert_with_message(self._data.dtype.type, [np.float16, np.float32, np.float64], 'numpy type')
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data.transpose((2, 0, 1))).contiguous().float()
@@ -192,7 +191,7 @@ class MixedImageBase(ImageBase):
 
         if check_size:
             for image in images:
-                assert image.shape[:2] == image_shape
+                assert_with_message(image.shape[:2], image_shape, 'image w-h')
 
         self.images = images
         self._shape = (image_shape[0], image_shape[1], self.channel())
@@ -244,7 +243,7 @@ class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
             self[elem.__class__] = elem
-        assert len(set(self.keys())) == len(elems)
+        assert_with_message(len(set(self.keys())), len(elems), 'num of element')
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         return super().__getitem__(key)  # type: ignore
@@ -325,7 +324,8 @@ class MultiEpisodeChunk:
             [list(data.type_shape_table.keys()) for data in data_list]))
 
         n_type_appeared = len(set_types)
-        assert n_type_appeared == len(data_list[0].type_shape_table.keys())
+        n_type_expected = len(data_list[0].type_shape_table.keys())
+        assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
 
         if shuffle:
             random.shuffle(data_list)

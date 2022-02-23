@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 from mohou.types import ElementT, ImageT, VectorT
+from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 
 class Embedder(ABC, Generic[ElementT]):
@@ -13,26 +14,26 @@ class Embedder(ABC, Generic[ElementT]):
     output_size: int
 
     def forward(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
-        assert isinstance(inp, self.elem_type)
+        assert_isinstance_with_message(inp, self.elem_type)
 
         if check_size:
-            assert inp.shape == self.input_shape
+            assert_with_message(inp.shape, self.input_shape, 'input shape')
 
         out = self._forward_impl(inp)
 
         if check_size:
-            assert out.shape == (self.output_size,)
+            assert_with_message(out.shape, (self.output_size,), 'output shape')
 
         return out
 
     def backward(self, inp: np.ndarray, check_size: bool = True) -> ElementT:
         if check_size:
-            assert inp.shape == (self.output_size,)
+            assert_with_message(inp.shape, (self.output_size,), 'input shape')
 
         out = self._backward_impl(inp)
 
         if check_size:
-            assert out.shape == self.input_shape
+            assert_with_message(out.shape, self.input_shape, 'input shape')
 
         return out
 
@@ -69,10 +70,10 @@ class ImageEmbedder(Embedder[ImageT]):
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
             out_dummy = self._forward_impl(inp_dummy)
-            assert out_dummy.shape == (output_size,)
+            assert_with_message(out_dummy.shape, (output_size,), 'shape')
 
             inp_reconstucted = self._backward_impl(out_dummy)
-            assert isinstance(inp_reconstucted, self.elem_type)
+            assert_isinstance_with_message(inp_reconstucted, self.elem_type)
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)

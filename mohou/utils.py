@@ -2,7 +2,7 @@ import logging
 from logging import Logger
 import os
 import time
-from typing import List, Iterator, TypeVar
+from typing import Any, List, Iterator, TypeVar, Union, Type
 
 import torch
 from torch.utils.data import Dataset, random_split
@@ -57,3 +57,19 @@ def create_default_logger(project_name: str, prefix: str) -> Logger:
         os.unlink(log_sym_name)
     os.symlink(log_file_name, log_sym_name)
     return logger
+
+
+AnyT = TypeVar('AnyT', bound=Any)
+
+
+def assert_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name: str):
+    message = '{0}: given {1}, exepcted {2}'.format(elem_name, given, expected)
+    if isinstance(expected, list):
+        assert given in expected, message
+    else:
+        assert given == expected, message
+
+
+def assert_isinstance_with_message(given: Any, expected: Type):
+    message = '{0}: given {1}, exepcted {2}'.format('not isinstance', given, expected)
+    assert isinstance(given, expected), message
