@@ -54,7 +54,6 @@ class PrimitiveElementBase(ElementBase):
     _data: np.ndarray  # cmposition over inheritance!
 
     def __init__(self, data: np.ndarray) -> None:
-        assert isinstance(data, np.ndarray)
         self._data = np.array(data)
 
     @property
@@ -75,7 +74,7 @@ class VectorBase(PrimitiveElementBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert data.ndim == 1
+        self._data.ndim == 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data).float()
@@ -117,8 +116,10 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert data.ndim == 3
-        assert np.array(data).shape[2] == self.channel(), 'channel does not match'
+        assert self._data.ndim == 3
+        channel = self._data.shape[2]
+        message = 'channel is {} but expected {}'.format(channel, self.channel())
+        assert channel == self.channel(), message
 
     @classmethod
     def channel(cls) -> int:
@@ -127,6 +128,10 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
 class RGBImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 3
+
+    def __init__(self, data: np.ndarray) -> None:
+        super().__init__(data)
+        assert self._data.dtype.type == np.uint8, 'np.uint8 is expected'
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self._data).float()
@@ -151,6 +156,10 @@ class RGBImage(PrimitiveImageBase):
 
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
+
+    def __init__(self, data: np.ndarray) -> None:
+        super().__init__(data)
+        assert self._data.dtype.type in (np.float16, np.float32, np.float64, np.float128)
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data.transpose((2, 0, 1))).contiguous().float()
