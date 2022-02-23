@@ -82,15 +82,10 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
         return string
 
 
-class RGBAngelVectorEmbeddingRule(EmbeddingRule):
-
-    def __init__(self, image_embedder: ImageEmbedder, identical_embedder: IdenticalEmbedder):
-        self[RGBImage] = image_embedder
-        self[AngleVector] = identical_embedder
-
-
-class RGBDAngelVectorEmbeddingRule(EmbeddingRule):
-
-    def __init__(self, image_embedder: ImageEmbedder, identical_embedder: IdenticalEmbedder):
-        self[RGBDImage] = image_embedder
-        self[AngleVector] = identical_embedder
+def create_embedding_rule(
+        image_embedder: ImageEmbedder,
+        identical_embedder: IdenticalEmbedder) -> EmbeddingRule:
+    rule = EmbeddingRule()
+    rule[image_embedder.elem_type] = image_embedder
+    rule[identical_embedder.elem_type] = identical_embedder
+    return rule
