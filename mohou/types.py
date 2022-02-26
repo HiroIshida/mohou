@@ -14,7 +14,7 @@ from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.utils import split_sequence
-from mohou.utils import assert_with_message
+from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
 PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
@@ -56,6 +56,9 @@ class PrimitiveElementBase(ElementBase):
     _data: np.ndarray  # cmposition over inheritance!
 
     def __init__(self, data: np.ndarray) -> None:
+        assert_isinstance_with_message(data, np.ndarray)
+        assert not np.isnan(data).any()
+        assert not np.isinf(data).any()
         self._data = np.array(data)
 
     @property

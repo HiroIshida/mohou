@@ -131,7 +131,7 @@ class BulletManager(object):
         for i in range(30):  # augument the data (after reaching)
             rgbimg_seq.append(RGBImage(rgb))
             dimg_seq.append(DepthImage(depth))
-            angles_seq.append(AngleVector(angles_seq[-1]))
+            angles_seq.append(angles_seq[-1])
 
         return rgbimg_seq, dimg_seq, angles_seq
 
