@@ -14,7 +14,7 @@ import torchvision
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
-from mohou.utils import split_sequence
+from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
@@ -192,12 +192,13 @@ class DepthImage(PrimitiveImageBase):
         return cls(dummy_array)
 
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
-        arr = self._data
-        cmap = plt.get_cmap('binary')
-        min_val, max_val = np.min(arr), np.max(arr)
-        arr_regularized = (arr - min_val) / (max_val - min_val)
-        arr_rgb = cmap(arr_regularized)[:, :, 0, :3].astype(np.uint8)
-        return RGBImage(arr_rgb)
+        fig = plt.figure()
+        ax = plt.subplot(1, 1, 1)
+        ax.imshow(self._data[:, :, 0])
+        fig.canvas.draw()
+        arr = canvas_to_ndarray(fig)
+        plt.close(fig)
+        return RGBImage(arr)
 
 
 class MixedImageBase(ImageBase):

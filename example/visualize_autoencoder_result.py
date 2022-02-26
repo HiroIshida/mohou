@@ -4,7 +4,6 @@ import random
 from typing import Type
 
 import matplotlib.pyplot as plt
-import torchvision
 
 from mohou.dataset import AutoEncoderDataset
 from mohou.file import get_subproject_dir
@@ -25,14 +24,13 @@ def debug_visualize_reconstruction(
         image_torch = dataset[idx].unsqueeze(dim=0)
         image_torch_reconstructed = tcache.best_model(image_torch)
 
-        to_pil_image = torchvision.transforms.ToPILImage()
-        image = to_pil_image(image_torch.squeeze())
-        image_reconstructed = to_pil_image(image_torch_reconstructed.squeeze())
+        img = dataset.image_type.from_tensor(image_torch.squeeze(dim=0))
+        img_reconstructed = dataset.image_type.from_tensor(image_torch_reconstructed.squeeze(dim=0))
 
         fig, (ax1, ax2) = plt.subplots(1, 2)
         fig.suptitle('left: original, right: reconstructed')
-        ax1.imshow(image)
-        ax2.imshow(image_reconstructed)
+        ax1.imshow(img.to_rgb()._data)
+        ax2.imshow(img_reconstructed.to_rgb()._data)
         save_dir = get_subproject_dir(project_name, 'autoencoder_result')
 
         full_file_name = os.path.join(save_dir, 'result{}.png'.format(i))

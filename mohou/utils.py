@@ -4,6 +4,8 @@ import os
 import time
 from typing import Any, List, Iterator, TypeVar, Union, Type
 
+import numpy as np
+import PIL
 import torch
 from torch.utils.data import Dataset, random_split
 
@@ -73,3 +75,14 @@ def assert_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name
 def assert_isinstance_with_message(given: Any, expected: Type):
     message = '{0}: given {1}, exepcted {2}'.format('not isinstance', given, expected)
     assert isinstance(given, expected), message
+
+
+def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
+    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    if resize_pixel is None:
+        return data
+    img = PIL.Image.fromarray(data)
+    img_resized = img.resize(resize_pixel)
+    data_resized = np.asarray(img_resized, dtype=np.uint8)
+    return data_resized
