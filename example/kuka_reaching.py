@@ -99,18 +99,24 @@ class BulletManager(object):
             cameraTargetPosition=[0.3, 0, 0],
             cameraUpVector=[0, 1, 0])
 
+        near = 0.01
+        far = 5.1
         projectionMatrix = pb.computeProjectionMatrixFOV(
             fov=45.0,
             aspect=1.0,
-            nearVal=0.01,
-            farVal=5.1)
+            nearVal=near,
+            farVal=far)
 
-        width, height, rgbImg, depthImg, segImg = pb.getCameraImage(
+        width, height, rgb, depth, _ = pb.getCameraImage(
             width=resolution,
             height=resolution,
             viewMatrix=viewMatrix,
             projectionMatrix=projectionMatrix)
-        return rgbImg, depthImg
+
+        # https://github.com/bulletphysics/bullet3/blob/267f983498c5a249838cd614a01c627b3adda293/examples/pybullet/examples/getCameraImageTest.py#L49
+        depth = far * near / (far - (far - near) * depth)
+        # depth = 2 * far * near / (far + near - (far - near) * (2 * depth - 1))
+        return rgb, depth
 
     def kinematic_simulate(self, joint_angles_target, N=100, n_pixel=112):
         N_rand = N + np.random.randint(10)
