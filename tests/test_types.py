@@ -1,4 +1,5 @@
 import pytest
+from typing import Type
 
 import numpy as np
 
@@ -8,35 +9,24 @@ from mohou.types import MultiEpisodeChunk
 
 
 def test_elements():
+
     with pytest.raises(Exception):
         VectorBase(np.zeros(3))
     with pytest.raises(Exception):
         PrimitiveImageBase(np.zeros((3, 3)))
 
 
-def test_rdb_image():
-    rgb = RGBImage.dummy_from_shape((100, 100))
-    tensor = rgb.to_tensor()
-    assert list(tensor.shape) == [3, 100, 100]
+def test_rdb_image_creation():
 
     with pytest.raises(AssertionError):
         RGBImage(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
     with pytest.raises(AssertionError):
         RGBImage(np.random.randn(100, 100, 3))
 
-    rgb = RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
-    rgb2 = RGBImage.from_tensor(rgb.to_tensor())
-    np.testing.assert_almost_equal(rgb._data, rgb2._data)
-
-    with pytest.raises(AssertionError):
-        np.testing.assert_almost_equal(rgb.randomize()._data, rgb.randomize()._data, decimal=5)
+    RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
 
 
-def test_depth_image():
-    dimage = DepthImage.dummy_from_shape((100, 100))
-    for _ in range(10):
-        tensor = dimage.to_tensor()
-        assert list(tensor.shape) == [1, 100, 100]
+def test_depth_image_creation():
 
     with pytest.raises(AssertionError):
         DepthImage(np.random.randn(100, 100))
@@ -45,9 +35,17 @@ def test_depth_image():
     with pytest.raises(AssertionError):
         DepthImage(np.random.randint(0, 255, (100, 100, 1)))
 
-    depth = DepthImage(np.random.randn(100, 100, 1))
-    depth2 = DepthImage.from_tensor(depth.to_tensor())
-    np.testing.assert_almost_equal(depth._data, depth2._data, decimal=5)
+    DepthImage(np.random.randn(100, 100, 1))
+
+
+@pytest.mark.parametrize('T', [RGBImage, DepthImage])
+def test_images(T: Type[PrimitiveImageBase]):
+    img = T.dummy_from_shape((100, 100))
+    img2 = T.from_tensor(img.to_tensor())
+    np.testing.assert_almost_equal(img._data, img2._data, decimal=5)
+
+    with pytest.raises(AssertionError):
+        np.testing.assert_almost_equal(img.randomize()._data, img.randomize()._data, decimal=5)
 
 
 def test_rdbd_image():
