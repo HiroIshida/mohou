@@ -40,10 +40,12 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
+    parser.add_argument('-n', type=int, default=150, help='number of visualization')
     parser.add_argument('-image', type=str, default='RGBImage', help='image type')
 
     args = parser.parse_args()
     project_name = args.pn
+    n_prop = args.n
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         propagator.feed(ElementDict(elem_tuple))
     print("finish lstm propagation")
 
-    elem_dict_list = propagator.predict(150)
+    elem_dict_list = propagator.predict(n_prop)
     pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
 
     print("adding text to images...")
