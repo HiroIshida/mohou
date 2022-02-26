@@ -37,7 +37,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         return len(self.image_list)
 
     def __getitem__(self, idx) -> torch.Tensor:
-        return self.image_list[idx].to_tensor()
+        return self.image_list_rand[idx].to_tensor()
 
     def update_dataset(self):
         logger.info('randomizing data...')
