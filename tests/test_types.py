@@ -19,12 +19,17 @@ def test_rdb_image():
     tensor = rgb.to_tensor()
     assert list(tensor.shape) == [3, 100, 100]
 
-    RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
-
     with pytest.raises(AssertionError):
         RGBImage(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
     with pytest.raises(AssertionError):
         RGBImage(np.random.randn(100, 100, 3))
+
+    rgb = RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
+    rgb2 = RGBImage.from_tensor(rgb.to_tensor())
+    np.testing.assert_almost_equal(rgb._data, rgb2._data)
+
+    with pytest.raises(AssertionError):
+        np.testing.assert_almost_equal(rgb.randomize()._data, rgb.randomize()._data, decimal=5)
 
 
 def test_depth_image():
@@ -33,7 +38,6 @@ def test_depth_image():
         tensor = dimage.to_tensor()
         assert list(tensor.shape) == [1, 100, 100]
 
-    DepthImage(np.random.randn(100, 100, 1))
     with pytest.raises(AssertionError):
         DepthImage(np.random.randn(100, 100))
     with pytest.raises(AssertionError):
@@ -41,11 +45,19 @@ def test_depth_image():
     with pytest.raises(AssertionError):
         DepthImage(np.random.randint(0, 255, (100, 100, 1)))
 
+    depth = DepthImage(np.random.randn(100, 100, 1))
+    depth2 = DepthImage.from_tensor(depth.to_tensor())
+    np.testing.assert_almost_equal(depth._data, depth2._data, decimal=5)
+
 
 def test_rdbd_image():
     rgbd = RGBDImage.dummy_from_shape((100, 100))
     tensor = rgbd.to_tensor()
     assert list(tensor.shape) == [4, 100, 100]
+
+    rgbd2 = RGBDImage.from_tensor(rgbd.to_tensor())
+    for im1, im2 in zip(rgbd.images, rgbd2.images):
+        np.testing.assert_almost_equal(im1._data, im2._data, decimal=5)
 
 
 def test_episode_data_creation():
