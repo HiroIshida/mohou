@@ -167,18 +167,23 @@ class RGBImage(PrimitiveImageBase):
 
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
+    _max_value: ClassVar[float] = 4.0
+    _min_value: ClassVar[float] = -1.0
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
         assert_with_message(self._data.dtype.type, [np.float16, np.float32, np.float64], 'numpy type')
 
     def to_tensor(self) -> torch.Tensor:
-        return torch.from_numpy(self._data.transpose((2, 0, 1))).contiguous().float()
+        data_cutoff = np.maximum(np.minimum(self._data, self._max_value), self._min_value)
+        data_normalized = (data_cutoff - self._min_value) / (self._max_value - self._min_value)
+        return torch.from_numpy(data_normalized.transpose((2, 0, 1))).contiguous().float()
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
-        array = tensor.detach().clone().numpy()
-        return cls(array.transpose((1, 2, 0)))
+        data = tensor.detach().clone().numpy().transpose((1, 2, 0))
+        data_denormalized = data * (cls._max_value - cls._min_value) + cls._min_value
+        return cls(data_denormalized)
 
     def randomize(self) -> 'DepthImage':
         assert _f_randomize_depth_image is not None
@@ -188,7 +193,7 @@ class DepthImage(PrimitiveImageBase):
     @classmethod
     def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'DepthImage':
         shape = (shape2d[0], shape2d[1], cls.channel())
-        dummy_array = np.random.randn(*shape)
+        dummy_array = np.random.rand(*shape)
         return cls(dummy_array)
 
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
