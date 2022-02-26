@@ -5,10 +5,12 @@ import operator
 import pickle
 from abc import abstractmethod
 from functools import reduce
-from typing import Any, Dict, Generic, List, TypeVar
+from typing import Any, Dict, Generic, List, TypeVar, Optional
 
 import torch
 import torch.nn as nn
+
+from mohou.utils import detect_device
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +53,16 @@ ModelConfigT = TypeVar('ModelConfigT', bound=ModelConfigBase)
 
 
 class ModelBase(nn.Module, Generic[ModelConfigT]):
-    device: torch.device
     config: ModelConfigT
+    device: torch.device
 
-    def __init__(self, device: torch.device, config: ModelConfigT):
+    def __init__(self, config: ModelConfigT, device: Optional[torch.device] = None):
         super().__init__()
         self._setup_from_config(config)
+
+        if device is None:
+            device = detect_device()
+
         self.device = device
         self.config = config
         logger.info('model name: {}'.format(self.__class__.__name__))
