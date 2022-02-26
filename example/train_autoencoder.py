@@ -6,7 +6,7 @@ from mohou.model import AutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import ImageBase, MultiEpisodeChunk, get_element_type
-from mohou.utils import create_default_logger, detect_device
+from mohou.utils import create_default_logger
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -29,6 +29,6 @@ if __name__ == '__main__':
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type)
 
     tcache = TrainCache[AutoEncoder](project_name, timer_period=timer_period)
-    model = AutoEncoder(detect_device(), AutoEncoderConfig(image_type=image_type))  # type: ignore
+    model = AutoEncoder(AutoEncoderConfig(image_type=image_type))  # type: ignore
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     train(model, dataset, tcache, config=tconfig)

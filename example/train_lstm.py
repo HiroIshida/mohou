@@ -9,7 +9,7 @@ from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import create_embedding_rule
-from mohou.utils import create_default_logger, detect_device
+from mohou.utils import create_default_logger
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule)
 
-    lstm_model = LSTM(detect_device(), LSTMConfig(embed_rule.dimension))
+    lstm_model = LSTM(LSTMConfig(embed_rule.dimension))
 
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     tcache = TrainCache[LSTM](project_name, timer_period=timer_period)
