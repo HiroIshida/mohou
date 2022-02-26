@@ -47,11 +47,15 @@ def test_images(T: Type[PrimitiveImageBase]):
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(img.randomize()._data, img.randomize()._data, decimal=5)
 
+    img.to_rgb()
+
 
 def test_rdbd_image():
     rgbd = RGBDImage.dummy_from_shape((100, 100))
     tensor = rgbd.to_tensor()
     assert list(tensor.shape) == [4, 100, 100]
+
+    rgbd.to_rgb()
 
     rgbd2 = RGBDImage.from_tensor(rgbd.to_tensor())
     for im1, im2 in zip(rgbd.images, rgbd2.images):

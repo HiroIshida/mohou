@@ -7,6 +7,7 @@ import random
 from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torchvision
 
@@ -115,6 +116,10 @@ class ImageBase(ElementBase):
         # https://stackoverflow.com/questions/71214808/
         pass
 
+    @abstractmethod
+    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+        pass
+
 
 class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
@@ -156,6 +161,9 @@ class RGBImage(PrimitiveImageBase):
         dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
         return cls(dummy_array)
 
+    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+        return self
+
 
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
@@ -182,6 +190,14 @@ class DepthImage(PrimitiveImageBase):
         shape = (shape2d[0], shape2d[1], cls.channel())
         dummy_array = np.random.randn(*shape)
         return cls(dummy_array)
+
+    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+        arr = self._data
+        cmap = plt.get_cmap('binary')
+        min_val, max_val = np.min(arr), np.max(arr)
+        arr_regularized = (arr - min_val) / (max_val - min_val)
+        arr_rgb = cmap(arr_regularized)[:, :, 0, :3].astype(np.uint8)
+        return RGBImage(arr_rgb)
 
 
 class MixedImageBase(ImageBase):
@@ -240,6 +256,12 @@ class MixedImageBase(ImageBase):
 
 class RGBDImage(MixedImageBase):
     image_types = [RGBImage, DepthImage]
+
+    def to_rgb(self, *args, **kwargs) -> RGBImage:
+        for image in self.images:
+            if isinstance(image, RGBImage):
+                return image
+        assert False
 
 
 class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):

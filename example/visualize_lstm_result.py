@@ -3,6 +3,9 @@ import os
 from typing import Type
 
 from moviepy.editor import ImageSequenceClip
+import matplotlib.pyplot as plt
+import numpy as np
+import PIL
 
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import create_embedding_rule
@@ -13,7 +16,26 @@ from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, ImageBase, get_element_type
 from mohou.model import AutoEncoder, LSTM
 
-from utils import add_text_to_image
+
+def add_text_to_image(image: ImageBase, text: str, color: str):
+
+    def canvas_to_ndarray(fig, resize_pixel=None):
+        data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        if resize_pixel is None:
+            return data
+        img = PIL.Image.fromarray(data)
+        img_resized = img.resize(resize_pixel)
+        data_resized = np.asarray(img_resized)
+        return data_resized
+
+    fig, ax = plt.subplots()
+    ax.imshow(image.to_rgb()._data)
+    ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
+    fig.canvas.draw()
+    fig.canvas.flush_events()
+    return canvas_to_ndarray(fig)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
