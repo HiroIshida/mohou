@@ -25,9 +25,9 @@ def configure_rgb_image_randomizer(rgb_shift_limit=40):
 def configure_depth_image_randomizer(depth_shift_std=0.3, depth_noise_std=0.01):
 
     def randomize_depth_image(image_arr: np.ndarray):
-        shift = np.random.randn() * depth_shift_std
-        noise = np.random.randn(*image_arr.shape)
-        image_arr += (shift + noise)
+        shift = np.random.randn() * depth_shift_std ** 2
+        noise = np.random.randn(*image_arr.shape) * depth_noise_std ** 2
+        image_arr += (noise + shift)
         return image_arr
 
     global _f_randomize_depth_image
