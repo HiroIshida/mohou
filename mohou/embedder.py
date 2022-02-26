@@ -78,14 +78,14 @@ class ImageEmbedder(Embedder[ImageT]):
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
         assert self.func_forward is not None
-        out_tensor = self.func_forward(inp_tensor).squeeze()
+        out_tensor = self.func_forward(inp_tensor).squeeze(dim=0)
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
 
     def _backward_impl(self, inp: np.ndarray) -> ImageT:
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
         assert self.func_backward is not None
-        out_tensor = self.func_backward(inp_tensor).squeeze()
+        out_tensor = self.func_backward(inp_tensor).squeeze(dim=0)
         out: ImageT = self.elem_type.from_tensor(out_tensor)
         return out
 
