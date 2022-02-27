@@ -2,16 +2,17 @@
 
 This package implements imitation learning trainer and executor using pytorch. Currently the library targets autoencoder-lstm-type behavior cloning.
 
-## Tutorial demo
+## Tutorial demo (vision-based reaching task)
 
 <img src="https://user-images.githubusercontent.com/38597814/155882282-f40af02b-99aa-41b3-bd43-fe7b7d0c2d96.gif" width="30%" /><img src="https://user-images.githubusercontent.com/38597814/155882252-5739fa16-baf7-4a26-b88f-24e106ea0dd1.gif" width="30%" />
 
 left: teaching sample (`~/.mohou/pipeline_test_RGBD/sample.gif`)
+
 right: testing sample (`~/.mohou/pipeline_test_RGBD/feedback_simulation.gif`)
 
-Running [`pipeline/demo.sh`](/pipeline/demo.sh) is a good first step. Note that a key concept of this library is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. 
+Running [`pipeline/demo.sh`](/pipeline/demo.sh) is a good first step. Note that GPU is necessary in practice, though the software works on cpu. Result of `pipeline/demo.sh` is available in [google drive](https://drive.google.com/drive/u/0/folders/1ngozVlXah1eBlduydF5uJCA7tRg1EiRb). 
 
-For example, after running `demo_batch RGBD` in [`pipeline/demo.sh`](/pipeline/demo.sh), we can confirm that following directly sturecture under the corresponding project directory.
+A key concept of this library is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. For example, after running `demo_batch RGBD` in [`pipeline/demo.sh`](/pipeline/demo.sh), we can confirm that following directly sturecture under the corresponding project directory.
 ```
 h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
 /home/h-ishida/.mohou/pipeline_test_RGBD/
@@ -38,7 +39,7 @@ h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
     └── TrainCache-LSTM.pkl.png
 ```
 
-<details>
+<details open>
 <summary> detail of each component of demo.sh </summary>
 
 - `kuka_reaching.py` creates `MultiEpisodeChunk.pkl` which consists of `n` sample trajectories that reaches to the box in the image (stored in `~/.mohou/{project_name}/). The datachunk consists of sequences of `RGBImage` and `DepthImage` and `AngleVector`. Also, one of the trajectory image in the chunk is visualized as `~/.mohou/{project_name}/sample.gif`.
@@ -67,7 +68,7 @@ Besides parameter/training epoch tuning, to applyig this software to your own pr
 among the `pipeline/demo.sh`.
 
 ### Data collection
-Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` is stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) can be used.
+Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` are stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) such as `AngleVector` plus `RGBImage` or `AngleVector` plut `DepthImage` can be used. You can also define custom type see [this](https://github.com/HiroIshida/mohou#define-custom-element-type).
 ```python
 import numpy as np
 from mohou.types import RGBImage, DepthImage, AngleVector
@@ -79,8 +80,8 @@ def create_episode_data():
     depth_seq = ElementSequence[DepthImage]()
     av_seq = ElementSequence[AngleVector]()
     for _ in range(n_step):
-        rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
-        depth = DepthImage(np.random.randn(224, 224, 1))
+        rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))  # replace this by actual data
+        depth = DepthImage(np.random.randn(224, 224, 1))  # replace this by actual data
         av = AngleVector(np.random.randn(7))  # replace this by actual data
 
         rgb_seq.append(rgb)
@@ -94,7 +95,33 @@ chunk.dump('dummy_project')  # dumps to ~/.mohou/dummy_project/MultiEpisodeChunk
 ```
 
 ### Execution
-*under construction*
+Typical code for execution using learned propgatos is as follows. Note that type-hinting here is just for explanation and not necessarily required.
+```python
+from mohou.types import ElementDict, RGBImage, AngleVector
+from mohou.propagator import Propagator, create_default_propagator
+
+# Please change project_name and n_angle_vector 
+propagator: Propagator = create_default_propagator('your_project_name', n_angle_vector=7)
+
+while True:
+    # Observation using real/simulated robot
+    rgb: RGBImage = obtain_rgb_image()  # define by yourself
+    av: AngleVector = obtain_angle_vector()  # define by yourself
+    elem_dict = ElementDict((rgb, av))
+
+    propagator.feed(elem_dict)
+
+    # If your fed elem_dict contains RGBImage and AngleVector, then propagated
+    # elem_dict_pred also has RGBImage and AngleVector
+    elem_dict_pred: ElementDict = propagator.predict(n_prop=1)[0]
+
+    # Get specific element
+    rgb_pred = elem_dict_pred[AngleVector]
+    av_pred = elem_dict_pred[RGBImage]
+
+    # send command
+    send_next_angle_vector(av_pred)  # define by yourself
+```
 
 ## Define custom element type
 *under construction*
