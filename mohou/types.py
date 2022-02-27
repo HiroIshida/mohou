@@ -12,7 +12,7 @@ import torch
 import torchvision
 
 from mohou.constant import N_DATA_INTACT
-from mohou.file import load_object
+from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
@@ -413,6 +413,9 @@ class MultiEpisodeChunk:
     @classmethod
     def load(cls, project_name: str) -> 'MultiEpisodeChunk':
         return load_object(cls, project_name)
+
+    def dump(self, project_name: str) -> None:
+        dump_object(self, project_name)
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)

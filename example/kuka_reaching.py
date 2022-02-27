@@ -14,7 +14,7 @@ import pybullet_data
 import tinyfk
 import tqdm
 
-from mohou.file import dump_object, get_project_dir
+from mohou.file import get_project_dir
 from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisodeChunk,
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator, create_default_propagator
@@ -244,7 +244,7 @@ if __name__ == '__main__':
                 with open(os.path.join(td, file_name), 'rb') as f:
                     data_list.append(pickle.load(f))
             chunk = MultiEpisodeChunk(data_list)
-            dump_object(chunk, project_name)
+            chunk.dump(project_name)
 
             # For debugging
             img_seq = chunk[0].filter_by_type(RGBImage)
