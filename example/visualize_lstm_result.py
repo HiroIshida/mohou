@@ -5,14 +5,10 @@ from typing import Type
 from moviepy.editor import ImageSequenceClip
 import matplotlib.pyplot as plt
 
-from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import create_embedding_rule
 from mohou.file import get_subproject_dir
-from mohou.propagator import Propagator
-from mohou.trainer import TrainCache
+from mohou.propagator import create_default_propagator
 from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, ImageBase, get_element_type
-from mohou.model import AutoEncoder, LSTM
 from mohou.utils import canvas_to_ndarray
 
 
@@ -38,15 +34,7 @@ if __name__ == '__main__':
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-
-    tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-    tcach_lstm = TrainCache.load(project_name, LSTM)
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
-
-    av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
-    embed_rule = create_embedding_rule(image_embed_func, av_idendical_func)
-
-    propagator = Propagator(tcach_lstm.best_model, embed_rule)
+    propagator = create_default_propagator(project_name, chunk.get_element_shape(AngleVector)[0])
 
     episode_data = chunk[0]
     n_feed = 10
