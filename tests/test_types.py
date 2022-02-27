@@ -3,7 +3,9 @@ from typing import Type
 
 import numpy as np
 
-from mohou.types import AngleVector, ElementSequence, RGBDImage, RGBImage, DepthImage, VectorBase, PrimitiveImageBase
+from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage, VectorBase, PrimitiveImageBase
+from mohou.types import ElementDict
+from mohou.types import ElementSequence
 from mohou.types import EpisodeData
 from mohou.types import MultiEpisodeChunk
 
@@ -60,6 +62,15 @@ def test_rdbd_image():
     rgbd2 = RGBDImage.from_tensor(rgbd.to_tensor())
     for im1, im2 in zip(rgbd.images, rgbd2.images):
         np.testing.assert_almost_equal(im1._data, im2._data, decimal=5)
+
+
+def test_element_dict():
+    rgb = RGBImage.dummy_from_shape((100, 100))
+    depth = DepthImage.dummy_from_shape((100, 100))
+    dic = ElementDict([rgb, depth])
+
+    assert isinstance(dic[RGBImage], RGBImage)
+    assert isinstance(dic[RGBDImage], RGBDImage)
 
 
 def test_episode_data_creation():
