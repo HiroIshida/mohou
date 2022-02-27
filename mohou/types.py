@@ -20,7 +20,7 @@ from mohou.utils import assert_with_message, assert_isinstance_with_message
 ElementT = TypeVar('ElementT', bound='ElementBase')
 PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
 PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
-MixedImageT = TypeVar('MixedImageT', bound='MixedImageBase')
+CompositeImageT = TypeVar('CompositeImageT', bound='CompositeImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
 
@@ -206,7 +206,7 @@ class DepthImage(PrimitiveImageBase):
         return RGBImage(arr)
 
 
-class MixedImageBase(ImageBase):
+class CompositeImageBase(ImageBase):
     image_types: ClassVar[List[Type[PrimitiveImageBase]]]
     images: List[PrimitiveImageBase]
     _shape: Tuple[int, int, int]
@@ -229,7 +229,7 @@ class MixedImageBase(ImageBase):
     def shape(self) -> Tuple[int, int, int]:
         return self._shape
 
-    def randomize(self: MixedImageT) -> MixedImageT:
+    def randomize(self: CompositeImageT) -> CompositeImageT:
         rand = copy.deepcopy(self)
         for i in range(len(rand.images)):
             rand.images[i] = self.images[i].randomize()
@@ -240,7 +240,7 @@ class MixedImageBase(ImageBase):
         return sum([t.channel() for t in cls.image_types])
 
     @classmethod
-    def from_tensor(cls: Type[MixedImageT], tensor: torch.Tensor) -> MixedImageT:
+    def from_tensor(cls: Type[CompositeImageT], tensor: torch.Tensor) -> CompositeImageT:
         channel_list = [t.channel() for t in cls.image_types]
         images = []
         for image_type, sub_tensor in zip(cls.image_types, split_sequence(tensor, channel_list)):
@@ -249,7 +249,7 @@ class MixedImageBase(ImageBase):
         return cls(images)
 
     @classmethod
-    def dummy_from_shape(cls: Type[MixedImageT], shape2d: Tuple[int, int]) -> MixedImageT:
+    def dummy_from_shape(cls: Type[CompositeImageT], shape2d: Tuple[int, int]) -> CompositeImageT:
         images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
         return cls(images)
 
@@ -260,7 +260,7 @@ class MixedImageBase(ImageBase):
         assert False
 
 
-class RGBDImage(MixedImageBase):
+class RGBDImage(CompositeImageBase):
     image_types = [RGBImage, DepthImage]
 
     def to_rgb(self, *args, **kwargs) -> RGBImage:
@@ -310,14 +310,14 @@ class ElementSequence(list, Generic[ElementT]):
         return self.__getitem__(0).shape
 
 
-def create_mixed_image_sequence(mixed_image_type: Type[MixedImageT], elem_seqs: List[ElementSequence]) -> ElementSequence[MixedImageT]:
-    # TODO(HiroIshida) extend this to 'mixed_element_sequence'
+def create_composite_image_sequence(composite_image_type: Type[CompositeImageT], elem_seqs: List[ElementSequence]) -> ElementSequence[CompositeImageT]:
+    # TODO(HiroIshida) extend this to 'composite_element_sequence'
     n_len_seq = len(elem_seqs[0])
-    mixed_image_seq = ElementSequence[MixedImageT]([])
+    composite_image_seq = ElementSequence[CompositeImageT]([])
     for i in range(n_len_seq):
-        mixed_image = mixed_image_type([seq[i] for seq in elem_seqs])
-        mixed_image_seq.append(mixed_image)
-    return mixed_image_seq
+        composite_image = composite_image_type([seq[i] for seq in elem_seqs])
+        composite_image_seq.append(composite_image)
+    return composite_image_seq
 
 
 class EpisodeData:
@@ -353,9 +353,9 @@ class EpisodeData:
 
         if issubclass(elem_type, PrimitiveElementBase):
             return self.filter_by_primitive_type(elem_type)  # type: ignore
-        elif issubclass(elem_type, MixedImageBase):
+        elif issubclass(elem_type, CompositeImageBase):
             seqs = [self.filter_by_primitive_type(t) for t in elem_type.image_types]
-            return create_mixed_image_sequence(elem_type, seqs)  # type: ignore
+            return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False
 

@@ -2,7 +2,7 @@ import numpy as np
 from typing import Type, List, Dict
 
 from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
-from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, MixedImageBase
+from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
 from mohou.utils import assert_with_message
 
 
@@ -52,7 +52,7 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
             for elem_type in elem_type_list:
                 if issubclass(elem_type, PrimitiveElementBase):
                     primitve_elem_type_list.append(elem_type)
-                elif issubclass(elem_type, MixedImageBase):
+                elif issubclass(elem_type, CompositeImageBase):
                     primitve_elem_type_list.extend(elem_type.image_types)
             return set(primitve_elem_type_list)
 
