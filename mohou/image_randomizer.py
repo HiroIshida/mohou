@@ -2,8 +2,6 @@ import albumentations as al
 import numpy as np
 from typing import Optional, Callable
 
-# Becuase python does not have multiple-dispach, considering extensability
-# we have to adopt this anti-pattern.
 RandImageFunc = Optional[Callable[[np.ndarray], np.ndarray]]
 _f_randomize_rgb_image: RandImageFunc = None
 _f_randomize_depth_image: RandImageFunc = None

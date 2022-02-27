@@ -112,8 +112,6 @@ class ImageBase(ElementBase):
     @classmethod
     @abstractmethod
     def dummy_from_shape(cls: Type[ImageT], shape2d: Tuple[int, int]) -> ImageT:
-        # TODO(HiroIshida) I'm currently asking here
-        # https://stackoverflow.com/questions/71214808/
         pass
 
     @abstractmethod
