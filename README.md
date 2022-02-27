@@ -59,13 +59,41 @@ h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
 Also note that logs by `train_autoencoder.py` and `train_lstm.py` will be stored in `~/.mohou/{project_name}/log/`.
 </details>
 
+
 ## Applying to your own project
 Besides parameter/training epoch tuning, to applyig this software to your own project you must replace 
-- `kuka_reaching.py` by your own data creation program using real robot (or simulated model)
-- `kuka_reaching.py --feedback` by real robot execution program
-
+- `kuka_reaching.py` (data collection) by your own data creation program using real robot (or simulated model)
+- `kuka_reaching.py --feedback` (execution) by real robot execution program
 among the `pipeline/demo.sh`.
 
+### Data collection
+Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` is stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) can be used.
+```python
+import numpy as np
+from mohou.types import RGBImage, DepthImage, AngleVector
+from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
+
+def create_episode_data():
+    n_step = 100
+    rgb_seq = ElementSequence[RGBImage]()
+    depth_seq = ElementSequence[DepthImage]()
+    av_seq = ElementSequence[AngleVector]()
+    for _ in range(n_step):
+        rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
+        depth = DepthImage(np.random.randn(224, 224, 1))
+        av = AngleVector(np.random.randn(7))  # replace this by actual data
+
+        rgb_seq.append(rgb)
+        depth_seq.append(depth)
+        av_seq.append(av)
+    return EpisodeData((rgb_seq, depth_seq, av_seq))
+
+n_episode = 20
+chunk = MultiEpisodeChunk([create_episode_data() for _ in range(n_episode)])
+chunk.dump('dummy_project')  # dumps to ~/.mohou/dummy_project/MultiEpisodeChunk.pkl
+```
+
+### Execution
 *under construction*
 
 ## Define custom element type
