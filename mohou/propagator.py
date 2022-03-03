@@ -6,7 +6,7 @@ from mohou.constant import CONTINUE_FLAG_VALUE
 from mohou.types import ElementDict, AngleVector
 from mohou.model import AutoEncoder, LSTM
 from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import EmbeddingRule, create_embedding_rule
+from mohou.embedding_rule import EmbeddingRule
 from mohou.trainer import TrainCache
 
 
@@ -57,7 +57,7 @@ def create_default_propagator(project_name: str, n_angle_vector: int):
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
     av_idendical_func = IdenticalEmbedder(AngleVector, n_angle_vector)
 
-    embed_rule = create_embedding_rule(image_embed_func, av_idendical_func)
+    embed_rule = EmbeddingRule.from_embedders([image_embed_func, av_idendical_func])
     propagator = Propagator(tcach_lstm.best_model, embed_rule)
 
     return propagator

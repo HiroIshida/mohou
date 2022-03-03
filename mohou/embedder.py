@@ -8,10 +8,15 @@ from mohou.types import ElementT, ImageT, VectorT
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 
-class Embedder(ABC, Generic[ElementT]):
+class EmbedderBase(ABC, Generic[ElementT]):
     elem_type: Type[ElementT]
     input_shape: Tuple[int, ...]
     output_size: int
+
+    def __init__(self, elem_type: Type[ElementT], input_shape: Tuple[int, ...], output_size: int):
+        self.elem_type = elem_type
+        self.input_shape = input_shape
+        self.output_size = output_size
 
     def forward(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
         assert_isinstance_with_message(inp, self.elem_type)
@@ -46,7 +51,7 @@ class Embedder(ABC, Generic[ElementT]):
         pass
 
 
-class ImageEmbedder(Embedder[ImageT]):
+class ImageEmbedder(EmbedderBase[ImageT]):
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -61,11 +66,9 @@ class ImageEmbedder(Embedder[ImageT]):
             output_size: int,
             check_callables: bool = True
     ):
-        self.elem_type = image_type
+        super().__init__(image_type, input_shape, output_size)
         self.func_forward = func_forward
         self.func_backward = func_backward
-        self.input_shape = input_shape
-        self.output_size = output_size
 
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
@@ -90,13 +93,11 @@ class ImageEmbedder(Embedder[ImageT]):
         return out
 
 
-class IdenticalEmbedder(Embedder[VectorT]):
+class IdenticalEmbedder(EmbedderBase[VectorT]):
     input_shape: Tuple[int]
 
     def __init__(self, vector_type: Type[VectorT], dimension: int):
-        self.elem_type = vector_type
-        self.input_shape = (dimension,)
-        self.output_size = dimension
+        super().__init__(vector_type, (dimension,), dimension)
 
     def _forward_impl(self, inp: VectorT) -> np.ndarray:
         return inp.numpy()

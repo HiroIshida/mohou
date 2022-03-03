@@ -8,7 +8,7 @@ from mohou.types import AngleVector, ImageBase, get_element_type
 from mohou.model import AutoEncoder, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import create_embedding_rule
+from mohou.embedding_rule import EmbeddingRule
 from mohou.utils import create_default_logger
 
 if __name__ == '__main__':
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
 
     av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
-    embed_rule = create_embedding_rule(image_embed_func, av_idendical_func)
+    embed_rule = EmbeddingRule.from_embedders([image_embed_func, av_idendical_func])
 
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule)
 
