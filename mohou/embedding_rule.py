@@ -1,12 +1,12 @@
 import numpy as np
 from typing import Type, List, Dict
 
-from mohou.embedder import Embedder, ImageEmbedder, IdenticalEmbedder
+from mohou.embedder import EmbedderBase
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
 from mohou.utils import assert_with_message
 
 
-class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
+class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
@@ -75,11 +75,9 @@ class EmbeddingRule(Dict[Type[ElementBase], Embedder]):
             string += '\n{0}: {1}'.format(elem_type.__name__, embedder.output_size)
         return string
 
-
-def create_embedding_rule(
-        image_embedder: ImageEmbedder,
-        identical_embedder: IdenticalEmbedder) -> EmbeddingRule:
-    rule = EmbeddingRule()
-    rule[image_embedder.elem_type] = image_embedder
-    rule[identical_embedder.elem_type] = identical_embedder
-    return rule
+    @classmethod
+    def from_embedders(cls, embedder_list: List[EmbedderBase]) -> 'EmbeddingRule':
+        rule = cls()
+        for embedder in embedder_list:
+            rule[embedder.elem_type] = embedder
+        return rule

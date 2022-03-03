@@ -8,7 +8,7 @@ from mohou.types import ElementT, ImageT, VectorT
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 
-class Embedder(ABC, Generic[ElementT]):
+class EmbedderBase(ABC, Generic[ElementT]):
     elem_type: Type[ElementT]
     input_shape: Tuple[int, ...]
     output_size: int
@@ -51,7 +51,7 @@ class Embedder(ABC, Generic[ElementT]):
         pass
 
 
-class ImageEmbedder(Embedder[ImageT]):
+class ImageEmbedder(EmbedderBase[ImageT]):
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -93,7 +93,7 @@ class ImageEmbedder(Embedder[ImageT]):
         return out
 
 
-class IdenticalEmbedder(Embedder[VectorT]):
+class IdenticalEmbedder(EmbedderBase[VectorT]):
     input_shape: Tuple[int]
 
     def __init__(self, vector_type: Type[VectorT], dimension: int):
