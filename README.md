@@ -128,20 +128,11 @@ The following figure show the type hierarchy. In this framework, only the leaf t
 
 <img src="https://user-images.githubusercontent.com/38597814/156465428-35a54445-3c2b-498d-8983-23550d77415c.png" width="60%" />
 
-## Define custom Embedder
-`Embedder` in this framework is to embed elements <: `ElementBase` to 1-dim `np.ndarray`. For example, the built-in embedder `ImageEmbedder` equiped with a map from an image to a vector and a map from a feature vector to an image.
+## Define custom embedder
+`Embedder` in this framework is to embed `element: ElementBase` to 1-dim `np.ndarray`. For example, the built-in embedder `ImageEmbedder` equipped with a map from an image to a vector and a map from a feature vector to an image.
 
-You could define your custom embedder by inheritting `Embedder` and define both methods:
+You could define your custom embedder by inheriting `EmbedderBase` and define both methods:
 - `_forward_impl(self, inp: ElementT) -> np.ndarray`
 - `_backward_impl(self, inp: np.ndarray) -> ElementT`
 
 For example, in the demo we create `ImageEmbedder` from `AutoEncoder` instance, but you could use PCA or other dimension reduction methods.
-
-## Define custom EmbeddingRule
-The `EmbeddingRule` maps `ElementDict: Dict[Type[ElementBase], ElementBase]` to a single 1-dim `np.ndarray` and inverse-map of that to `ElementDict` back again. Defining custom embedding rule is fairly easy. For example, the typical embedding rule creation procedure is as follows:
-```python
-# for each type you concern, define embedder which apply on that type
-rule = EmbeddingRule()
-for element_type, embedder in zip(element_type_list, embedder_list):
-    rule[element_type] = embedder
-```
