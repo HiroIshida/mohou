@@ -27,5 +27,6 @@ setup(
     license='MIT',
     install_requires=install_requires,
     extras_require=extras_require,
-    packages=find_packages(exclude=('tests', 'docs'))
+    packages=find_packages(exclude=('tests', 'docs')),
+    package_data={'mohou': ['py.typed']}
 )
