@@ -329,7 +329,7 @@ def create_composite_image_sequence(composite_image_type: Type[CompositeImageT],
 
 class EpisodeData:
     type_shape_table: OrderedDict[Type[ElementBase], Tuple[int, ...]]
-    sequence_list: Tuple[ElementSequence, ...]
+    sequence_tuple: Tuple[ElementSequence, ...]
 
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
         for sequence in sequence_tuple:
@@ -347,10 +347,10 @@ class EpisodeData:
         assert all_different_type, 'all sequences must have different type'
 
         self.type_shape_table = type_shape_table
-        self.sequence_list = sequence_tuple
+        self.sequence_tuple = sequence_tuple
 
     def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
-        for seq in self.sequence_list:
+        for seq in self.sequence_tuple:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
                 return seq
@@ -367,7 +367,7 @@ class EpisodeData:
             assert False
 
     def __iter__(self):
-        return self.sequence_list.__iter__()
+        return self.sequence_tuple.__iter__()
 
 
 class MultiEpisodeChunk:
