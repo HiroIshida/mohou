@@ -18,7 +18,7 @@ jobs:
             - name: Setup python
               uses: actions/setup-python@v2
               with:
-                  python-version: '3.7'
+                  python-version: '3.6'
 
             - name: pip install this package
               run: |
