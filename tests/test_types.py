@@ -72,6 +72,10 @@ def test_element_dict():
     assert isinstance(dic[RGBImage], RGBImage)
     assert isinstance(dic[RGBDImage], RGBDImage)
 
+    rgbd = RGBDImage.dummy_from_shape((100, 100))
+    dic = ElementDict([rgbd])
+    assert isinstance(dic[RGBDImage], RGBDImage)
+
 
 def test_episode_data_creation():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
