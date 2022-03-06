@@ -4,7 +4,8 @@ import functools
 import operator
 import queue
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
+# NOTE: Generic type is not well compatible with 3.6. Don't use. https://github.com/python/typing/issues/511
+from typing import List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -309,18 +310,17 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, 'type {} not found'.format(type_name)
 
 
-class ElementSequence(list, Generic[ElementT]):
-    # TODO(HiroIshida) make it custom list
+class ElementSequence(list):
 
     @property
     def element_shape(self):
         return self.__getitem__(0).shape
 
 
-def create_composite_image_sequence(composite_image_type: Type[CompositeImageT], elem_seqs: List[ElementSequence]) -> ElementSequence[CompositeImageT]:
+def create_composite_image_sequence(composite_image_type: Type[CompositeImageBase], elem_seqs: List[ElementSequence]) -> ElementSequence:
     # TODO(HiroIshida) extend this to 'composite_element_sequence'
     n_len_seq = len(elem_seqs[0])
-    composite_image_seq = ElementSequence[CompositeImageT]([])
+    composite_image_seq = ElementSequence()
     for i in range(n_len_seq):
         composite_image = composite_image_type([seq[i] for seq in elem_seqs])
         composite_image_seq.append(composite_image)
@@ -349,14 +349,14 @@ class EpisodeData:
         self.type_shape_table = type_shape_table
         self.sequence_tuple = sequence_tuple
 
-    def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
+    def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementBase]) -> ElementSequence:
         for seq in self.sequence_tuple:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
                 return seq
         assert False
 
-    def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
+    def filter_by_type(self, elem_type: Type[ElementBase]) -> ElementSequence:
 
         if issubclass(elem_type, PrimitiveElementBase):
             return self.filter_by_primitive_type(elem_type)  # type: ignore
