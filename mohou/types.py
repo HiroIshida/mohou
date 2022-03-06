@@ -278,14 +278,20 @@ class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
             return super().__getitem__(key)  # type: ignore
+
         elif issubclass(key, CompositeImageBase):
-            images = []
+            if key in self:
+                return super().__getitem__(key)  # type: ignore
+
             # TODO(HiroIshida) somehow, if the following is written in comprehension
             # then we get "TypeError: super(type, obj): obj must be an instance or subtype of type"
+            images = []
             for imt in key.image_types:
                 images.append(super().__getitem__(imt))
             return key(images)  # type: ignore
-        assert False
+
+        else:
+            assert False
 
 
 def get_all_concrete_types() -> List[Type[ElementBase]]:
