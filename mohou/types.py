@@ -4,7 +4,7 @@ import functools
 import operator
 import queue
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
+from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -268,7 +268,7 @@ class RGBDImage(CompositeImageBase):
         assert False
 
 
-class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
+class ElementDict(Dict[Type[ElementBase], ElementBase]):
 
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
@@ -328,7 +328,7 @@ def create_composite_image_sequence(composite_image_type: Type[CompositeImageT],
 
 
 class EpisodeData:
-    type_shape_table: OrderedDict[Type[ElementBase], Tuple[int, ...]]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     sequence_tuple: Tuple[ElementSequence, ...]
 
     def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
@@ -340,7 +340,7 @@ class EpisodeData:
 
         types = [type(seq[0]) for seq in sequence_tuple]
         shapes = [seq[0].shape for seq in sequence_tuple]
-        type_shape_table = OrderedDict({t: s for (t, s) in zip(types, shapes)})
+        type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
 
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_tuple)
@@ -373,7 +373,7 @@ class EpisodeData:
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
-    type_shape_table: OrderedDict[Type[ElementBase], Tuple[int, ...]]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __init__(
             self, data_list: List[EpisodeData],
