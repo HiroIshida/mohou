@@ -220,13 +220,16 @@ class CompositeImageBase(ImageBase):
     image_types: ClassVar[List[Type[PrimitiveImageBase]]]
     images: List[PrimitiveImageBase]
 
-    def __init__(self, images: List[PrimitiveImageBase], check_size=False):
+    def __init__(self, images: List[PrimitiveImageBase], check_size=True):
 
         image_shape = images[0].shape[:2]
 
         if check_size:
             for image in images:
                 assert_with_message(image.shape[:2], image_shape, 'image w-h')
+
+        for image, image_type in zip(images, self.image_types):
+            assert_isinstance_with_message(image, image_type)
 
         self.images = images
 

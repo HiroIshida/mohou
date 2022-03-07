@@ -74,6 +74,17 @@ def test_rdbd_image():
     rgbd.resize((30, 30))
     assert rgbd.shape == (30, 30, rgbd.channel())
 
+    rgb = RGBImage.dummy_from_shape((100, 100))
+    depth = DepthImage.dummy_from_shape((90, 90))  # inconsistent size
+
+    with pytest.raises(AssertionError):
+        RGBDImage([rgb, depth])
+
+    depth = DepthImage.dummy_from_shape((100, 100))  # inconsistent size
+
+    with pytest.raises(AssertionError):  # order mismatch
+        RGBDImage([depth, rgb])
+
 
 def test_element_dict():
     rgb = RGBImage.dummy_from_shape((100, 100))
