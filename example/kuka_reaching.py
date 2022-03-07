@@ -230,13 +230,9 @@ if __name__ == '__main__':
             n_cpu = psutil.cpu_count(logical=False)
             print('{} physical cpus are detected'.format(n_cpu))
 
-            def split_n_data(n_data, m_cpu):
-                average = n_data // m_cpu
-                remain = n_data - average * (m_cpu - 1)
-                return [average for _ in range(m_cpu - 1)] + [remain]
-
             pool = multiprocessing.Pool(n_cpu)
-            pool.map(data_generation_task, zip(range(n_cpu), split_n_data(n_epoch, n_cpu)))
+            n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
+            pool.map(data_generation_task, zip(range(n_cpu), n_process_list_assign))
 
             # Collect data and dump chunk of them
             data_list = []
