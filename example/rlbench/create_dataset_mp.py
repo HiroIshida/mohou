@@ -26,8 +26,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
     parser.add_argument('-n', type=int, default=55, help='epoch num')
+    parser.add_argument('-m', type=int, default=-1, help='multi process num')
     args = parser.parse_args()
     n_episode = args.n
+    n_process = args.m
     project_name = args.pn
 
     with tempfile.TemporaryDirectory() as td:
@@ -54,12 +56,14 @@ if __name__ == '__main__':
                 with open(os.path.join(td, str(uuid.uuid4()) + '.pkl'), 'wb') as f:
                     pickle.dump(demo, f)
 
-        n_cpu = psutil.cpu_count(logical=False)
-        print('{} physical cpus are detected'.format(n_cpu))
+        if n_process == -1:
+            n_cpu = psutil.cpu_count(logical=False)
+            print('{} physical cpus are detected'.format(n_cpu))
+            n_process = n_cpu
 
-        pool = multiprocessing.Pool(n_cpu)
-        n_assigh_list = [len(lst) for lst in np.array_split(range(n_episode), n_cpu)]
-        pool.map(create_demos, zip(range(n_cpu), n_assigh_list))
+        pool = multiprocessing.Pool(n_process)
+        n_assigh_list = [len(lst) for lst in np.array_split(range(n_episode), n_process)]
+        pool.map(create_demos, zip(range(n_process), n_assigh_list))
 
         demos = []
         for filename in os.listdir(td):
