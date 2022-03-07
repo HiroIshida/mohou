@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torchvision
+import cv2
 
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
@@ -118,6 +119,10 @@ class ImageBase(ElementBase):
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         pass
 
+    @abstractmethod
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        pass
+
 
 class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
@@ -162,6 +167,9 @@ class RGBImage(PrimitiveImageBase):
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         return self
 
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+
 
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
@@ -203,13 +211,16 @@ class DepthImage(PrimitiveImageBase):
         plt.close(fig)
         return RGBImage(arr)
 
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        tmp = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_CUBIC)
+        self._data = np.expand_dims(tmp, axis=2)
+
 
 class CompositeImageBase(ImageBase):
     image_types: ClassVar[List[Type[PrimitiveImageBase]]]
     images: List[PrimitiveImageBase]
-    _shape: Tuple[int, int, int]
 
-    def __init__(self, images: List[PrimitiveImageBase], check_size=False):
+    def __init__(self, images: List[PrimitiveImageBase], check_size=True):
 
         image_shape = images[0].shape[:2]
 
@@ -217,15 +228,18 @@ class CompositeImageBase(ImageBase):
             for image in images:
                 assert_with_message(image.shape[:2], image_shape, 'image w-h')
 
+        for image, image_type in zip(images, self.image_types):
+            assert_isinstance_with_message(image, image_type)
+
         self.images = images
-        self._shape = (image_shape[0], image_shape[1], self.channel())
 
     def to_tensor(self) -> torch.Tensor:
         return torch.cat([im.to_tensor() for im in self.images])
 
     @property
     def shape(self) -> Tuple[int, int, int]:
-        return self._shape
+        shape_2d = self.images[0].shape[:2]
+        return (shape_2d[0], shape_2d[1], self.channel())
 
     def randomize(self: CompositeImageT) -> CompositeImageT:
         rand = copy.deepcopy(self)
@@ -256,6 +270,10 @@ class CompositeImageBase(ImageBase):
             if isinstance(image, image_type):
                 return image
         assert False
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        for image in self.images:
+            image.resize(shape2d_new)
 
 
 class RGBDImage(CompositeImageBase):

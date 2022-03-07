@@ -41,7 +41,7 @@ def test_depth_image_creation():
 
 
 @pytest.mark.parametrize('T', [RGBImage, DepthImage])
-def test_images(T: Type[PrimitiveImageBase]):
+def test_rgb_and_depth(T: Type[PrimitiveImageBase]):
     img = T.dummy_from_shape((100, 100))
     img2 = T.from_tensor(img.to_tensor())
     np.testing.assert_almost_equal(img._data, img2._data, decimal=5)
@@ -50,6 +50,11 @@ def test_images(T: Type[PrimitiveImageBase]):
         np.testing.assert_almost_equal(img.randomize()._data, img.randomize()._data, decimal=5)
 
     img.to_rgb()
+    img.resize((224, 224))
+    assert img.shape == (224, 224, img.channel())
+
+    img.resize((30, 30))
+    assert img.shape == (30, 30, img.channel())
 
 
 def test_rdbd_image():
@@ -57,11 +62,28 @@ def test_rdbd_image():
     tensor = rgbd.to_tensor()
     assert list(tensor.shape) == [4, 100, 100]
 
-    rgbd.to_rgb()
-
     rgbd2 = RGBDImage.from_tensor(rgbd.to_tensor())
     for im1, im2 in zip(rgbd.images, rgbd2.images):
         np.testing.assert_almost_equal(im1._data, im2._data, decimal=5)
+
+    rgbd.to_rgb()
+
+    rgbd.resize((224, 224))
+    assert rgbd.shape == (224, 224, rgbd.channel())
+
+    rgbd.resize((30, 30))
+    assert rgbd.shape == (30, 30, rgbd.channel())
+
+    rgb = RGBImage.dummy_from_shape((100, 100))
+    depth = DepthImage.dummy_from_shape((90, 90))  # inconsistent size
+
+    with pytest.raises(AssertionError):
+        RGBDImage([rgb, depth])
+
+    depth = DepthImage.dummy_from_shape((100, 100))  # inconsistent size
+
+    with pytest.raises(AssertionError):  # order mismatch
+        RGBDImage([depth, rgb])
 
 
 def test_element_dict():
