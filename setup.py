@@ -10,7 +10,8 @@ install_requires = [
     "tinyfk",
     "tqdm",
     "matplotlib",
-    "albumentations"
+    "albumentations",
+    "opencv-python"
 ]
 
 # for running demo

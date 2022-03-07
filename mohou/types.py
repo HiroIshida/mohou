@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torchvision
+import cv2
 
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
@@ -118,6 +119,10 @@ class ImageBase(ElementBase):
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         pass
 
+    @abstractmethod
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        pass
+
 
 class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
     _channel: ClassVar[int]
@@ -162,6 +167,9 @@ class RGBImage(PrimitiveImageBase):
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         return self
 
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+
 
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
@@ -202,6 +210,9 @@ class DepthImage(PrimitiveImageBase):
         arr = canvas_to_ndarray(fig)
         plt.close(fig)
         return RGBImage(arr)
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_CUBIC)
 
 
 class CompositeImageBase(ImageBase):
@@ -256,6 +267,10 @@ class CompositeImageBase(ImageBase):
             if isinstance(image, image_type):
                 return image
         assert False
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        for image in self.images:
+            image.resize(shape2d_new)
 
 
 class RGBDImage(CompositeImageBase):
