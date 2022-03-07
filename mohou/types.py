@@ -212,13 +212,13 @@ class DepthImage(PrimitiveImageBase):
         return RGBImage(arr)
 
     def resize(self, shape2d_new: Tuple[int, int]) -> None:
-        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_CUBIC)
+        tmp = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_CUBIC)
+        self._data = np.expand_dims(tmp, axis=2)
 
 
 class CompositeImageBase(ImageBase):
     image_types: ClassVar[List[Type[PrimitiveImageBase]]]
     images: List[PrimitiveImageBase]
-    _shape: Tuple[int, int, int]
 
     def __init__(self, images: List[PrimitiveImageBase], check_size=False):
 
@@ -229,14 +229,14 @@ class CompositeImageBase(ImageBase):
                 assert_with_message(image.shape[:2], image_shape, 'image w-h')
 
         self.images = images
-        self._shape = (image_shape[0], image_shape[1], self.channel())
 
     def to_tensor(self) -> torch.Tensor:
         return torch.cat([im.to_tensor() for im in self.images])
 
     @property
     def shape(self) -> Tuple[int, int, int]:
-        return self._shape
+        shape_2d = self.images[0].shape[:2]
+        return (shape_2d[0], shape_2d[1], self.channel())
 
     def randomize(self: CompositeImageT) -> CompositeImageT:
         rand = copy.deepcopy(self)
