@@ -15,7 +15,6 @@ from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.tasks import CloseBox
-from rlbench.backend.observation import Observation
 
 from mohou.file import get_project_dir
 from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage
