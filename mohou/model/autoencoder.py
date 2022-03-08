@@ -36,6 +36,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     image_type: Type[ImageT]
     encoder: nn.Module
     decoder: nn.Module
+    n_pixel: int
 
     def loss(self, sample: torch.Tensor) -> LossDict:
         f_loss = nn.MSELoss()
@@ -45,6 +46,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         assert input.ndim == 4
+        assert list(input.shape[2:]) == [self.n_pixel, self.n_pixel]
         assert self.image_type.channel() == input.shape[1], 'channel mismatch'
         return self.decoder(self.encoder(input))
 
@@ -65,6 +67,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     def _setup_from_config(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore
         n_pixel, m_pixel = config.input_shape
+        self.n_pixel = n_pixel
 
         # TODO(HiroIshida) do it programatically
         if n_pixel == 224:
