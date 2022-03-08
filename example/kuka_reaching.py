@@ -178,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
     parser.add_argument('-model', type=str, default='lstm', help='propagator model name')
     parser.add_argument('-n', type=int, default=300, help='epoch num')
-    parser.add_argument('-m', type=int, default=224, help='pixel num')  # same as mnist
+    parser.add_argument('-m', type=int, default=112, help='pixel num')  # same as mnist
     parser.add_argument('-seed', type=int, default=1, help='seed')  # same as mnist
     args = parser.parse_args()
     n_epoch = args.n

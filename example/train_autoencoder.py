@@ -12,7 +12,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
     parser.add_argument('-n', type=int, default=3000, help='iteration number')
-    parser.add_argument('-m', type=int, default=224, help='pixel number')
+    parser.add_argument('-m', type=int, default=112, help='pixel number')
     parser.add_argument('-image', type=str, default='RGBImage', help='image type')
     parser.add_argument('-valid-ratio', type=float, default=0.1, help='split rate for validation dataset')
     parser.add_argument('-timer-period', type=int, default=10, help='timer period')
