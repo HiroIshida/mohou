@@ -10,10 +10,30 @@ from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.tasks import CloseBox
+from rlbench.demo import Demo
 
 from mohou.file import get_project_dir
 from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
+
+
+def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
+    seq_av = ElementSequence[AngleVector]()
+    seq_rgb = ElementSequence[RGBImage]()
+    seq_depth = ElementSequence[RGBDImage]()
+
+    for obs in demo:
+        av = AngleVector(obs.joint_positions)
+        rgb = RGBImage(obs.overhead_rgb)
+        depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
+
+        rgb.resize((112, 112))
+        depth.resize((112, 112))
+
+        seq_av.append(av)
+        seq_rgb.append(rgb)
+        seq_depth.append(depth)
+    return EpisodeData((seq_rgb, seq_depth))
 
 
 if __name__ == '__main__':
@@ -36,32 +56,13 @@ if __name__ == '__main__':
     env.launch()
 
     task = env.get_task(CloseBox)
-    demos = []
+
+    mohou_episode_data_list = []
     for i in tqdm.tqdm(range(n_episode)):
-        demos.extend(task.get_demos(amount=1, live_demos=True))
-
-    # data conversion from rlbench demos to mohou chunk
-    data_list = []
-    for demo in demos:
-        seq_av = ElementSequence[AngleVector]()
-        seq_rgb = ElementSequence[RGBImage]()
-        seq_depth = ElementSequence[RGBDImage]()
-
-        for obs in demo:
-            av = AngleVector(obs.joint_positions)
-            rgb = RGBImage(obs.overhead_rgb)
-            depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
-
-            rgb.resize((112, 112))
-            depth.resize((112, 112))
-
-            seq_av.append(av)
-            seq_rgb.append(rgb)
-            seq_depth.append(depth)
-
-        data_list.append(EpisodeData((seq_rgb, seq_depth)))
-
-    chunk = MultiEpisodeChunk(data_list)
+        demo = task.get_demos(amount=1, live_demos=True)[0]
+        mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo)
+        mohou_episode_data_list.append(mohou_episode_data)
+    chunk = MultiEpisodeChunk(mohou_episode_data_list)
     chunk.dump(project_name)
 
     # create debug image
