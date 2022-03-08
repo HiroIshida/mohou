@@ -10,9 +10,9 @@ from mohou.types import DepthImage, RGBImage, RGBDImage, PrimitiveImageBase
 @pytest.mark.parametrize('S', [28, 112, 224])
 @pytest.mark.parametrize('T', [RGBImage, RGBDImage, DepthImage])
 def test_autoencoder(S: int, T: Type[PrimitiveImageBase]):
-    config = AutoEncoderConfig(T, input_shape=(S, S))
+    config = AutoEncoderConfig(T, n_pixel=S)
     model: AutoEncoder = AutoEncoder(config)
-    img: PrimitiveImageBase = T.dummy_from_shape(config.input_shape)
+    img: PrimitiveImageBase = T.dummy_from_shape((config.n_pixel, config.n_pixel))
 
     # test forward function
     tensor_img_reconstructed = model.forward(img.to_tensor().unsqueeze(dim=0))

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, Tuple, Type
+from typing import Generic, Type
 
 import torch
 import torch.nn as nn
@@ -13,13 +13,11 @@ from mohou.types import ImageT, ImageBase
 class AutoEncoderConfig(ModelConfigBase):
     image_type: Type[ImageBase]
     n_bottleneck: int = 16
-    input_shape: Tuple[int, int] = (224, 224)
+    n_pixel: int = 112
 
     def __post_init__(self):
         # validation
-        n_pixel, m_pixel = self.input_shape
-        assert n_pixel == m_pixel
-        assert n_pixel in [28, 112, 224]
+        assert self.n_pixel in [28, 112, 224]
 
 
 class Reshape(nn.Module):
@@ -51,8 +49,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         return self.decoder(self.encoder(input))
 
     def get_embedder(self) -> ImageEmbedder[ImageT]:
-        shape = self.config.input_shape
-        np_image_shape = (shape[0], shape[1], self.channel())
+        np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
         embedder = ImageEmbedder[ImageT](
             self.image_type,
             lambda image_tensor: self.encoder(image_tensor),
@@ -66,7 +63,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
 
     def _setup_from_config(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore
-        n_pixel, m_pixel = config.input_shape
+        n_pixel = config.n_pixel
         self.n_pixel = n_pixel
 
         # TODO(HiroIshida) do it programatically
