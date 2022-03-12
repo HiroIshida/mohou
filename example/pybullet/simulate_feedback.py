@@ -18,6 +18,10 @@ def simulate_feedback(
         propagator: Propagator,
         n_pixel=112) -> List[RGBImage]:
 
+    kbsim.set_joint_angles([0.2 for _ in range(7)])
+    target_pos, angles_target = kbsim.get_reachable_target_pos_and_av()
+    kbsim.set_box(target_pos)
+
     rgb_list_debug_gif = []
     for i in range(120):
         rgbarr, deptharr = kbsim.take_photo(n_pixel)
