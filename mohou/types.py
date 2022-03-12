@@ -297,18 +297,18 @@ class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
-            return super().__getitem__(key)  # type: ignore
+            return super().__getitem__(key)  # type: ignore[return-value]
 
         elif issubclass(key, CompositeImageBase):
             if key in self:
-                return super().__getitem__(key)  # type: ignore
+                return super().__getitem__(key)  # type: ignore[return-value]
 
             # TODO(HiroIshida) somehow, if the following is written in comprehension
             # then we get "TypeError: super(type, obj): obj must be an instance or subtype of type"
             images = []
             for imt in key.image_types:
                 images.append(super().__getitem__(imt))
-            return key(images)  # type: ignore
+            return key(images)  # type: ignore[arg-type, return-value]
 
         else:
             assert False
@@ -316,7 +316,7 @@ class ElementDict(OrderedDict[Type[ElementBase], ElementBase]):
 
 def get_all_concrete_types() -> List[Type[ElementBase]]:
     concrete_types: List[Type] = []
-    q = queue.Queue()  # type: ignore
+    q = queue.Queue()  # type: ignore[var-annotated]
     q.put(ElementBase)
     while not q.empty():
         t: Type = q.get()
@@ -413,10 +413,10 @@ class EpisodeData:
     def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
         if issubclass(elem_type, PrimitiveElementBase):
-            return self.filter_by_primitive_type(elem_type)  # type: ignore
+            return self.filter_by_primitive_type(elem_type)  # type: ignore[return-value]
         elif issubclass(elem_type, CompositeImageBase):
             seqs = [self.filter_by_primitive_type(t) for t in elem_type.image_types]
-            return create_composite_image_sequence(elem_type, seqs)  # type: ignore
+            return create_composite_image_sequence(elem_type, seqs)  # type: ignore[return-value]
         else:
             assert False
 

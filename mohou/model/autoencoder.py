@@ -62,7 +62,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         return self.image_type.channel()
 
     def _setup_from_config(self, config: AutoEncoderConfig):
-        self.image_type = config.image_type  # type: ignore
+        self.image_type = config.image_type  # type: ignore[assignment]
         n_pixel = config.n_pixel
         self.n_pixel = n_pixel
 

@@ -25,7 +25,7 @@ SequenceT = TypeVar('SequenceT')  # TODO(HiroIshida) bound?
 
 def split_sequence(seq: SequenceT, n_elem_list: List[int]) -> Iterator[SequenceT]:
     for sl in splitting_slices(n_elem_list):
-        yield seq[sl]  # type: ignore
+        yield seq[sl]  # type: ignore[index]
 
 
 def detect_device() -> torch.device:
