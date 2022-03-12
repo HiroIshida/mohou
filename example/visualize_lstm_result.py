@@ -13,8 +13,9 @@ from mohou.utils import canvas_to_ndarray
 
 
 def add_text_to_image(image: ImageBase, text: str, color: str):
-
-    fig, ax = plt.subplots()
+    fig = plt.figure(tight_layout={'pad': 0})
+    ax = plt.subplot(1, 1, 1)
+    ax.axis('off')
     ax.imshow(image.to_rgb()._data)
     ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
     fig.canvas.draw()
