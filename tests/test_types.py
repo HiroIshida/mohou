@@ -3,7 +3,7 @@ from typing import Type
 
 import numpy as np
 
-from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage, VectorBase, PrimitiveImageBase
+from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -97,6 +97,25 @@ def test_element_dict():
     rgbd = RGBDImage.dummy_from_shape((100, 100))
     dic = ElementDict([rgbd])
     assert isinstance(dic[RGBDImage], RGBDImage)
+
+
+def test_element_sequence():
+    # start from empty list
+    elem_seq = ElementSequence[RGBImage]()
+    elem_seq.append(RGBImage.dummy_from_shape((100, 100)))
+    assert elem_seq.elem_shape == (100, 100, 3)
+    assert elem_seq.elem_type == RGBImage
+
+    with pytest.raises(AssertionError):
+        elem_seq.append(RGBImage.dummy_from_shape((100, 101)))  # invalid size
+
+    # start from non empty list
+    class TorqueVector(VectorBase):
+        pass
+
+    elem_seq = ElementSequence[AngleVector]([AngleVector(np.zeros(3)) for _ in range(10)])
+    with pytest.raises(AssertionError):
+        elem_seq.append(TorqueVector(np.zeros(3)))  # invalid type
 
 
 def test_episode_data_creation():

@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+import collections.abc
 import copy
 import functools
 import operator
 import queue
 import random
-from typing import Generic, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
+from typing import Generic, List, Optional, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, OrderedDict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,6 +41,7 @@ class ElementBase(ABC):
     def is_concrete_type(cls):
         return len(cls.__abstractmethods__) == 0 and len(cls.__subclasses__()) == 0
 
+    @property
     @abstractmethod
     def shape(self) -> Tuple[int, ...]:
         pass
@@ -333,16 +335,44 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, 'type {} not found'.format(type_name)
 
 
-class ElementSequence(list, Generic[ElementT]):
-    # TODO(HiroIshida) make it custom list
+class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
+    elem_type: Optional[Type[ElementT]] = None
+    elem_shape: Optional[Tuple[int, ...]] = None
+    elem_list: List[ElementT]
 
-    @property
-    def element_shape(self):
-        return self.__getitem__(0).shape
+    def __init__(self, elem_list: Optional[List[ElementT]] = None):
+        if elem_list is None or len(elem_list) == 0:
+            self.elem_list = []
+        else:
+            assert len(set([type(elem) for elem in elem_list])) == 1
+            assert len(set([elem.shape for elem in elem_list])) == 1
+            self.elem_list = elem_list
+            self.elem_type = type(elem_list[0])
+            self.elem_shape = elem_list[0].shape
+
+    def __len__(self):
+        return len(self.elem_list)
+
+    def __getitem__(self, index):
+        return self.elem_list[index]
+
+    def __iter__(self) -> Iterator[ElementT]:
+        return self.elem_list.__iter__()
+
+    def append(self, elem: ElementT):
+        if self.elem_type is None:
+            self.elem_type = type(elem)
+        if self.elem_shape is None:
+            self.elem_shape = elem.shape
+        assert type(elem) == self.elem_type
+        assert elem.shape == self.elem_shape
+        self.elem_list.append(elem)
 
 
-def create_composite_image_sequence(composite_image_type: Type[CompositeImageT], elem_seqs: List[ElementSequence]) -> ElementSequence[CompositeImageT]:
-    # TODO(HiroIshida) extend this to 'composite_element_sequence'
+def create_composite_image_sequence(
+        composite_image_type: Type[CompositeImageT],
+        elem_seqs: List[ElementSequence[PrimitiveImageBase]]) -> ElementSequence[CompositeImageT]:
+
     n_len_seq = len(elem_seqs[0])
     composite_image_seq = ElementSequence[CompositeImageT]([])
     for i in range(n_len_seq):
@@ -423,7 +453,7 @@ class MultiEpisodeChunk:
 
         self.type_shape_table = data_list[0].type_shape_table
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[EpisodeData]:
         return self.data_list.__iter__()
 
     def __getitem__(self, index):
