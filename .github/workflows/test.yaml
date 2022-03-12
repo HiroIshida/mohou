@@ -42,7 +42,7 @@ jobs:
                   pytest -v tests
 
             - name: Run mypy
-              run: mypy . --exclude setup.py
+              run: mypy .
 
             - name: Run pipeline
               run: ./pipeline/test.sh
