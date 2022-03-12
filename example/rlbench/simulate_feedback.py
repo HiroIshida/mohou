@@ -19,11 +19,11 @@ from mohou.propagator import create_default_propagator
 
 
 def av_to_action(av: AngleVector) -> np.ndarray:
-    return np.array(av.numpy().tolist() + [0.0])
+    return av.numpy()
 
 
 def obs_to_elemdict(obs: Observation) -> ElementDict:
-    av = AngleVector(obs.joint_positions)
+    av = AngleVector(np.array(obs.joint_positions.tolist() + [obs.gripper_open]))
     rgb = RGBImage(obs.overhead_rgb)
     rgb.resize((112, 112))
     depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
@@ -53,9 +53,9 @@ if __name__ == '__main__':
     task.reset()
 
     chunk = MultiEpisodeChunk.load(project_name)
-    av_init = chunk.data_list_intact[1].filter_by_primitive_type(AngleVector)[0]
+    av_init = chunk.data_list_intact[0].filter_by_primitive_type(AngleVector)[0]
 
-    prop = create_default_propagator(project_name, n_angle_vector=7)
+    prop = create_default_propagator(project_name, n_angle_vector=7 + 1)  # 1 for gripper
 
     rgb_seq_gif = []
 

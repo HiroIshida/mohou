@@ -23,7 +23,7 @@ def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
     seq_depth = ElementSequence[RGBDImage]()
 
     for obs in demo:
-        av = AngleVector(obs.joint_positions)
+        av = AngleVector(np.array(obs.joint_positions.tolist() + [obs.gripper_open]))
         rgb = RGBImage(obs.overhead_rgb)
         depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
 
