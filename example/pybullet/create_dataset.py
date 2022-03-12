@@ -81,9 +81,9 @@ if __name__ == '__main__':
             with open(os.path.join(td, file_name), 'rb') as f:
                 rgbarr_seq, deptharr_seq, angles_seq = pickle.load(f)
 
-            rgb_seq = ElementSequence[RGBImage]()
-            depth_seq = ElementSequence[DepthImage]()
-            av_seq = ElementSequence[AngleVector]()
+            rgb_seq = ElementSequence()  # type: ignore[var-annotated]
+            depth_seq = ElementSequence()  # type: ignore[var-annotated]
+            av_seq = ElementSequence()  # type: ignore[var-annotated]
 
             for rgbarr, deptharr, angles in zip(rgbarr_seq, deptharr_seq, angles_seq):
                 rgb_seq.append(RGBImage(rgbarr))
