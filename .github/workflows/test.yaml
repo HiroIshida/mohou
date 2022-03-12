@@ -13,8 +13,8 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
           matrix:
-            python-version: [3.6, 3.7]
-            os: [ubuntu-latest]
+            python-version: [3.6, 3.8]
+            os: [ubutu-18.04, ubuntu-20.04]
         steps:
             - name: Checkout Code
               uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
                   pytest -v tests
 
             - name: Run mypy
-              if: ${{ matrix.python-version == 3.7}}
+              if: ${{ matrix.python-version == 3.8}}
               run: mypy .
 
             - name: Run pipeline
