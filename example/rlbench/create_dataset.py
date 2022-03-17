@@ -13,14 +13,14 @@ from rlbench.tasks import CloseBox
 from rlbench.demo import Demo
 
 from mohou.file import get_project_dir
-from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage
+from mohou.types import AngleVector, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 
 def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
-    seq_av = ElementSequence[AngleVector]()
-    seq_rgb = ElementSequence[RGBImage]()
-    seq_depth = ElementSequence[RGBDImage]()
+    seq_av = ElementSequence()  # type: ignore[var-annotated]
+    seq_rgb = ElementSequence()  # type: ignore[var-annotated]
+    seq_depth = ElementSequence()  # type: ignore[var-annotated]
 
     for obs in demo:
         av = AngleVector(np.array(obs.joint_positions.tolist() + [obs.gripper_open]))

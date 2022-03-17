@@ -41,5 +41,5 @@ if __name__ == '__main__':
     lstm_model = LSTM(LSTMConfig(embed_rule.dimension))
 
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
-    tcache = TrainCache[LSTM](project_name, timer_period=timer_period)
+    tcache = TrainCache(project_name, timer_period=timer_period)  # type: ignore[var-annotated]
     train(lstm_model, dataset, tcache, config=tconfig)
