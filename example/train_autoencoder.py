@@ -30,7 +30,7 @@ if __name__ == '__main__':
     chunk = MultiEpisodeChunk.load(project_name)
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type)
 
-    tcache = TrainCache[AutoEncoder](project_name, timer_period=timer_period)
+    tcache = TrainCache(project_name, timer_period=timer_period)  # type: ignore[var-annotated]
     model = AutoEncoder(AutoEncoderConfig(image_type=image_type, n_pixel=n_pixel))  # type: ignore
     tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     train(model, dataset, tcache, config=tconfig)

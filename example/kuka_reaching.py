@@ -137,10 +137,10 @@ class BulletManager(object):
         N_rand = N + np.random.randint(10)
         angles_now = np.array(self.joint_angles())
         step = (np.array(joint_angles_target) - angles_now) / (N_rand - 1)
-        angles_seq = ElementSequence[AngleVector]([AngleVector(angles_now + step * i) for i in range(N_rand)])
+        angles_seq = ElementSequence([AngleVector(angles_now + step * i) for i in range(N_rand)])  # type: ignore[var-annotated]
+        rgbimg_seq = ElementSequence()  # type: ignore[var-annotated]
+        dimg_seq = ElementSequence()  # type: ignore[var-annotated]
 
-        rgbimg_seq = ElementSequence[RGBImage]([])
-        dimg_seq = ElementSequence[DepthImage]([])
         for av in angles_seq:
             self.set_joint_angles(av)
             rgb, depth = self.take_photo(n_pixel)

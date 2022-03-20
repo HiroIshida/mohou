@@ -11,13 +11,11 @@ install_requires = [
     "tqdm",
     "matplotlib",
     "albumentations",
-    "opencv-python"
+    "opencv-python",
+    "pybullet",
+    'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
+    "moviepy",
 ]
-
-# for running demo
-extras_require = {
-    'test': ["pybullet", "moviepy"]
-}
 
 setup(
     name='mohou',
@@ -27,7 +25,6 @@ setup(
     author_email='h-ishida@jsk.imi.i.u-tokyo.ac.jp',
     license='MIT',
     install_requires=install_requires,
-    extras_require=extras_require,
     packages=find_packages(exclude=('tests', 'docs')),
     package_data={'mohou': ['py.typed']}
 )
