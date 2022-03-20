@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name)
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type)
-    _, n_pixel, n_pixel = chunk[0].filter_by_type(RGBImage).elem_shape  # type: ignore
+    n_pixel, n_pixel, _ = chunk[0].filter_by_type(RGBImage).elem_shape  # type: ignore
 
     tcache = TrainCache(project_name, timer_period=timer_period)  # type: ignore[var-annotated]
     model = AutoEncoder(AutoEncoderConfig(image_type=image_type, n_pixel=n_pixel))  # type: ignore
