@@ -102,7 +102,18 @@ class TrainCache(Generic[ModelT]):
     def load(cls, project_name: str, model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
         postfix = model_type.__name__
         tcache_list = load_objects(TrainCache, project_name, postfix)
-        idx_min_validate = np.argmin([tcache.min_validate_loss for tcache in tcache_list])
+        min_validate_loss_list = []
+
+        for tcache in tcache_list:
+            if hasattr(tcache, 'min_validate_loss'):
+                min_validate_loss_list.append(tcache.min_validate_loss)
+            else:
+                from warnings import warn
+                warn('for backward compatibility. will be removed', DeprecationWarning)
+                totals = [dic.total().item() for dic in tcache.validate_loss_dict_seq]
+                min_validate_loss_list.append(min(totals))
+
+        idx_min_validate = np.argmin(min_validate_loss_list)
         return tcache_list[idx_min_validate]
 
     """
