@@ -126,7 +126,7 @@ class BulletManager(object):
     def get_reachable_target_pos_and_av(self):
         while True:
             try:
-                target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.5, 0.1])
+                target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.25, 0.1])
                 angles_solved = self.solve_ik(target_pos)
                 break
             except tinyfk._inverse_kinematics.IKFail:
