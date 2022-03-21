@@ -40,13 +40,15 @@ class TrainCache(Generic[ModelT]):
     best_model: ModelT
     latest_model: ModelT
     file_uuid: str
+    dump_always: bool
 
-    def __init__(self, project_name: str, timer_period: int = 5):
+    def __init__(self, project_name: str, timer_period: int = 5, dump_always: bool = False):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.timer_period = timer_period
         self.file_uuid = str(uuid.uuid4())[-6:]
+        self.dump_always = dump_always
 
     def on_startof_epoch(self, epoch: int, dataset: MohouDataset):
         logger.info('new epoch: {}'.format(epoch))
@@ -74,12 +76,17 @@ class TrainCache(Generic[ModelT]):
 
         totals = [dic.total().item() for dic in self.validate_loss_dict_seq]
         min_loss_sofar = min(totals)
-        if(totals[-1] == min_loss_sofar):
+
+        update_model = (totals[-1] == min_loss_sofar)
+        if update_model:
             self.min_validate_loss = min_loss_sofar
             self.best_model = model
             logger.info('model is updated')
+
         postfix = self.best_model.__class__.__name__ + '-' + self.file_uuid
-        dump_object(self, self.project_name, postfix)
+
+        if update_model or self.dump_always:
+            dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
