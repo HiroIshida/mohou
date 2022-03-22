@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
 from mohou.dataset import MohouDataset
-from mohou.file import dump_object, load_object
+from mohou.file import dump_object, load_objects
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
 from mohou.utils import split_with_ratio
 
@@ -35,15 +36,19 @@ class TrainCache(Generic[ModelT]):
     timer_period: int
     train_loss_dict_seq: List[LossDict]
     validate_loss_dict_seq: List[LossDict]
+    min_validate_loss: float
     best_model: ModelT
     latest_model: ModelT
+    file_uuid: str
+    dump_always: bool
 
-    def __init__(self, project_name: str, timer_period: int = 5):
+    def __init__(self, project_name: str, timer_period: int = 5, dump_always: bool = False):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
-        self.uuid_str = str(uuid.uuid4())[-6:]
         self.timer_period = timer_period
+        self.file_uuid = str(uuid.uuid4())[-6:]
+        self.dump_always = dump_always
 
     def on_startof_epoch(self, epoch: int, dataset: MohouDataset):
         logger.info('new epoch: {}'.format(epoch))
@@ -70,12 +75,18 @@ class TrainCache(Generic[ModelT]):
         self.latest_model = model
 
         totals = [dic.total().item() for dic in self.validate_loss_dict_seq]
-        min_loss = min(totals)
-        if(totals[-1] == min_loss):
+        min_loss_sofar = min(totals)
+
+        update_model = (totals[-1] == min_loss_sofar)
+        if update_model:
+            self.min_validate_loss = min_loss_sofar
             self.best_model = model
             logger.info('model is updated')
-        postfix = self.best_model.__class__.__name__
-        dump_object(self, self.project_name, postfix)
+
+        postfix = self.best_model.__class__.__name__ + '-' + self.file_uuid
+
+        if update_model or self.dump_always:
+            dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
@@ -90,7 +101,20 @@ class TrainCache(Generic[ModelT]):
     @classmethod
     def load(cls, project_name: str, model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
         postfix = model_type.__name__
-        return load_object(TrainCache, project_name, postfix)
+        tcache_list = load_objects(TrainCache, project_name, postfix)
+        min_validate_loss_list = []
+
+        for tcache in tcache_list:
+            if hasattr(tcache, 'min_validate_loss'):
+                min_validate_loss_list.append(tcache.min_validate_loss)
+            else:
+                from warnings import warn
+                warn('for backward compatibility. will be removed', DeprecationWarning)
+                totals = [dic.total().item() for dic in tcache.validate_loss_dict_seq]
+                min_validate_loss_list.append(min(totals))
+
+        idx_min_validate = np.argmin(min_validate_loss_list)
+        return tcache_list[idx_min_validate]
 
     """
     @classmethod
