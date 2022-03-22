@@ -4,16 +4,17 @@ example_path=$base_path/../example
 
 function demo_batch {
     local image_type=$1Image
-    local project_name=pipeline_test_$1
-    python3 $example_path/kuka_reaching.py -pn $project_name -n 60
+    local project_name=pybullet_reaching_$1
+    local n_pixel=$2
+    python3 $example_path/kuka_reaching.py -pn $project_name -n 60 -m $2
     python3 $example_path/train_autoencoder.py -pn $project_name -n 1000 -image $image_type
     python3 $example_path/visualize_autoencoder_result.py -pn $project_name -image $image_type
     python3 $example_path/train_lstm.py -pn $project_name -n 6000 -image $image_type
     python3 $example_path/visualize_lstm_result.py -pn $project_name -image $image_type
     python3 $example_path/visualize_train_history.py -pn $project_name
-    python3 $example_path/kuka_reaching.py -pn $project_name --feedback
+    python3 $example_path/kuka_reaching.py -pn $project_name --feedback -m $2
 }
 
-demo_batch RGB
-demo_batch Depth
-demo_batch RGBD
+demo_batch RGB 224  # must be 112 or 224
+demo_batch Depth 224
+demo_batch RGBD 224

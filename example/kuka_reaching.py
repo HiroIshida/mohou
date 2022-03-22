@@ -126,7 +126,7 @@ class BulletManager(object):
     def get_reachable_target_pos_and_av(self):
         while True:
             try:
-                target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.5, 0.1])
+                target_pos = np.array([0.5, 0.0, 0.3]) + np.random.randn(3) * np.array([0.2, 0.25, 0.1])
                 angles_solved = self.solve_ik(target_pos)
                 break
             except tinyfk._inverse_kinematics.IKFail:
@@ -157,7 +157,7 @@ class BulletManager(object):
     def simulate_feedback(self, propagator: Propagator, n_pixel=112) -> List[RGBImage]:
 
         rgb_list = []
-        for i in range(120):
+        for i in range(200):
             rgb, depth = self.take_photo(n_pixel)
             rgb_list.append(rgb)
 
@@ -173,17 +173,15 @@ class BulletManager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--depth', action='store_true', help='with depth channel')
     parser.add_argument('--feedback', action='store_true', help='feedback mode')
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
     parser.add_argument('-model', type=str, default='lstm', help='propagator model name')
-    parser.add_argument('-n', type=int, default=300, help='epoch num')
+    parser.add_argument('-n', type=int, default=100, help='epoch num')
     parser.add_argument('-m', type=int, default=112, help='pixel num')  # same as mnist
     parser.add_argument('-seed', type=int, default=1, help='seed')  # same as mnist
     args = parser.parse_args()
     n_epoch = args.n
     n_pixel = args.m
-    with_depth = args.depth
     feedback_mode = args.feedback
     project_name = args.pn
     model_name = args.model
