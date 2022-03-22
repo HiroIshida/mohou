@@ -14,29 +14,35 @@ Running [`pipeline/demo.sh`](/pipeline/demo.sh) is a good first step. Note that 
 
 A key concept of this library is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. For example, after running `demo_batch RGBD` in [`pipeline/demo.sh`](/pipeline/demo.sh), we can confirm that following directly sturecture under the corresponding project directory.
 ```
-h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
-/home/h-ishida/.mohou/pipeline_test_RGBD/
+h-ishida@08d7b2a2ec8f:~/.mohou$ tree pybullet_reaching_RGBD
+pybullet_reaching_RGBD
 ├── MultiEpisodeChunk.pkl
-├── TrainCache-AutoEncoder.pkl
-├── TrainCache-LSTM.pkl
+├── TrainCache-AutoEncoder-1d3443.pkl
+├── TrainCache-LSTM-688efd.pkl
+├── TrainCache-LSTM-ca69a1.pkl
+├── TrainCache-LSTM-f5fec0.pkl
 ├── autoencoder_result
 │   ├── result0.png
 │   ├── result1.png
 │   ├── result2.png
 │   ├── result3.png
 │   └── result4.png
+├── feedback_simulation.gif
 ├── log
-│   ├── autoencoder_20220226224448.log
-│   ├── autoencoder_20220226225242.log
-│   ├── latest_autoencoder.log -> /home/h-ishida/.mohou/pipeline_test_RGBD/log/autoencoder_20220226225242.log
-│   ├── latest_lstm.log -> /home/h-ishida/.mohou/pipeline_test_RGBD/log/lstm_20220227022128.log
-│   └── lstm_20220227022128.log
+│   ├── autoencoder_20220322082534.log
+│   ├── latest_autoencoder.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/autoencoder_20220322082534.log
+│   ├── latest_lstm.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/lstm_20220322114701.log
+│   ├── lstm_20220322113045.log
+│   ├── lstm_20220322113926.log
+│   └── lstm_20220322114701.log
 ├── lstm_result
 │   └── result.gif
 ├── sample.gif
 └── train_history
-    ├── TrainCache-AutoEncoder.pkl.png
-    └── TrainCache-LSTM.pkl.png
+    ├── TrainCache-AutoEncoder-1d3443.pkl.png
+    ├── TrainCache-LSTM-688efd.pkl.png
+    ├── TrainCache-LSTM-ca69a1.pkl.png
+    └── TrainCache-LSTM-f5fec0.pkl.png
 ```
 
 <details open>
