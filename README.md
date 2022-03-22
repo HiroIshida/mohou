@@ -82,9 +82,9 @@ from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 def create_episode_data():
     n_step = 100
-    rgb_seq = ElementSequence[RGBImage]()
-    depth_seq = ElementSequence[DepthImage]()
-    av_seq = ElementSequence[AngleVector]()
+    rgb_seq = ElementSequence()
+    depth_seq = ElementSequence()
+    av_seq = ElementSequence()
     for _ in range(n_step):
         rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))  # replace this by actual data
         depth = DepthImage(np.random.randn(224, 224, 1))  # replace this by actual data
