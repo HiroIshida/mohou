@@ -10,7 +10,7 @@ from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.backend.observation import Observation
-from rlbench.tasks import CloseBox
+from rlbench.tasks import CloseDrawer
 
 from mohou.file import get_project_dir
 from mohou.types import RGBImage, DepthImage, AngleVector, ElementDict
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         headless=True)
     env.launch()
 
-    task = env.get_task(CloseBox)
+    task = env.get_task(CloseDrawer)
     task.reset()
 
     chunk = MultiEpisodeChunk.load(project_name)
