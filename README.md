@@ -1,42 +1,55 @@
 ## mohou [![CI](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml) [![PypI Auto Release](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml) [![PyPI version](https://badge.fury.io/py/mohou.svg)](https://pypi.org/project/mohou/)
 
-This package implements imitation learning trainer and executor using pytorch. Currently the library targets autoencoder-lstm-type behavior cloning.
+This package implements conv-autoencoder based visuo-motor imitation learning using pytorch. This package focuses on extensibility. One can define custom data types (vector, image and composite-image) and also map/inverse from these custom types to feature vector that fed into the LSTM. Alongside the imitation learning framework, this package provides two demo using pybullet and rlbench. Note that rlbench is NOT automatically installed via installation of this package. So, one must property installed rlbench beforehand running `rlbench_demo`. See https://github.com/stepjam/RLBench for installation instruction. 
+
+Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rlbench demo](/pipeline/rlbench_demo.sh). The results of demo is available on [google drive](https://drive.google.com/drive/folders/1KWmoVpWQ9anulA-7NeIk8d9oOdGl89sM).
+
+<img src="https://user-images.githubusercontent.com/38597814/160765355-b1d490a9-fb9b-40da-b1fb-d9eae476fda0.gif" width="50%" />
+
+one of result of applying this framework to rlbench's task
+
 
 ## Tutorial demo (vision-based reaching task)
 
 <img src="https://user-images.githubusercontent.com/38597814/155882282-f40af02b-99aa-41b3-bd43-fe7b7d0c2d96.gif" width="30%" /><img src="https://user-images.githubusercontent.com/38597814/155882252-5739fa16-baf7-4a26-b88f-24e106ea0dd1.gif" width="30%" />
 
-left: teaching sample (`~/.mohou/pipeline_test_RGBD/sample.gif`)
+left: teaching sample (`~/.mohou/pybullet_reaching_RGBD/sample.gif`)
 
-right: testing sample (`~/.mohou/pipeline_test_RGBD/feedback_simulation.gif`)
+right: testing sample (`~/.mohou/pybullet_reaching_RGBD/feedback_simulation.gif`)
 
-Running [`pipeline/demo.sh`](/pipeline/demo.sh) is a good first step. Note that GPU is necessary in practice, though the software works on cpu. Result of `pipeline/demo.sh` is available in [google drive](https://drive.google.com/drive/u/0/folders/1ngozVlXah1eBlduydF5uJCA7tRg1EiRb). 
+Running [`pipeline/pybullet_demo.sh`](/pipeline/pybullet_demo.sh) is a good first step. 
 
-A key concept of this library is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. For example, after running `demo_batch RGBD` in [`pipeline/demo.sh`](/pipeline/demo.sh), we can confirm that following directly sturecture under the corresponding project directory.
+An important concept of this framework is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. For example, after running `demo_batch RGBD` in [`pipeline/pybullet_demo.sh`](/pipeline/pybullet_demo.sh), we can confirm that following directly structure is created under the corresponding project directory.
 ```
-h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
-/home/h-ishida/.mohou/pipeline_test_RGBD/
+h-ishida@08d7b2a2ec8f:~/.mohou$ tree pybullet_reaching_RGBD
+pybullet_reaching_RGBD
 ├── MultiEpisodeChunk.pkl
-├── TrainCache-AutoEncoder.pkl
-├── TrainCache-LSTM.pkl
+├── TrainCache-AutoEncoder-1d3443.pkl
+├── TrainCache-LSTM-688efd.pkl
+├── TrainCache-LSTM-ca69a1.pkl
+├── TrainCache-LSTM-f5fec0.pkl
 ├── autoencoder_result
 │   ├── result0.png
 │   ├── result1.png
 │   ├── result2.png
 │   ├── result3.png
 │   └── result4.png
+├── feedback_simulation.gif
 ├── log
-│   ├── autoencoder_20220226224448.log
-│   ├── autoencoder_20220226225242.log
-│   ├── latest_autoencoder.log -> /home/h-ishida/.mohou/pipeline_test_RGBD/log/autoencoder_20220226225242.log
-│   ├── latest_lstm.log -> /home/h-ishida/.mohou/pipeline_test_RGBD/log/lstm_20220227022128.log
-│   └── lstm_20220227022128.log
+│   ├── autoencoder_20220322082534.log
+│   ├── latest_autoencoder.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/autoencoder_20220322082534.log
+│   ├── latest_lstm.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/lstm_20220322114701.log
+│   ├── lstm_20220322113045.log
+│   ├── lstm_20220322113926.log
+│   └── lstm_20220322114701.log
 ├── lstm_result
 │   └── result.gif
 ├── sample.gif
 └── train_history
-    ├── TrainCache-AutoEncoder.pkl.png
-    └── TrainCache-LSTM.pkl.png
+    ├── TrainCache-AutoEncoder-1d3443.pkl.png
+    ├── TrainCache-LSTM-688efd.pkl.png
+    ├── TrainCache-LSTM-ca69a1.pkl.png
+    └── TrainCache-LSTM-f5fec0.pkl.png
 ```
 
 <details open>
@@ -44,11 +57,11 @@ h-ishida@ccddbeeedc93:~$ tree ~/.mohou/pipeline_test_RGBD/
 
 - `kuka_reaching.py` creates `MultiEpisodeChunk.pkl` which consists of `n` sample trajectories that reaches to the box in the image (stored in `~/.mohou/{project_name}/). The datachunk consists of sequences of `RGBImage` and `DepthImage` and `AngleVector`. Also, one of the trajectory image in the chunk is visualized as `~/.mohou/{project_name}/sample.gif`.
 
-- `train_autoencoder.py` trains an autoencoder of `$image_type`. $image_type can either be `RGBImange`, `DepthImage` or `RGBDImage`. The train cache is stored as `~/.mohou/{project_name}/TrainCache-AutoEncoder.pkl`.
+- `train_autoencoder.py` trains an autoencoder of `$image_type`. $image_type can either be `RGBImange`, `DepthImage` or `RGBDImage`. The train cache is stored as `~/.mohou/{project_name}/TrainCache-AutoEncoder-{uuid}.pkl`.
 
 - `visualize_autoencoder_result.py` visualize the comparison of original and reconstructed image by the autoencoder (stored in `~/.mohou/{project_name}/autoencoder_result/)`. This visualization is useful for debugging/tunning, especially to determine the train epoch of autoencoder if needed.
 
-- `train_lstm.py` trains and lstm that propagate vectors concated by feature vector compressed by the trained autoencoder and `AngleVector`. Note that `train_autoencoder.py` must be run beforehand. The train cache is stored as `~/.mohou/{project_name}/TrainCache-LSTM.pkl`.
+- `train_lstm.py` trains and lstm that propagate vectors concated by feature vector compressed by the trained autoencoder and `AngleVector`. Note that `train_autoencoder.py` must be run beforehand. The train cache is stored as `~/.mohou/{project_name}/TrainCache-LSTM-{uuid}.pkl`. When you run `train_lstm.py` multiple times, the train caches are stored with different uuids, and when loading the one with least validation score will be loaded among them.
 
 - `visualize_lstm_result.py` visualizes the `n` step prediction given 10 images, which can be used for debugging/tuning or determining the good training epoch of the lstm training. The gif file is stored as `~/.mohou/{project_name}/lstm_result/result.gif`
 <img src="https://user-images.githubusercontent.com/38597814/155882256-39a55b42-9973-4a66-94ee-a08df273c1cf.gif" width="30%" />
@@ -76,9 +89,9 @@ from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 def create_episode_data():
     n_step = 100
-    rgb_seq = ElementSequence[RGBImage]()
-    depth_seq = ElementSequence[DepthImage]()
-    av_seq = ElementSequence[AngleVector]()
+    rgb_seq = ElementSequence()
+    depth_seq = ElementSequence()
+    av_seq = ElementSequence()
     for _ in range(n_step):
         rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))  # replace this by actual data
         depth = DepthImage(np.random.randn(224, 224, 1))  # replace this by actual data
