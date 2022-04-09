@@ -1,6 +1,6 @@
 ## mohou [![CI](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml) [![PypI Auto Release](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml) [![PyPI version](https://badge.fury.io/py/mohou.svg)](https://pypi.org/project/mohou/)
 
-This package implements conv-autoencoder based visuo-motor imitation learning using pytorch. This package focuses on extensibility. One can define custom data types (vector, image and composite-image) and also map/inverse from these custom types to feature vector that fed into the LSTM. Alongside the imitation learning framework, this package provides two demo using pybullet and rlbench. Note that rlbench is NOT automatically installed via installation of this package. So, one must property installed rlbench beforehand running `rlbench_demo`. See https://github.com/stepjam/RLBench for installation instruction. 
+This package implements conv-autoencoder based visuo-motor imitation learning using pytorch. This package focuses on extensibility. One can define custom data types (vector, image and composite-image) and also map/inverse from these custom types to feature vector that fed into the LSTM. Alongside the imitation learning framework, this package provides two demo using pybullet and rlbench. 
 
 Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rlbench demo](/pipeline/rlbench_demo.sh). The results of demo is available on [google drive](https://drive.google.com/drive/folders/1KWmoVpWQ9anulA-7NeIk8d9oOdGl89sM).
 
@@ -8,6 +8,13 @@ Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rl
 
 one of result of applying this framework to rlbench's task
 
+## Instllation
+```
+git clone https://github.com/HiroIshida/mohou.git
+cd mohou
+pip install -e . 
+```
+After this pip install you are readly to start [pybullet demo](/pipeline/pybullet_demo.sh)! However, to run [rlbench_demo](/pipeline/rlbench_demo.sh), there is an additional step of rlbench installation. See https://github.com/stepjam/RLBench for rlbench installation. 
 
 ## Tutorial demo (vision-based reaching task)
 
