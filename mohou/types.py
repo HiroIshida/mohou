@@ -433,6 +433,9 @@ class MultiEpisodeChunk:
             self, data_list: List[EpisodeData],
             shuffle: bool = True, with_intact_data: bool = True):
 
+        message = 'At least more than {} EpisodeData is required to create a chunk'.format(N_DATA_INTACT)
+        assert len(data_list) > N_DATA_INTACT, message
+
         set_types = set(functools.reduce(
             operator.add,
             [list(data.type_shape_table.keys()) for data in data_list]))
