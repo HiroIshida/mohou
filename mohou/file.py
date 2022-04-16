@@ -75,5 +75,17 @@ def load_objects(obj_type: Type[DataT], project_name: str, postfix: Optional[str
 def dump_object(obj: Any, project_name: str, postfix: Optional[str] = None) -> None:
     file_name = resolve_file_name(obj.__class__, project_name, postfix)
     logger.info('dump pickle to {}'.format(file_name))
-    with open(file_name, 'wb') as f:
+
+    # Not using with statement to use custom exception handling
+    f = open(file_name, 'wb')
+    try:
         pickle.dump(obj, f)
+        f.close()
+    except KeyboardInterrupt:
+        f.close()
+        logger.info('got keyboard interuppt. but let me dump the object...')
+        with open(file_name, 'wb') as f:
+            pickle.dump(obj, f)
+    except Exception as e:
+        f.close()
+        raise e
