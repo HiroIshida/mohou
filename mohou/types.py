@@ -463,11 +463,11 @@ class MultiEpisodeChunk:
         return self.type_shape_table[elem_type]
 
     @classmethod
-    def load(cls, project_name: str) -> 'MultiEpisodeChunk':
-        return load_object(cls, project_name)
+    def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
+        return load_object(cls, project_name, postfix)
 
-    def dump(self, project_name: str) -> None:
-        dump_object(self, project_name)
+    def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
+        dump_object(self, project_name, postfix)
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
