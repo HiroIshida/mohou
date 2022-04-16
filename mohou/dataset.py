@@ -2,7 +2,7 @@ from abc import abstractmethod
 import copy
 from dataclasses import dataclass
 import logging
-from typing import Generic, List, Type, TypeVar, Optional
+from typing import Generic, List, Type, Optional
 
 import numpy as np
 import torch
@@ -14,8 +14,6 @@ from mohou.types import ImageT, MultiEpisodeChunk
 
 logger = logging.getLogger(__name__)
 
-AutoEncoderDataestT = TypeVar('AutoEncoderDataestT', bound='AutoEncoderDataset')
-
 
 class MohouDataset(Dataset):
 
@@ -24,29 +22,20 @@ class MohouDataset(Dataset):
         pass
 
 
+@dataclass
+class AutoEncoderAugConfig:
+    batch_augment_factor: int = 2  # if you have large enough RAM, set to large (like 4)
+
+    def __post_init__(self):
+        assert self.batch_augment_factor >= 0
+
+
+@dataclass
 class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
     image_type: Type[ImageT]
     image_list: List[ImageT]
     image_list_rand: List[ImageT]
-    batch_augment_factor: int
-
-    def __init__(self, image_type: Type[ImageT], image_list: List[ImageT], batch_augment_factor: int = 2):
-        assert batch_augment_factor >= 0
-        self.image_type = image_type
-        self.image_list = image_list
-        self.batch_augment_factor = batch_augment_factor
-
-        if self.use_periodid_augmentation:
-            self.update_dataset()
-        else:
-            logger.info('augmentation done in batch. thus, perirodic augmentation will be deactivated.')
-            self.image_list_rand = copy.deepcopy(self.image_list)
-            for i in range(batch_augment_factor):
-                self.image_list_rand.extend([image.randomize() for image in self.image_list])
-
-    @property
-    def use_periodid_augmentation(self):
-        return (self.batch_augment_factor == 0)
+    use_periodic_augmentation: bool
 
     def __len__(self) -> int:
         return len(self.image_list)
@@ -55,19 +44,35 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         return self.image_list_rand[idx].to_tensor()
 
     def update_dataset(self):
-        if self.use_periodid_augmentation:
+        if self.use_periodic_augmentation:
             logger.info('randomizing data...')
             self.image_list_rand = [image.randomize() for image in self.image_list]
 
     @classmethod
     def from_chunk(
-            cls: Type[AutoEncoderDataestT],
+            cls,
             chunk: MultiEpisodeChunk,
-            image_type: Type[ImageT]) -> 'AutoEncoderDataset[ImageT]':
+            image_type: Type[ImageT],
+            augconfig: Optional[AutoEncoderAugConfig] = None) -> 'AutoEncoderDataset':
+
+        if augconfig is None:
+            augconfig = AutoEncoderAugConfig()
+
         image_list: List[ImageT] = []
         for episode_data in chunk:
             image_list.extend(episode_data.filter_by_type(image_type))
-        return cls(image_type, image_list)
+
+        use_periodic_augmentation = (augconfig.batch_augment_factor == 0)
+        if use_periodic_augmentation:
+            # same as self.update_dataset
+            image_list_rand = [image.randomize() for image in image_list]
+        else:
+            logger.info('augmentation done in batch. thus, perirodic augmentation will be deactivated.')
+            image_list_rand = copy.deepcopy(image_list)
+            for i in range(augconfig.batch_augment_factor):
+                image_list_rand.extend([image.randomize() for image in image_list])
+
+        return cls(image_type, image_list, image_list_rand, use_periodic_augmentation)
 
 
 @dataclass
