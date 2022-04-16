@@ -23,7 +23,7 @@ class MohouDataset(Dataset):
 
 
 @dataclass
-class AutoEncoderAugConfig:
+class AutoEncoderDatasetConfig:
     batch_augment_factor: int = 2  # if you have large enough RAM, set to large (like 4)
 
     def __post_init__(self):
@@ -53,10 +53,10 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
             cls,
             chunk: MultiEpisodeChunk,
             image_type: Type[ImageT],
-            augconfig: Optional[AutoEncoderAugConfig] = None) -> 'AutoEncoderDataset':
+            augconfig: Optional[AutoEncoderDatasetConfig] = None) -> 'AutoEncoderDataset':
 
         if augconfig is None:
-            augconfig = AutoEncoderAugConfig()
+            augconfig = AutoEncoderDatasetConfig()
 
         image_list: List[ImageT] = []
         for episode_data in chunk:
@@ -76,7 +76,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
 
 
 @dataclass
-class AutoRegressiveAugConfig:
+class AutoRegressiveDatasetConfig:
     n_augmentation: int = 20
     cov_scale: float = 0.1
 
@@ -103,10 +103,10 @@ class AutoRegressiveDataset(MohouDataset):
             cls,
             chunk: MultiEpisodeChunk,
             embed_rule: EmbeddingRule,
-            augconfig: Optional[AutoRegressiveAugConfig] = None) -> 'AutoRegressiveDataset':
+            augconfig: Optional[AutoRegressiveDatasetConfig] = None) -> 'AutoRegressiveDataset':
 
         if augconfig is None:
-            augconfig = AutoRegressiveAugConfig()
+            augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
         state_auged_seq_list = cls.augment_data(state_seq_list, augconfig)
@@ -151,7 +151,7 @@ class AutoRegressiveDataset(MohouDataset):
     def augment_data(
             cls,
             state_seq_list: List[np.ndarray],
-            augconfig: AutoRegressiveAugConfig) -> List[np.ndarray]:
+            augconfig: AutoRegressiveDatasetConfig) -> List[np.ndarray]:
         """Augment sequence by adding trajectry noise"""
 
         cov_mat = cls.trajectory_noise_covariance(state_seq_list)
