@@ -1,7 +1,8 @@
 from abc import abstractmethod
+import copy
 from dataclasses import dataclass
 import logging
-from typing import Generic, List, Type, TypeVar, Optional
+from typing import Generic, List, Type, Optional
 
 import numpy as np
 import torch
@@ -13,8 +14,6 @@ from mohou.types import ImageT, MultiEpisodeChunk
 
 logger = logging.getLogger(__name__)
 
-AutoEncoderDataestT = TypeVar('AutoEncoderDataestT', bound='AutoEncoderDataset')
-
 
 class MohouDataset(Dataset):
 
@@ -23,15 +22,20 @@ class MohouDataset(Dataset):
         pass
 
 
+@dataclass
+class AutoEncoderDatasetConfig:
+    batch_augment_factor: int = 2  # if you have large enough RAM, set to large (like 4)
+
+    def __post_init__(self):
+        assert self.batch_augment_factor >= 0
+
+
+@dataclass
 class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
     image_type: Type[ImageT]
     image_list: List[ImageT]
     image_list_rand: List[ImageT]
-
-    def __init__(self, image_type: Type[ImageT], image_list: List[ImageT]):
-        self.image_type = image_type
-        self.image_list = image_list
-        self.update_dataset()
+    use_periodic_augmentation: bool
 
     def __len__(self) -> int:
         return len(self.image_list)
@@ -40,22 +44,39 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         return self.image_list_rand[idx].to_tensor()
 
     def update_dataset(self):
-        logger.info('randomizing data...')
-        self.image_list_rand = [image.randomize() for image in self.image_list]
+        if self.use_periodic_augmentation:
+            logger.info('randomizing data...')
+            self.image_list_rand = [image.randomize() for image in self.image_list]
 
     @classmethod
     def from_chunk(
-            cls: Type[AutoEncoderDataestT],
+            cls,
             chunk: MultiEpisodeChunk,
-            image_type: Type[ImageT]) -> 'AutoEncoderDataset[ImageT]':
+            image_type: Type[ImageT],
+            augconfig: Optional[AutoEncoderDatasetConfig] = None) -> 'AutoEncoderDataset':
+
+        if augconfig is None:
+            augconfig = AutoEncoderDatasetConfig()
+
         image_list: List[ImageT] = []
         for episode_data in chunk:
             image_list.extend(episode_data.filter_by_type(image_type))
-        return cls(image_type, image_list)
+
+        use_periodic_augmentation = (augconfig.batch_augment_factor == 0)
+        if use_periodic_augmentation:
+            # same as self.update_dataset
+            image_list_rand = [image.randomize() for image in image_list]
+        else:
+            logger.info('augmentation done in batch. thus, perirodic augmentation will be deactivated.')
+            image_list_rand = copy.deepcopy(image_list)
+            for i in range(augconfig.batch_augment_factor):
+                image_list_rand.extend([image.randomize() for image in image_list])
+
+        return cls(image_type, image_list, image_list_rand, use_periodic_augmentation)
 
 
 @dataclass
-class AutoRegressiveAugConfig:
+class AutoRegressiveDatasetConfig:
     n_augmentation: int = 20
     cov_scale: float = 0.1
 
@@ -82,10 +103,10 @@ class AutoRegressiveDataset(MohouDataset):
             cls,
             chunk: MultiEpisodeChunk,
             embed_rule: EmbeddingRule,
-            augconfig: Optional[AutoRegressiveAugConfig] = None) -> 'AutoRegressiveDataset':
+            augconfig: Optional[AutoRegressiveDatasetConfig] = None) -> 'AutoRegressiveDataset':
 
         if augconfig is None:
-            augconfig = AutoRegressiveAugConfig()
+            augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
         state_auged_seq_list = cls.augment_data(state_seq_list, augconfig)
@@ -130,7 +151,7 @@ class AutoRegressiveDataset(MohouDataset):
     def augment_data(
             cls,
             state_seq_list: List[np.ndarray],
-            augconfig: AutoRegressiveAugConfig) -> List[np.ndarray]:
+            augconfig: AutoRegressiveDatasetConfig) -> List[np.ndarray]:
         """Augment sequence by adding trajectry noise"""
 
         cov_mat = cls.trajectory_noise_covariance(state_seq_list)
