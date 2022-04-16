@@ -466,8 +466,15 @@ class MultiEpisodeChunk:
     def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
         return load_object(cls, project_name, postfix)
 
+    @classmethod
+    def load_aux(cls, project_name: str) -> 'MultiEpisodeChunk':
+        return load_object(cls, project_name, postfix='auxiliary')
+
     def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
         dump_object(self, project_name, postfix)
+
+    def dump_aux(self, project_name: str) -> None:
+        dump_object(self, project_name, postfix='auxiliary')
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
