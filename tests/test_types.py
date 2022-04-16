@@ -148,7 +148,7 @@ def image_av_chunk():
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
         data = EpisodeData((image_seq, av_seq))
         return data
-    chunk = MultiEpisodeChunk([create_sedata() for _ in range(100)])
+    chunk = MultiEpisodeChunk.from_episode_data_list([create_sedata() for _ in range(100)])
     return chunk
 
 
@@ -166,4 +166,4 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
     data2 = EpisodeData((depth_seq, av_seq))
 
     with pytest.raises(AssertionError):
-        MultiEpisodeChunk([data1, data2])
+        MultiEpisodeChunk.from_episode_data_list([data1, data2])
