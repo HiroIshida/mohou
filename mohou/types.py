@@ -478,3 +478,11 @@ class MultiEpisodeChunk:
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
+
+    def merge(self, chunk: 'MultiEpisodeChunk') -> None:
+        assert set(self.type_shape_table.keys()) == set(chunk.type_shape_table.keys())
+        for key in self.type_shape_table.keys():
+            assert self.type_shape_table[key] == chunk.type_shape_table[key]
+
+        self.data_list.extend(chunk.data_list)
+        self.data_list_intact.extend(chunk.data_list_intact)
