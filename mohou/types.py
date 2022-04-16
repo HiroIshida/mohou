@@ -479,10 +479,26 @@ class MultiEpisodeChunk:
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
 
-    def merge(self, chunk: 'MultiEpisodeChunk') -> None:
-        assert set(self.type_shape_table.keys()) == set(chunk.type_shape_table.keys())
-        for key in self.type_shape_table.keys():
-            assert self.type_shape_table[key] == chunk.type_shape_table[key]
+    def merge(self, other: 'MultiEpisodeChunk') -> None:
+        keys_self = set(self.type_shape_table.keys())
+        keys_other = set(other.type_shape_table.keys())
+        assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
+        keys_common = keys_self.intersection(keys_other)
 
-        self.data_list.extend(chunk.data_list)
-        self.data_list_intact.extend(chunk.data_list_intact)
+        def filter_episode_data_list(episode_data_list):
+            # TODO(HiroIshida) not efficient at all...
+            episode_data_list_filtered = []
+            for episode_data in episode_data_list:
+                seqs = []
+                for key in keys_common:
+                    seqs.append(episode_data.filter_by_type(key))
+                episode_data_list_filtered.append(EpisodeData(tuple(seqs)))
+            assert len(episode_data_list) == len(episode_data_list_filtered)
+            return episode_data_list_filtered
+
+        data_list_new = other.data_list
+        data_list_intact_new = other.data_list_intact
+        data_list_new.extend(filter_episode_data_list(self.data_list))
+        self.data_list = data_list_new
+        self.data_list_intact = data_list_intact_new
+        self.type_shape_table = other.type_shape_table
