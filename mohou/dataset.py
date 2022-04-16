@@ -28,6 +28,7 @@ class AutoEncoderDatasetConfig:
 
     def __post_init__(self):
         assert self.batch_augment_factor >= 0
+        logger.info('autoencoder dataset config: {}'.format(self))
 
 
 @dataclass
@@ -79,6 +80,10 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
 class AutoRegressiveDatasetConfig:
     n_augmentation: int = 20
     cov_scale: float = 0.1
+
+    def __post_init__(self):
+        assert self.n_augmentation >= 0
+        logger.info('ar dataset config: {}'.format(self))
 
 
 class AutoRegressiveDataset(MohouDataset):
@@ -158,11 +163,12 @@ class AutoRegressiveDataset(MohouDataset):
         cov_mat_scaled = cov_mat * augconfig.cov_scale ** 2
 
         noised_state_seq_list = []
-        for state_seq in state_seq_list:
-            n_seq, n_dim = state_seq.shape
-            mean = np.zeros(n_dim)
-            noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
-            noised_state_seq_list.append(state_seq + noise_seq)
+        for _ in range(augconfig.n_augmentation):
+            for state_seq in state_seq_list:
+                n_seq, n_dim = state_seq.shape
+                mean = np.zeros(n_dim)
+                noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
+                noised_state_seq_list.append(state_seq + noise_seq)
 
         state_seq_list.extend(noised_state_seq_list)
         return state_seq_list
