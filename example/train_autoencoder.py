@@ -31,6 +31,13 @@ if __name__ == '__main__':
     logger = create_default_logger(project_name, 'autoencoder')
 
     chunk = MultiEpisodeChunk.load(project_name)
+    try:
+        chunk_aux = MultiEpisodeChunk.load_aux(project_name)
+        chunk.merge(chunk_aux)
+        logger.info('aux data found and merged')
+    except FileExistsError:
+        logger.info('aux data not found')
+
     dsconfig = AutoEncoderDatasetConfig(n_aug)
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dsconfig)
     n_pixel, n_pixel, _ = chunk[0].filter_by_type(RGBImage).elem_shape  # type: ignore

@@ -6,6 +6,8 @@ function test_batch {
     local image_type=$1Image
     local project_name=_pipeline_test_$1
     python3 $example_path/kuka_reaching.py -pn $project_name -n 7
+    # TODO(HiroIshida) bit dirty
+    cp ~/.mohou/$project_name/MultiEpisodeChunk.pkl ~/.mohou/$project_name/MultiEpisodeChunk-auxiliary.pkl
     python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -timer-period 1 -image $image_type
     python3 $example_path/visualize_autoencoder_result.py -pn $project_name -image $image_type -n 2
 
