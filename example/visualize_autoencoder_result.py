@@ -13,7 +13,7 @@ from mohou.types import ImageBase, MultiEpisodeChunk, get_element_type
 
 
 def debug_visualize_reconstruction(
-        project_name: str, dataset: AutoEncoderDataset, tcache: TrainCache, n_vis: int = 5):
+        project_name: str, dataset: AutoEncoderDataset, tcache: TrainCache, postfix: str, n_vis: int = 5):
 
     idxes = list(range(len(dataset)))
     random.shuffle(idxes)
@@ -33,7 +33,7 @@ def debug_visualize_reconstruction(
         ax2.imshow(img_reconstructed.to_rgb()._data)
         save_dir = get_subproject_dir(project_name, 'autoencoder_result')
 
-        full_file_name = os.path.join(save_dir, 'result{}.png'.format(i))
+        full_file_name = os.path.join(save_dir, 'result-{}-{}.png'.format(postfix, i))
         plt.savefig(full_file_name)
 
 
@@ -47,7 +47,13 @@ if __name__ == '__main__':
     n_vis = args.n
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
-    chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    dataset = AutoEncoderDataset.from_chunk(chunk, image_type)
+    chunk = MultiEpisodeChunk.load(project_name)
+    chunk_intact = chunk.get_intact_chunk()
+    chunk_not_intact = chunk.get_not_intact_chunk()
+
+    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type)
+    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type)
+
     tcache = TrainCache.load(project_name, AutoEncoder)
-    debug_visualize_reconstruction(project_name, dataset, tcache, n_vis)
+    debug_visualize_reconstruction(project_name, dataset_intact, tcache, 'intact', n_vis)
+    debug_visualize_reconstruction(project_name, dataset_intact, tcache, 'not_intact', n_vis)

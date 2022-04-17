@@ -479,6 +479,9 @@ class MultiEpisodeChunk:
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
 
+    def get_not_intact_chunk(self) -> 'MultiEpisodeChunk':
+        return MultiEpisodeChunk(self.data_list, shuffle=False, with_intact_data=False)
+
     def merge(self, other: 'MultiEpisodeChunk') -> None:
         keys_self = set(self.type_shape_table.keys())
         keys_other = set(other.type_shape_table.keys())
