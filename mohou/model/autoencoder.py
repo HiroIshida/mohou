@@ -76,17 +76,20 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
                 nn.Conv2d(16, 32, 3, padding=1, stride=(2, 2)),  # 28x28
                 nn.ReLU(inplace=True),
                 nn.Conv2d(32, 64, 3, padding=1, stride=(2, 2)),  # 14x14
-                nn.ReLU(inplace=True),  # 64x4x4
+                nn.ReLU(inplace=True),
                 nn.Conv2d(64, 128, 3, padding=1, stride=(2, 2)),  # 7x7
-                nn.ReLU(inplace=True),  # 64x4x4
+                nn.ReLU(inplace=True),
                 nn.Conv2d(128, 256, 3, padding=1, stride=(2, 2)),  # 4x4
-                nn.ReLU(inplace=True),  # 64x4x4
+                nn.ReLU(inplace=True),
                 nn.Flatten(),
                 nn.Linear(256 * 16, 512),
-                nn.Linear(512, config.n_bottleneck)
+                nn.ReLU(inplace=True),
+                nn.Linear(512, config.n_bottleneck),
+                nn.ReLU(inplace=True),
             )
             decoder = nn.Sequential(
                 nn.Linear(config.n_bottleneck, 512),
+                nn.ReLU(inplace=True),
                 nn.Linear(512, 256 * 16),
                 nn.ReLU(inplace=True),
                 Reshape(-1, 256, 4, 4),
