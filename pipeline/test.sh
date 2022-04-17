@@ -9,6 +9,7 @@ function test_batch {
     # TODO(HiroIshida) bit dirty
     cp ~/.mohou/$project_name/MultiEpisodeChunk.pkl ~/.mohou/$project_name/MultiEpisodeChunk-auxiliary.pkl
     python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -timer-period 1 -image $image_type
+    python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -timer-period 1 -image $image_type --aux
     python3 $example_path/visualize_autoencoder_result.py -pn $project_name -image $image_type -n 2
 
     # train lstm two times

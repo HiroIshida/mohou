@@ -18,6 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('-image', type=str, default='RGBImage', help='image type')
     parser.add_argument('-valid-ratio', type=float, default=0.1, help='split rate for validation dataset')
     parser.add_argument('-timer-period', type=int, default=10, help='timer period')
+    parser.add_argument('--aux', action='store_true', help='use auxiliary data')
     args = parser.parse_args()
 
     project_name = args.pn
@@ -26,17 +27,17 @@ if __name__ == '__main__':
     n_bottleneck = args.latent
     valid_ratio = args.valid_ratio
     timer_period = args.timer_period
+    use_aux_data = args.aux
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
     logger = create_default_logger(project_name, 'autoencoder')
 
     chunk = MultiEpisodeChunk.load(project_name)
-    try:
+
+    if use_aux_data:
         chunk_aux = MultiEpisodeChunk.load_aux(project_name)
         chunk.merge(chunk_aux)
         logger.info('aux data found and merged')
-    except FileExistsError:
-        logger.info('aux data not found')
 
     dsconfig = AutoEncoderDatasetConfig(n_aug)
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dsconfig)
