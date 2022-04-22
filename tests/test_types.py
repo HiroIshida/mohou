@@ -163,7 +163,7 @@ def image_av_chunk_uneven():
         return data
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    chunk = MultiEpisodeChunk(lst)
+    chunk = MultiEpisodeChunk(lst, shuffle=False, with_intact_data=False)
     return chunk
 
 

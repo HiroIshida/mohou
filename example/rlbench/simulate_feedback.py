@@ -15,7 +15,7 @@ from rlbench.tasks import CloseDrawer
 from mohou.file import get_project_dir
 from mohou.types import RGBImage, DepthImage, AngleVector, ElementDict
 from mohou.types import MultiEpisodeChunk
-from mohou.propagator import create_default_propagator
+from mohou.default import create_default_propagator
 
 
 def av_to_action(av: AngleVector) -> np.ndarray:

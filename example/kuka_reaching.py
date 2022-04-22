@@ -17,7 +17,8 @@ import tqdm
 from mohou.file import get_project_dir
 from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisodeChunk,
                          RGBImage, DepthImage, EpisodeData)
-from mohou.propagator import Propagator, create_default_propagator
+from mohou.propagator import Propagator
+from mohou.default import create_default_propagator
 
 
 class BulletManager(object):

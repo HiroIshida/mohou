@@ -5,11 +5,10 @@ from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import MultiEpisodeChunk
 from mohou.types import AngleVector, ImageBase, get_element_type
-from mohou.model import AutoEncoder, LSTM
+from mohou.model import LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import EmbeddingRule
+from mohou.default import create_default_embedding_rule
 from mohou.utils import create_default_logger
 
 if __name__ == '__main__':
@@ -35,11 +34,7 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name)
 
-    tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
-
-    av_idendical_func = IdenticalEmbedder(AngleVector, chunk.get_element_shape(AngleVector)[0])
-    embed_rule = EmbeddingRule.from_embedders([image_embed_func, av_idendical_func])
+    embed_rule = create_default_embedding_rule(project_name, chunk.get_element_shape(AngleVector)[0])
 
     dsconfig = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
     dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule, dsconfig)

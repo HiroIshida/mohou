@@ -130,6 +130,7 @@ class AutoRegressiveDataset(MohouDataset):
 
             padding_state_seq = np.tile(state_seq[-1], (n_padding, 1))
             padded_state_seq = np.vstack((state_seq, padding_state_seq))
+            assert len(padded_state_seq) == n_max_in_dataset
             state_seq_list[i] = padded_state_seq
 
         return state_seq_list
