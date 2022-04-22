@@ -1,12 +1,18 @@
 import numpy as np
-from typing import Type, List, Dict
+from typing import Type, List
+
+import typing
+if hasattr(typing, 'OrderedDict'):
+    from typing import OrderedDict
+else:
+    from collections import OrderedDict
 
 from mohou.embedder import EmbedderBase
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
 from mohou.utils import assert_with_message
 
 
-class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
+class EmbeddingRule(OrderedDict[Type[ElementBase], EmbedderBase]):
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
