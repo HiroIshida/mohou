@@ -3,7 +3,7 @@ import torch
 from typing import List
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.types import ElementDict
+from mohou.types import ElementDict, EndFlag
 from mohou.model import LSTM
 from mohou.embedding_rule import EmbeddingRule
 
@@ -19,8 +19,9 @@ class Propagator:
         self.fed_state_list = []
 
     def feed(self, elem_dict: ElementDict):
-        state = self.embed_rule.apply(elem_dict)
-        state_with_flag = np.hstack((state, CONTINUE_FLAG_VALUE))
+        if EndFlag not in elem_dict:
+            elem_dict[EndFlag] = EndFlag(False)
+        state_with_flag = self.embed_rule.apply(elem_dict)
         self.fed_state_list.append(state_with_flag)
 
     def predict(self, n_prop: int) -> List[ElementDict]:
