@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 
-from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, EndFlag
+from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -124,7 +124,7 @@ def test_episode_data_creation():
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     data = EpisodeData.from_seq_list([image_seq, av_seq])
 
-    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage, EndFlag])
+    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
 
 
 def test_episode_data_assertion_different_size():
@@ -169,7 +169,7 @@ def image_av_chunk_uneven():
 
 def test_multi_episode_chunk_creation(image_av_chunk):
     chunk = image_av_chunk
-    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage, EndFlag])
+    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():
@@ -195,7 +195,7 @@ def test_multi_episode_chunk_merge(image_av_chunk):
     chunk2 = MultiEpisodeChunk([data], with_intact_data=False)
     chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
     chunk.merge(chunk2)
-    assert set(chunk.type_shape_table.keys()) == set([RGBImage, EndFlag])
+    assert set(chunk.type_shape_table.keys()) == set([RGBImage, TerminateFlag])
 
     # NG
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])

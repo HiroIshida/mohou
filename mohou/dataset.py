@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset
 
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import ImageT, MultiEpisodeChunk, EndFlag
+from mohou.types import ImageT, MultiEpisodeChunk, TerminateFlag
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class AutoRegressiveDataset(MohouDataset):
             augconfig: Optional[AutoRegressiveDatasetConfig] = None) -> 'AutoRegressiveDataset':
 
         last_key_of_rule = list(embed_rule.keys())[-1]
-        assert last_key_of_rule == EndFlag
+        assert last_key_of_rule == TerminateFlag
         if augconfig is None:
             augconfig = AutoRegressiveDatasetConfig()
 

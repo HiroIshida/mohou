@@ -17,7 +17,7 @@ import cv2
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
-from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
+from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
@@ -85,7 +85,7 @@ class VectorBase(PrimitiveElementBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        self._data.ndim == 1
+        assert self._data.ndim == 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data).float()
@@ -103,13 +103,14 @@ class AngleVector(VectorBase):
     pass
 
 
-class EndFlag(VectorBase):
+class TerminateFlag(VectorBase):
 
-    def __init__(self, flag: bool) -> None:
+    @classmethod
+    def from_bool(cls, flag: bool) -> 'TerminateFlag':
         assert isinstance(flag, bool)
-        val = END_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
+        val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
         data = np.array([val], dtype=np.float64)
-        super().__init__(data)
+        return cls(data)
 
 
 class ImageBase(ElementBase):
@@ -398,22 +399,22 @@ class EpisodeData:
     sequence_list: List[ElementSequence]
 
     def __post_init__(self):
-        ef_seq = self.filter_by_type(EndFlag)
+        ef_seq = self.filter_by_type(TerminateFlag)
         self.check_endflag_seq(ef_seq)
 
     @staticmethod
     def create_default_endflag_seq(n_length):
-        flag_lst = [EndFlag(False) for _ in range(n_length - 1)]
-        flag_lst.append(EndFlag(True))
+        flag_lst = [TerminateFlag.from_bool(False) for _ in range(n_length - 1)]
+        flag_lst.append(TerminateFlag.from_bool(True))
         elem_seq = ElementSequence(flag_lst)
         return elem_seq
 
     @staticmethod
-    def check_endflag_seq(ef_seq: List[EndFlag]):
+    def check_endflag_seq(ef_seq: ElementSequence[TerminateFlag]):
         # first index must be CONTINUE
         assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
         # last index must be END
-        assert ef_seq[-1].numpy().item() == END_FLAG_VALUE
+        assert ef_seq[-1].numpy().item() == TERMINATE_FLAG_VALUE
 
         # sequence must be like ffffffftttttt not ffffttffftttt
         change_count = 0
@@ -433,10 +434,10 @@ class EpisodeData:
 
         types = [type(seq[0]) for seq in sequence_list]
 
-        if EndFlag not in set(types):
+        if TerminateFlag not in set(types):
             endflag_seq = cls.create_default_endflag_seq(len(sequence_list[0]))
             sequence_list.append(endflag_seq)
-            types.append(EndFlag)
+            types.append(TerminateFlag)
 
         shapes = [seq[0].shape for seq in sequence_list]
         type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
