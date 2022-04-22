@@ -107,7 +107,7 @@ def create_episode_data():
         rgb_seq.append(rgb)
         depth_seq.append(depth)
         av_seq.append(av)
-    return EpisodeData((rgb_seq, depth_seq, av_seq))
+    return EpisodeData([rgb_seq, depth_seq, av_seq])
 
 n_episode = 20
 chunk = MultiEpisodeChunk([create_episode_data() for _ in range(n_episode)])

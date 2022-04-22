@@ -16,6 +16,7 @@ import cv2
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
+from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
@@ -99,6 +100,15 @@ class VectorBase(PrimitiveElementBase):
 
 class AngleVector(VectorBase):
     pass
+
+
+class EndFlag(VectorBase):
+
+    def __init__(self, flag: bool) -> None:
+        assert isinstance(flag, bool)
+        val = END_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
+        data = np.array([flag], dtype=np.float64)
+        super().__init__(data)
 
 
 class ImageBase(ElementBase):
@@ -383,28 +393,37 @@ def create_composite_image_sequence(
 
 class EpisodeData:
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    sequence_tuple: Tuple[ElementSequence, ...]
+    sequence_list: List[ElementSequence]
 
-    def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
-        for sequence in sequence_tuple:
+    def __init__(self, sequence_list: List[ElementSequence]):
+        for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
 
-        all_same_length = len(set(map(len, sequence_tuple))) == 1
+        all_same_length = len(set(map(len, sequence_list))) == 1
         assert all_same_length
 
-        types = [type(seq[0]) for seq in sequence_tuple]
-        shapes = [seq[0].shape for seq in sequence_tuple]
+        types = [type(seq[0]) for seq in sequence_list]
+
+        if EndFlag not in set(types):
+            n_length = len(sequence_list[0])
+            flag_lst = [EndFlag(False) for _ in range(n_length - 1)]
+            flag_lst.append(EndFlag(True))
+            elem_seq = ElementSequence(flag_lst)
+            sequence_list.append(elem_seq)
+            types.append(EndFlag)
+
+        shapes = [seq[0].shape for seq in sequence_list]
         type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
 
         n_type = len(set(types))
-        all_different_type = n_type == len(sequence_tuple)
+        all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
 
         self.type_shape_table = type_shape_table
-        self.sequence_tuple = sequence_tuple
+        self.sequence_list = sequence_list
 
     def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
-        for seq in self.sequence_tuple:
+        for seq in self.sequence_list:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
                 return seq
@@ -421,7 +440,7 @@ class EpisodeData:
             assert False
 
     def __iter__(self):
-        return self.sequence_tuple.__iter__()
+        return self.sequence_list.__iter__()
 
 
 class MultiEpisodeChunk:
@@ -495,7 +514,7 @@ class MultiEpisodeChunk:
                 seqs = []
                 for key in keys_common:
                     seqs.append(episode_data.filter_by_type(key))
-                episode_data_list_filtered.append(EpisodeData(tuple(seqs)))
+                episode_data_list_filtered.append(EpisodeData(seqs))
             assert len(episode_data_list) == len(episode_data_list_filtered)
             return episode_data_list_filtered
 

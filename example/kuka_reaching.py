@@ -219,7 +219,7 @@ if __name__ == '__main__':
                     target_pos, av_solved = bm.get_reachable_target_pos_and_av()
                     bm.set_box(target_pos)
                     rgbimg_seq, dimg_seq, cmd_seq = bm.kinematic_simulate(av_solved, n_pixel=n_pixel)
-                    episode_data = EpisodeData((rgbimg_seq, dimg_seq, cmd_seq))
+                    episode_data = EpisodeData([rgbimg_seq, dimg_seq, cmd_seq])
 
                     with open(os.path.join(td, str(uuid.uuid4()) + '.pkl'), 'wb') as f:
                         pickle.dump(episode_data, f)
