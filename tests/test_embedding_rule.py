@@ -26,6 +26,13 @@ def test_embedding_rule(image_av_chunk): # noqa
 
     assert vector_seq.shape == (10, n_image_embed + n_av_embed)
 
+    # test embedding order
+    rule = EmbeddingRule.from_embedders([f1, f2])
+    assert list(rule.keys()) == [RGBImage, AngleVector]
+
+    rule = EmbeddingRule.from_embedders([f2, f1])
+    assert list(rule.keys()) == [AngleVector, RGBImage]
+
 
 def test_embedding_rule_assertion(image_av_chunk): # noqa
 
