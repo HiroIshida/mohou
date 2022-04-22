@@ -18,7 +18,7 @@ from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
-from mohou.utils import create_default_logger, split_sequence, canvas_to_ndarray
+from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
@@ -108,7 +108,7 @@ class EndFlag(VectorBase):
     def __init__(self, flag: bool) -> None:
         assert isinstance(flag, bool)
         val = END_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
-        data = np.array([flag], dtype=np.float64)
+        data = np.array([val], dtype=np.float64)
         super().__init__(data)
 
 
