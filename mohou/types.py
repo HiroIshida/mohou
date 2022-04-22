@@ -392,10 +392,14 @@ def create_composite_image_sequence(
     return composite_image_seq
 
 
-@dataclass
+@dataclass(frozen=True)
 class EpisodeData:
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     sequence_list: List[ElementSequence]
+
+    def __post_init__(self):
+        ef_seq = self.filter_by_type(EndFlag)
+        self.check_endflag_seq(ef_seq)
 
     @staticmethod
     def create_default_endflag_seq(n_length):
@@ -403,6 +407,20 @@ class EpisodeData:
         flag_lst.append(EndFlag(True))
         elem_seq = ElementSequence(flag_lst)
         return elem_seq
+
+    @staticmethod
+    def check_endflag_seq(ef_seq: List[EndFlag]):
+        # first index must be CONTINUE
+        assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
+        # last index must be END
+        assert ef_seq[-1].numpy().item() == END_FLAG_VALUE
+
+        # sequence must be like ffffffftttttt not ffffttffftttt
+        change_count = 0
+        for i in range(len(ef_seq) - 1):
+            if ef_seq[i + 1].numpy().item() != ef_seq[i].numpy().item():
+                change_count += 1
+        assert change_count == 1
 
     @classmethod
     def from_seq_list(cls, sequence_list: List[ElementSequence]):
