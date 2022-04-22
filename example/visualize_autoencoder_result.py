@@ -5,7 +5,7 @@ from typing import Type
 
 import matplotlib.pyplot as plt
 
-from mohou.dataset import AutoEncoderDataset
+from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.file import get_subproject_dir
 from mohou.model import AutoEncoder
 from mohou.trainer import TrainCache
@@ -51,9 +51,10 @@ if __name__ == '__main__':
     chunk_intact = chunk.get_intact_chunk()
     chunk_not_intact = chunk.get_not_intact_chunk()
 
-    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type)
-    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type)
+    no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
+    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
+    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
 
     tcache = TrainCache.load(project_name, AutoEncoder)
     debug_visualize_reconstruction(project_name, dataset_intact, tcache, 'intact', n_vis)
-    debug_visualize_reconstruction(project_name, dataset_intact, tcache, 'not_intact', n_vis)
+    debug_visualize_reconstruction(project_name, dataset_not_intact, tcache, 'not_intact', n_vis)
