@@ -400,17 +400,17 @@ class EpisodeData:
 
     def __post_init__(self):
         ef_seq = self.filter_by_type(TerminateFlag)
-        self.check_endflag_seq(ef_seq)
+        self.check_terminate_seq(ef_seq)
 
     @staticmethod
-    def create_default_endflag_seq(n_length):
+    def create_default_terminate_flag_seq(n_length):
         flag_lst = [TerminateFlag.from_bool(False) for _ in range(n_length - 1)]
         flag_lst.append(TerminateFlag.from_bool(True))
         elem_seq = ElementSequence(flag_lst)
         return elem_seq
 
     @staticmethod
-    def check_endflag_seq(ef_seq: ElementSequence[TerminateFlag]):
+    def check_terminate_seq(ef_seq: ElementSequence[TerminateFlag]):
         # first index must be CONTINUE
         assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
         # last index must be END
@@ -435,8 +435,8 @@ class EpisodeData:
         types = [type(seq[0]) for seq in sequence_list]
 
         if TerminateFlag not in set(types):
-            endflag_seq = cls.create_default_endflag_seq(len(sequence_list[0]))
-            sequence_list.append(endflag_seq)
+            terminate_flag_seq = cls.create_default_terminate_flag_seq(len(sequence_list[0]))
+            sequence_list.append(terminate_flag_seq)
             types.append(TerminateFlag)
 
         shapes = [seq[0].shape for seq in sequence_list]
