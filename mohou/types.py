@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import collections.abc
 import copy
+from dataclasses import dataclass
 import functools
 import operator
 import queue
@@ -17,7 +18,7 @@ from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
-from mohou.utils import split_sequence, canvas_to_ndarray
+from mohou.utils import create_default_logger, split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
 ElementT = TypeVar('ElementT', bound='ElementBase')
@@ -391,11 +392,21 @@ def create_composite_image_sequence(
     return composite_image_seq
 
 
+@dataclass
 class EpisodeData:
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     sequence_list: List[ElementSequence]
 
-    def __init__(self, sequence_list: List[ElementSequence]):
+    @staticmethod
+    def create_default_endflag_seq(n_length):
+        flag_lst = [EndFlag(False) for _ in range(n_length - 1)]
+        flag_lst.append(EndFlag(True))
+        elem_seq = ElementSequence(flag_lst)
+        return elem_seq
+
+    @classmethod
+    def from_seq_list(cls, sequence_list: List[ElementSequence]):
+
         for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
 
@@ -405,11 +416,8 @@ class EpisodeData:
         types = [type(seq[0]) for seq in sequence_list]
 
         if EndFlag not in set(types):
-            n_length = len(sequence_list[0])
-            flag_lst = [EndFlag(False) for _ in range(n_length - 1)]
-            flag_lst.append(EndFlag(True))
-            elem_seq = ElementSequence(flag_lst)
-            sequence_list.append(elem_seq)
+            endflag_seq = cls.create_default_endflag_seq(len(sequence_list[0]))
+            sequence_list.append(endflag_seq)
             types.append(EndFlag)
 
         shapes = [seq[0].shape for seq in sequence_list]
@@ -418,9 +426,7 @@ class EpisodeData:
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
-
-        self.type_shape_table = type_shape_table
-        self.sequence_list = sequence_list
+        return cls(type_shape_table, sequence_list)
 
     def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
         for seq in self.sequence_list:
@@ -514,7 +520,7 @@ class MultiEpisodeChunk:
                 seqs = []
                 for key in keys_common:
                     seqs.append(episode_data.filter_by_type(key))
-                episode_data_list_filtered.append(EpisodeData(seqs))
+                episode_data_list_filtered.append(EpisodeData.from_seq_list(seqs))
             assert len(episode_data_list) == len(episode_data_list_filtered)
             return episode_data_list_filtered
 
