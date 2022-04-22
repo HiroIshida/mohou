@@ -29,5 +29,5 @@ def test_auto_regressive_dataset(image_av_chunk_uneven): # noqa
 
     for state_seq in dataset.state_seq_list:
         n_length, n_dim = state_seq.shape
-        assert n_length == 13
+        assert n_length == 13 + config.n_dummy_after_termination
         assert n_dim == rule.dimension

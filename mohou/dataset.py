@@ -78,6 +78,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
 @dataclass
 class AutoRegressiveDatasetConfig:
     n_augmentation: int = 20
+    n_dummy_after_termination: int = 20
     cov_scale: float = 0.1
 
     def __post_init__(self):
@@ -112,15 +113,18 @@ class AutoRegressiveDataset(MohouDataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        flagged_state_seq_list = cls.make_same_length(state_seq_list)
+        flagged_state_seq_list = cls.make_same_length(state_seq_list, augconfig)
         flagged_state_seq_list_auged = cls.augment_data(flagged_state_seq_list, augconfig)
         return cls(flagged_state_seq_list_auged, embed_rule)
 
     @staticmethod
-    def make_same_length(state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
+    def make_same_length(
+            state_seq_list: List[np.ndarray],
+            augconfig: AutoRegressiveDatasetConfig) -> List[np.ndarray]:
         """Makes all sequences have the same length"""
 
-        n_max_in_dataset = max([len(seq) for seq in state_seq_list])
+        n_max_in_dataset_raw = max([len(seq) for seq in state_seq_list])
+        n_max_in_dataset = n_max_in_dataset_raw + augconfig.n_dummy_after_termination
 
         for i in range(len(state_seq_list)):
             state_seq = state_seq_list[i]
