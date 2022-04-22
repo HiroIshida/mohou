@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 
-from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase
+from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -122,9 +122,9 @@ def test_element_sequence():
 def test_episode_data_creation():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
-    data = EpisodeData((image_seq, av_seq))
+    data = EpisodeData.from_seq_list([image_seq, av_seq])
 
-    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage])
+    assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
 
 
 def test_episode_data_assertion_different_size():
@@ -132,30 +132,44 @@ def test_episode_data_assertion_different_size():
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
 
     with pytest.raises(AssertionError):
-        EpisodeData((image_seq, av_seq))
+        EpisodeData.from_seq_list([image_seq, av_seq])
 
 
 def test_episode_data_assertion_type_inconsitency():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
 
     with pytest.raises(AssertionError):
-        EpisodeData((image_seq, image_seq))
+        EpisodeData.from_seq_list([image_seq, image_seq])
 
 
 @pytest.fixture(scope='session')
 def image_av_chunk():
-    def create_sedata():
-        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
-        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
-        data = EpisodeData((image_seq, av_seq))
+    def create_edata(n_length):
+        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
+        data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
-    chunk = MultiEpisodeChunk([create_sedata() for _ in range(100)])
+    lst = [create_edata(10) for _ in range(20)]
+    chunk = MultiEpisodeChunk(lst)
+    return chunk
+
+
+@pytest.fixture(scope='session')
+def image_av_chunk_uneven():
+    def create_edata(n_length):
+        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
+        data = EpisodeData.from_seq_list([image_seq, av_seq])
+        return data
+    lst = [create_edata(10) for _ in range(20)]
+    lst.append(create_edata(13))
+    chunk = MultiEpisodeChunk(lst, shuffle=False, with_intact_data=False)
     return chunk
 
 
 def test_multi_episode_chunk_creation(image_av_chunk):
     chunk = image_av_chunk
-    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage])
+    assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():
@@ -163,8 +177,8 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
 
-    data1 = EpisodeData((image_seq, av_seq))
-    data2 = EpisodeData((depth_seq, av_seq))
+    data1 = EpisodeData.from_seq_list([image_seq, av_seq])
+    data2 = EpisodeData.from_seq_list([depth_seq, av_seq])
 
     with pytest.raises(AssertionError):
         MultiEpisodeChunk([data1, data2])
@@ -177,15 +191,15 @@ def test_multi_episode_chunk_merge(image_av_chunk):
 
     # OK
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
-    data = EpisodeData((image_seq, ))
+    data = EpisodeData.from_seq_list([image_seq])
     chunk2 = MultiEpisodeChunk([data], with_intact_data=False)
     chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
     chunk.merge(chunk2)
-    assert set(chunk.type_shape_table.keys()) == set([RGBImage])
+    assert set(chunk.type_shape_table.keys()) == set([RGBImage, TerminateFlag])
 
     # NG
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
-    data = EpisodeData((image_seq, depth_seq))
+    data = EpisodeData.from_seq_list([image_seq, depth_seq])
     chunk3 = MultiEpisodeChunk([data], with_intact_data=False)
     with pytest.raises(AssertionError):
         chunk.merge(chunk3)

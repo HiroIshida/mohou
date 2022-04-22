@@ -8,7 +8,7 @@ from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
 @dataclass
 class LSTMConfig(ModelConfigBase):
-    n_state_without_flag: int
+    n_state_with_flag: int
     n_hidden: int = 200
     n_layer: int = 2
     n_output_layer: int = 1
@@ -19,7 +19,7 @@ class LSTM(ModelBase[LSTMConfig]):
     output_layer: nn.Sequential
 
     def _setup_from_config(self, config: LSTMConfig) -> None:
-        n_state = config.n_state_without_flag + 1
+        n_state = config.n_state_with_flag
         self.lstm_layer = nn.LSTM(n_state, config.n_hidden, config.n_layer, batch_first=True)
         output_layers = []
         for _ in range(config.n_output_layer):

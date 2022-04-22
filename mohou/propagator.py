@@ -3,11 +3,9 @@ import torch
 from typing import List
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.types import ElementDict, AngleVector
-from mohou.model import AutoEncoder, LSTM
-from mohou.embedder import IdenticalEmbedder
+from mohou.types import ElementDict, TerminateFlag
+from mohou.model import LSTM
 from mohou.embedding_rule import EmbeddingRule
-from mohou.trainer import TrainCache
 
 
 class Propagator:
@@ -21,8 +19,9 @@ class Propagator:
         self.fed_state_list = []
 
     def feed(self, elem_dict: ElementDict):
-        state = self.embed_rule.apply(elem_dict)
-        state_with_flag = np.hstack((state, CONTINUE_FLAG_VALUE))
+        if TerminateFlag not in elem_dict:
+            elem_dict[TerminateFlag] = TerminateFlag.from_bool(False)
+        state_with_flag = self.embed_rule.apply(elem_dict)
         self.fed_state_list.append(state_with_flag)
 
     def predict(self, n_prop: int) -> List[ElementDict]:
@@ -48,16 +47,3 @@ class Propagator:
             pred_state_list.append(state_pred)
 
         return pred_state_list
-
-
-def create_default_propagator(project_name: str, n_angle_vector: int):
-    tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-    tcach_lstm = TrainCache.load(project_name, LSTM)
-
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
-    av_idendical_func = IdenticalEmbedder(AngleVector, n_angle_vector)
-
-    embed_rule = EmbeddingRule.from_embedders([image_embed_func, av_idendical_func])
-    propagator = Propagator(tcach_lstm.best_model, embed_rule)
-
-    return propagator

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import collections.abc
 import copy
+from dataclasses import dataclass
 import functools
 import operator
 import queue
@@ -16,6 +17,7 @@ import cv2
 from mohou.constant import N_DATA_INTACT
 from mohou.file import load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
+from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
@@ -83,7 +85,7 @@ class VectorBase(PrimitiveElementBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        self._data.ndim == 1
+        assert self._data.ndim == 1
 
     def to_tensor(self) -> torch.Tensor:
         return torch.from_numpy(self._data).float()
@@ -99,6 +101,16 @@ class VectorBase(PrimitiveElementBase):
 
 class AngleVector(VectorBase):
     pass
+
+
+class TerminateFlag(VectorBase):
+
+    @classmethod
+    def from_bool(cls, flag: bool) -> 'TerminateFlag':
+        assert isinstance(flag, bool)
+        val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
+        data = np.array([val], dtype=np.float64)
+        return cls(data)
 
 
 class ImageBase(ElementBase):
@@ -381,30 +393,62 @@ def create_composite_image_sequence(
     return composite_image_seq
 
 
+@dataclass(frozen=True)
 class EpisodeData:
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    sequence_tuple: Tuple[ElementSequence, ...]
+    sequence_list: List[ElementSequence]
 
-    def __init__(self, sequence_tuple: Tuple[ElementSequence, ...]):
-        for sequence in sequence_tuple:
+    def __post_init__(self):
+        ef_seq = self.filter_by_type(TerminateFlag)
+        self.check_endflag_seq(ef_seq)
+
+    @staticmethod
+    def create_default_endflag_seq(n_length):
+        flag_lst = [TerminateFlag.from_bool(False) for _ in range(n_length - 1)]
+        flag_lst.append(TerminateFlag.from_bool(True))
+        elem_seq = ElementSequence(flag_lst)
+        return elem_seq
+
+    @staticmethod
+    def check_endflag_seq(ef_seq: ElementSequence[TerminateFlag]):
+        # first index must be CONTINUE
+        assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
+        # last index must be END
+        assert ef_seq[-1].numpy().item() == TERMINATE_FLAG_VALUE
+
+        # sequence must be like ffffffftttttt not ffffttffftttt
+        change_count = 0
+        for i in range(len(ef_seq) - 1):
+            if ef_seq[i + 1].numpy().item() != ef_seq[i].numpy().item():
+                change_count += 1
+        assert change_count == 1
+
+    @classmethod
+    def from_seq_list(cls, sequence_list: List[ElementSequence]):
+
+        for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
 
-        all_same_length = len(set(map(len, sequence_tuple))) == 1
+        all_same_length = len(set(map(len, sequence_list))) == 1
         assert all_same_length
 
-        types = [type(seq[0]) for seq in sequence_tuple]
-        shapes = [seq[0].shape for seq in sequence_tuple]
+        types = [type(seq[0]) for seq in sequence_list]
+
+        if TerminateFlag not in set(types):
+            endflag_seq = cls.create_default_endflag_seq(len(sequence_list[0]))
+            sequence_list.append(endflag_seq)
+            types.append(TerminateFlag)
+
+        shapes = [seq[0].shape for seq in sequence_list]
         type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
 
         n_type = len(set(types))
-        all_different_type = n_type == len(sequence_tuple)
+        all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
-
-        self.type_shape_table = type_shape_table
-        self.sequence_tuple = sequence_tuple
+        return cls(type_shape_table, sequence_list)
 
     def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
-        for seq in self.sequence_tuple:
+        for seq in self.sequence_list:
             if isinstance(seq[0], elem_type):
                 # thanks to all_different_type
                 return seq
@@ -421,7 +465,7 @@ class EpisodeData:
             assert False
 
     def __iter__(self):
-        return self.sequence_tuple.__iter__()
+        return self.sequence_list.__iter__()
 
 
 class MultiEpisodeChunk:
@@ -495,7 +539,7 @@ class MultiEpisodeChunk:
                 seqs = []
                 for key in keys_common:
                     seqs.append(episode_data.filter_by_type(key))
-                episode_data_list_filtered.append(EpisodeData(tuple(seqs)))
+                episode_data_list_filtered.append(EpisodeData.from_seq_list(seqs))
             assert len(episode_data_list) == len(episode_data_list_filtered)
             return episode_data_list_filtered
 

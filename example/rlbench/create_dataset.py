@@ -33,7 +33,7 @@ def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
         seq_av.append(av)
         seq_rgb.append(rgb)
         seq_depth.append(depth)
-    return EpisodeData((seq_rgb, seq_depth, seq_av))
+    return EpisodeData.from_seq_list([seq_rgb, seq_depth, seq_av])
 
 
 if __name__ == '__main__':

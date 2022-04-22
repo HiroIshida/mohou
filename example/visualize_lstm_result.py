@@ -6,7 +6,7 @@ from moviepy.editor import ImageSequenceClip
 import matplotlib.pyplot as plt
 
 from mohou.file import get_subproject_dir
-from mohou.propagator import create_default_propagator
+from mohou.default import create_default_propagator
 from mohou.types import ElementDict, MultiEpisodeChunk
 from mohou.types import AngleVector, ImageBase, get_element_type
 from mohou.utils import canvas_to_ndarray
