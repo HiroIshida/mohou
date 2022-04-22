@@ -78,6 +78,7 @@ def assert_isinstance_with_message(given: Any, expected: Type):
 
 
 def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
+    fig.canvas.draw()
     data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     if resize_pixel is None:
