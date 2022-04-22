@@ -2,7 +2,7 @@ import torch
 
 from mohou.embedder import ImageEmbedder, IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import AngleVector, RGBImage
+from mohou.types import AngleVector, RGBImage, EndFlag
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
 
 from test_types import image_av_chunk # noqa
@@ -18,8 +18,9 @@ def test_embedding_rule_assertion(image_av_chunk): # noqa
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3), n_image_embed)
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
+    f3 = IdenticalEmbedder(EndFlag, 1)
 
-    rule = EmbeddingRule.from_embedders([f1, f2])
+    rule = EmbeddingRule.from_embedders([f1, f2, f3])
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug)
