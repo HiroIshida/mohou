@@ -1,10 +1,11 @@
 import pytest
 
+from itertools import permutations
 import torch
 
 from mohou.embedder import ImageEmbedder, IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
-from mohou.types import AngleVector, RGBImage, RGBDImage
+from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
 
 from test_types import image_av_chunk # noqa
 
@@ -26,12 +27,20 @@ def test_embedding_rule(image_av_chunk): # noqa
 
     assert vector_seq.shape == (10, n_image_embed + n_av_embed)
 
-    # test embedding order
-    rule = EmbeddingRule.from_embedders([f1, f2])
-    assert list(rule.keys()) == [RGBImage, AngleVector]
+    class Dummy(VectorBase):
+        pass
 
-    rule = EmbeddingRule.from_embedders([f2, f1])
-    assert list(rule.keys()) == [AngleVector, RGBImage]
+    # Check dict insertion oreder is preserved
+    # NOTE: from 3.7, order is preserved as lang. spec.
+    # NOTE: from 3.6, order is preserved in a cpython implementation
+    f3 = IdenticalEmbedder(TerminateFlag, 1)
+    f4 = IdenticalEmbedder(Dummy, 2)
+    pairs = [(f1, RGBImage), (f2, AngleVector), (f3, TerminateFlag), (f4, Dummy)]
+    for pairs_perm in permutations(pairs, 4):
+        fs = [p[0] for p in pairs_perm]
+        ts = [p[1] for p in pairs_perm]
+        rule = EmbeddingRule.from_embedders(fs)
+        assert list(rule.keys()) == ts
 
 
 def test_embedding_rule_assertion(image_av_chunk): # noqa
