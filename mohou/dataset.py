@@ -8,7 +8,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from mohou.constant import CONTINUE_FLAG_VALUE, END_FLAG_VALUE
 from mohou.embedding_rule import EmbeddingRule
 from mohou.types import ImageT, MultiEpisodeChunk, EndFlag
 
@@ -113,12 +112,12 @@ class AutoRegressiveDataset(MohouDataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        state_auged_seq_list = cls.augment_data(state_seq_list, augconfig)
-        state_auged_seq_list_with_flags = cls.attach_flag_info(state_auged_seq_list)
-        return cls(state_auged_seq_list_with_flags, embed_rule)
+        flagged_state_seq_list = cls.make_same_length(state_seq_list)
+        flagged_state_seq_list_auged = cls.augment_data(flagged_state_seq_list, augconfig)
+        return cls(flagged_state_seq_list_auged, embed_rule)
 
     @staticmethod
-    def attach_flag_info(state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
+    def make_same_length(state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
         """Makes all sequences have the same length"""
 
         n_max_in_dataset = max([len(seq) for seq in state_seq_list])
@@ -129,15 +128,9 @@ class AutoRegressiveDataset(MohouDataset):
             n_seq = len(state_seq)
             n_padding = n_max_in_dataset - n_seq
 
-            flag_seq = np.ones((n_max_in_dataset, 1))
-            flag_seq[:n_seq] *= CONTINUE_FLAG_VALUE
-            flag_seq[n_seq:] *= END_FLAG_VALUE
-
             padding_state_seq = np.tile(state_seq[-1], (n_padding, 1))
             padded_state_seq = np.vstack((state_seq, padding_state_seq))
-            padded_state_flag_seq = np.hstack((padded_state_seq, flag_seq))
-
-            state_seq_list[i] = padded_state_flag_seq
+            state_seq_list[i] = padded_state_seq
 
         return state_seq_list
 

@@ -144,12 +144,26 @@ def test_episode_data_assertion_type_inconsitency():
 
 @pytest.fixture(scope='session')
 def image_av_chunk():
-    def create_sedata():
-        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
-        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
+    def create_edata(n_length):
+        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
         data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
-    chunk = MultiEpisodeChunk([create_sedata() for _ in range(100)])
+    lst = [create_edata(10) for _ in range(20)]
+    chunk = MultiEpisodeChunk(lst)
+    return chunk
+
+
+@pytest.fixture(scope='session')
+def image_av_chunk_uneven():
+    def create_edata(n_length):
+        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
+        data = EpisodeData.from_seq_list([image_seq, av_seq])
+        return data
+    lst = [create_edata(10) for _ in range(20)]
+    lst.append(create_edata(13))
+    chunk = MultiEpisodeChunk(lst)
     return chunk
 
 
