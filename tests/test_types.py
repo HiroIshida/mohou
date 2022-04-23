@@ -119,12 +119,27 @@ def test_element_sequence():
         elem_seq.append(TorqueVector(np.zeros(3)))  # invalid type
 
 
-def test_episode_data_creation():
+def test_episode_data():
+    # creation
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
-    av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     data = EpisodeData.from_seq_list([image_seq, av_seq])
 
     assert set(data.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
+
+    # split
+    indices = [0, 2, 4]
+    partial_data = data.get_partial(indices)
+    image_seq_partial = partial_data.filter_by_type(RGBImage)
+    av_seq_partial = partial_data.filter_by_type(AngleVector)
+
+    for i, j in enumerate(indices):
+        np.testing.assert_equal(image_seq_partial[i].numpy(), image_seq[j].numpy())
+        np.testing.assert_equal(av_seq_partial[i].numpy(), av_seq[j].numpy())
+
+    # split using custom flag_seq
+    flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in [False, False, True]])
+    partial_data = data.get_partial(indices, flag_seq)
 
 
 def test_episode_data_assertion_different_size():

@@ -380,6 +380,10 @@ class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
         assert elem.shape == self.elem_shape
         self.elem_list.append(elem)
 
+    def get_partial(self, indices: List[int]) -> 'ElementSequence[ElementT]':
+        elems = [self.elem_list[idx] for idx in indices]
+        return ElementSequence(elems)
+
 
 def create_composite_image_sequence(
         composite_image_type: Type[CompositeImageT],
@@ -403,7 +407,7 @@ class EpisodeData:
         self.check_terminate_seq(ef_seq)
 
     @staticmethod
-    def create_default_terminate_flag_seq(n_length):
+    def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
         flag_lst = [TerminateFlag.from_bool(False) for _ in range(n_length - 1)]
         flag_lst.append(TerminateFlag.from_bool(True))
         elem_seq = ElementSequence(flag_lst)
@@ -463,6 +467,23 @@ class EpisodeData:
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False
+
+    def get_partial(self, indices: List[int], flag_seq: Optional[ElementSequence[TerminateFlag]] = None) -> 'EpisodeData':
+
+        partial_sequence_list = []
+        for seq in self.sequence_list:
+            if seq.elem_type == TerminateFlag:
+                # TerminateFlag is only the spatial type!
+                n_partial_length = len(indices)
+                if flag_seq is None:
+                    seq_partial = self.create_default_terminate_flag_seq(n_partial_length)
+                else:
+                    assert len(flag_seq) == n_partial_length
+                    seq_partial = flag_seq
+            else:
+                seq_partial = seq.get_partial(indices)
+            partial_sequence_list.append(seq_partial)
+        return EpisodeData.from_seq_list(partial_sequence_list)
 
     def __iter__(self):
         return self.sequence_list.__iter__()
