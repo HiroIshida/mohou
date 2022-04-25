@@ -1,15 +1,13 @@
 import argparse
-from typing import Type
 
 from mohou.model.lstm import LSTMConfig
-from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.trainer import TrainConfig
 from mohou.types import MultiEpisodeChunk
-from mohou.types import AngleVector, ImageBase, get_element_type
-from mohou.model import LSTM
-from mohou.dataset import AutoRegressiveDataset
+from mohou.types import AngleVector
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_embedding_rule
-from mohou.utils import create_default_logger
+from mohou.script_utils import train_lstm
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -17,9 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', type=int, default=3000, help='iteration number')
     parser.add_argument('-aug', type=int, default=2, help='number of augmentation X')
     parser.add_argument('-cov-scale', type=float, default=0.1, help='covariance scale in aug')
-    parser.add_argument('-image', type=str, default='RGBImage', help='image type')
     parser.add_argument('-valid-ratio', type=float, default=0.1, help='split rate for validation dataset')
-    parser.add_argument('-timer-period', type=int, default=10, help='timer period')
     args = parser.parse_args()
 
     project_name = args.pn
@@ -27,20 +23,11 @@ if __name__ == '__main__':
     n_aug = args.aug
     cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
-    timer_period = args.timer_period
-    image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
 
-    logger = create_default_logger(project_name, 'lstm')
-
-    chunk = MultiEpisodeChunk.load(project_name)
-
-    embed_rule = create_default_embedding_rule(project_name, chunk.get_element_shape(AngleVector)[0])
-
-    dsconfig = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
-    dataset = AutoRegressiveDataset.from_chunk(chunk, embed_rule, dsconfig)
-
-    lstm_model = LSTM(LSTMConfig(embed_rule.dimension))
-
-    tconfig = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
-    tcache = TrainCache(project_name, timer_period=timer_period)  # type: ignore[var-annotated]
-    train(lstm_model, dataset, tcache, config=tconfig)
+    chunk_spec = MultiEpisodeChunk.load_spec(project_name)
+    av_dim = chunk_spec.type_shape_table[AngleVector][0]
+    embedding_rule = create_default_embedding_rule(project_name, av_dim)
+    model_config = LSTMConfig(embedding_rule.dimension)
+    dataset_config = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
+    train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
+    train_lstm(project_name, embedding_rule, model_config, dataset_config, train_config)
