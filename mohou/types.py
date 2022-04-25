@@ -113,6 +113,21 @@ class TerminateFlag(VectorBase):
         return cls(data)
 
 
+class GripperState(VectorBase):
+    # TODO(HiroIshida): Add dtype as member variable
+    # TODO(HiroIshida): maybe create new type DiscreteState? and inherit from it?
+
+    def __init__(self, data: np.ndarray) -> None:
+        assert data.dtype == bool
+        super().__init__(data)
+
+    @classmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'GripperState':
+        array = tensor.detach().clone().numpy()
+        threshold = 0.5
+        return cls(array > threshold)
+
+
 class ImageBase(ElementBase):
 
     @classmethod

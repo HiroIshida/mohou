@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 
-from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag
+from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag, GripperState
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -17,6 +17,13 @@ def test_elements():
         VectorBase(np.zeros(3))
     with pytest.raises(Exception):
         PrimitiveImageBase(np.zeros((3, 3)))
+
+
+def test_gripper_state():
+    for arr in [np.zeros(2), np.ones(2)]:
+        gs = GripperState(arr.astype(bool))
+        gs_reconstructed = GripperState.from_tensor(gs.to_tensor())
+        np.testing.assert_almost_equal(gs._data, gs_reconstructed._data)
 
 
 def test_rdb_image_creation():
