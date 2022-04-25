@@ -8,10 +8,15 @@ from mohou.types import ImageBase
 from mohou.types import MultiEpisodeChunk
 from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
+from mohou.model import LSTM
+from mohou.model import LSTMConfig
 from mohou.dataset import AutoEncoderDataset
 from mohou.dataset import AutoEncoderDatasetConfig
+from mohou.dataset import AutoRegressiveDataset
+from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.file import get_project_dir
 from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.embedding_rule import EmbeddingRule
 
 
 def create_default_logger(project_name: str, prefix: str) -> Logger:
@@ -38,8 +43,8 @@ def train_autoencoder(
         image_type: Type[ImageBase],
         use_aux_data: bool,
         model_config: AutoEncoderConfig,
-        dataset_conf: AutoEncoderDatasetConfig,
-        train_conf: TrainConfig):
+        dataset_config: AutoEncoderDatasetConfig,
+        train_config: TrainConfig):
 
     logger = create_default_logger(project_name, 'autoencoder')
 
@@ -50,7 +55,23 @@ def train_autoencoder(
         chunk.merge(chunk_aux)
         logger.info('aux data found and merged')
 
-    dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_conf)
+    dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
     tcache = TrainCache(project_name)  # type: ignore[var-annotated]
     model = AutoEncoder(model_config)  # type: ignore
-    train(model, dataset, tcache, config=train_conf)
+    train(model, dataset, tcache, config=train_config)
+
+
+def train_lstm(
+        project_name: str,
+        embedding_rule: EmbeddingRule,
+        model_config: LSTMConfig,
+        dataset_config: AutoRegressiveDatasetConfig,
+        train_config: TrainConfig):
+
+    logger = create_default_logger(project_name, 'lstm')  # noqa
+
+    chunk = MultiEpisodeChunk.load(project_name)
+    dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, dataset_config)
+    lstm_model = LSTM(model_config)
+    tcache = TrainCache(project_name)  # type: ignore[var-annotated]
+    train(lstm_model, dataset, tcache, config=train_config)
