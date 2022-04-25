@@ -103,6 +103,10 @@ class AngleVector(VectorBase):
     pass
 
 
+class GripperState(VectorBase):
+    pass
+
+
 class TerminateFlag(VectorBase):
 
     @classmethod
@@ -111,21 +115,6 @@ class TerminateFlag(VectorBase):
         val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
         data = np.array([val], dtype=np.float64)
         return cls(data)
-
-
-class GripperState(VectorBase):
-    # TODO(HiroIshida): Add dtype as member variable
-    # TODO(HiroIshida): maybe create new type DiscreteState? and inherit from it?
-
-    def __init__(self, data: np.ndarray) -> None:
-        assert data.dtype == bool
-        super().__init__(data)
-
-    @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'GripperState':
-        array = tensor.detach().clone().numpy()
-        threshold = 0.5
-        return cls(array > threshold)
 
 
 class ImageBase(ElementBase):
