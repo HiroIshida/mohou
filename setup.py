@@ -15,7 +15,7 @@ install_requires = [
     "pybullet",
     'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
     "moviepy",
-    "PyYAML",
+    "PyYAML>=5.1",
     "types-PyYAML"
 ]
 

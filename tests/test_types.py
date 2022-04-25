@@ -12,6 +12,8 @@ from mohou.types import EpisodeData
 from mohou.types import ChunkSpec
 from mohou.types import MultiEpisodeChunk
 
+from test_file import tmp_project_name  # noqa
+
 
 def test_elements():
 
@@ -198,9 +200,17 @@ def test_chunk_spec():
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
 
-def test_multi_episode_chunk_creation(image_av_chunk):
-    chunk = image_av_chunk
+def test_multi_episode_chunk(image_av_chunk, tmp_project_name):  # noqa
+    chunk: MultiEpisodeChunk = image_av_chunk
     assert set(chunk.type_shape_table.keys()) == set([AngleVector, RGBImage, TerminateFlag])
+
+    chunk.dump(tmp_project_name)
+    loaded = chunk.load(tmp_project_name)
+    assert pickle.dumps(chunk) == pickle.dumps(loaded)
+
+    chunk_spec = chunk.get_spec()
+    chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name)
+    assert pickle.dumps(chunk_spec) == pickle.dumps(chunk_spec_loaded)
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():

@@ -503,12 +503,16 @@ class ChunkSpec:
 
     def to_dict(self) -> Dict:
         d = asdict(self)
-        d['type_shape_table'] = {k.__name__: v for k, v in d['type_shape_table'].items()}
+        d['type_shape_table'] = {
+            k.__name__: list(v)
+            for k, v in d['type_shape_table'].items()}
         return d
 
     @classmethod
     def from_dict(cls, d: Dict) -> 'ChunkSpec':
-        d['type_shape_table'] = {get_element_type(k): v for k, v in d['type_shape_table'].items()}
+        d['type_shape_table'] = {
+            get_element_type(k): tuple(v)
+            for k, v in d['type_shape_table'].items()}
         return cls(**d)
 
 
@@ -574,7 +578,7 @@ class MultiEpisodeChunk:
         dump_object(self, project_name, postfix)
         yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
         with open(yaml_file_name, 'w') as f:
-            yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False)
+            yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False, sort_keys=False)
 
     def dump_aux(self, project_name: str) -> None:
         dump_object(self, project_name, postfix='auxiliary')
