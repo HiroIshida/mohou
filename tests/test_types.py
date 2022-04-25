@@ -1,6 +1,7 @@
 import pytest
 from typing import Type
 import copy
+import pickle
 
 import numpy as np
 
@@ -8,6 +9,7 @@ from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
+from mohou.types import ChunkSpec
 from mohou.types import MultiEpisodeChunk
 
 
@@ -187,6 +189,13 @@ def image_av_chunk_uneven():
     lst.append(create_edata(13))
     chunk = MultiEpisodeChunk(lst, shuffle=False, with_intact_data=False)
     return chunk
+
+
+def test_chunk_spec():
+    types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
+    spec = ChunkSpec(10, 5, types)
+    spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
+    assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
 
 def test_multi_episode_chunk_creation(image_av_chunk):

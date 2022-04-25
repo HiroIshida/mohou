@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
+import os
 import collections.abc
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import functools
 import operator
 import queue
 import random
+import yaml
 from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
 
 import numpy as np
@@ -15,7 +17,7 @@ import torchvision
 import cv2
 
 from mohou.constant import N_DATA_INTACT
-from mohou.file import load_object, dump_object
+from mohou.file import get_project_dir, load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import split_sequence, canvas_to_ndarray
@@ -493,6 +495,23 @@ class EpisodeData:
         return self.sequence_list.__iter__()
 
 
+@dataclass
+class ChunkSpec:
+    n_episode: int
+    n_episode_intact: int
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+
+    def to_dict(self) -> Dict:
+        d = asdict(self)
+        d['type_shape_table'] = {k.__name__: v for k, v in d['type_shape_table'].items()}
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> 'ChunkSpec':
+        d['type_shape_table'] = {get_element_type(k): v for k, v in d['type_shape_table'].items()}
+        return cls(**d)
+
+
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
@@ -531,6 +550,10 @@ class MultiEpisodeChunk:
     def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
         return self.type_shape_table[elem_type]
 
+    def get_spec(self) -> ChunkSpec:
+        spec = ChunkSpec(len(self.data_list), len(self.data_list_intact), self.type_shape_table)
+        return spec
+
     @classmethod
     def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
         return load_object(cls, project_name, postfix)
@@ -539,8 +562,19 @@ class MultiEpisodeChunk:
     def load_aux(cls, project_name: str) -> 'MultiEpisodeChunk':
         return load_object(cls, project_name, postfix='auxiliary')
 
+    @classmethod
+    def load_spec(cls, project_name: str) -> ChunkSpec:
+        yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+        with open(yaml_file_name, 'r') as f:
+            d = yaml.safe_load(f)
+            spec = ChunkSpec.from_dict(d)
+        return spec
+
     def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
         dump_object(self, project_name, postfix)
+        yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+        with open(yaml_file_name, 'w') as f:
+            yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False)
 
     def dump_aux(self, project_name: str) -> None:
         dump_object(self, project_name, postfix='auxiliary')
