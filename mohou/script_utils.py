@@ -108,17 +108,17 @@ def visualize_train_histories(project_name: str):
 
 
 def visualize_image_reconstruction(
-        project_name: str, image_type: Type[ImageBase], n_vis: int = 5):
+        project_name: str, n_vis: int = 5):
 
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_intact = chunk.get_intact_chunk()
     chunk_not_intact = chunk.get_not_intact_chunk()
 
+    tcache = TrainCache.load(project_name, AutoEncoder)
+    image_type = tcache.best_model.image_type
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
     dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
     dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
-
-    tcache = TrainCache.load(project_name, AutoEncoder)
 
     for dataset, postfix in zip([dataset_intact, dataset_not_intact], ['intact', 'not_intact']):
         idxes = list(range(len(dataset)))
@@ -146,7 +146,6 @@ def visualize_image_reconstruction(
 def visualize_lstm_propagation(
         project_name: str,
         propagator: Propagator,
-        image_type: Type[ImageBase],
         n_prop: int):
 
     def add_text_to_image(image: ImageBase, text: str, color: str):
@@ -162,6 +161,8 @@ def visualize_lstm_propagation(
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
 
     episode_data = chunk[0]
+    tcache_ae = TrainCache.load(project_name, AutoEncoder)
+    image_type = tcache_ae.best_model.image_type
     n_feed = 10
     fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
     fed_images = episode_data.filter_by_type(image_type)[:n_feed]
