@@ -8,7 +8,12 @@ from logging import Logger
 from typing import Type
 import matplotlib.pyplot as plt
 
-from mohou.types import ImageBase
+try:
+    from moviepy.editor import ImageSequenceClip
+except Exception:
+    ImageSequenceClip = None
+
+from mohou.types import ImageBase, AngleVector, ElementDict
 from mohou.types import MultiEpisodeChunk
 from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
@@ -18,9 +23,11 @@ from mohou.dataset import AutoEncoderDataset
 from mohou.dataset import AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset
 from mohou.dataset import AutoRegressiveDatasetConfig
+from mohou.propagator import Propagator
 from mohou.file import get_project_dir, get_subproject_dir
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.embedding_rule import EmbeddingRule
+from mohou.utils import canvas_to_ndarray
 
 
 def create_default_logger(project_name: str, prefix: str) -> Logger:
@@ -134,3 +141,47 @@ def visualize_image_reconstruction(
 
             full_file_name = os.path.join(save_dir, 'result-{}-{}.png'.format(postfix, i))
             plt.savefig(full_file_name)
+
+
+def visualize_lstm_propagation(
+        project_name: str,
+        propagator: Propagator,
+        image_type: Type[ImageBase],
+        n_prop: int):
+
+    def add_text_to_image(image: ImageBase, text: str, color: str):
+        fig = plt.figure(tight_layout={'pad': 0})
+        ax = plt.subplot(1, 1, 1)
+        ax.axis('off')
+        ax.imshow(image.to_rgb()._data)
+        ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        return canvas_to_ndarray(fig)
+
+    chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
+
+    episode_data = chunk[0]
+    n_feed = 10
+    fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
+    fed_images = episode_data.filter_by_type(image_type)[:n_feed]
+
+    print("start lstm propagation")
+    for elem_tuple in zip(fed_avs, fed_images):
+        propagator.feed(ElementDict(elem_tuple))
+    print("finish lstm propagation")
+
+    elem_dict_list = propagator.predict(n_prop)
+    pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
+
+    print("adding text to images...")
+    fed_images_with_text = [add_text_to_image(image, 'fed (original)', 'blue') for image in fed_images]
+    pred_images_with_text = [add_text_to_image(image, 'predicted by lstm', 'green') for image in pred_images]
+
+    images_with_text = fed_images_with_text + pred_images_with_text
+
+    save_dir = get_subproject_dir(project_name, 'lstm_result')
+    full_file_name = os.path.join(save_dir, 'result.gif')
+    assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
+    clip = ImageSequenceClip(images_with_text, fps=20)
+    clip.write_gif(full_file_name, fps=20)
