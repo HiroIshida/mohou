@@ -1,5 +1,6 @@
 import os
 import re
+import random
 import pickle
 import time
 import logging
@@ -97,3 +98,39 @@ def visualize_train_histories(project_name: str):
                 image_file = os.path.join(plot_dir, fname + '.png')
                 fig.savefig(image_file)
                 print('saved to {}'.format(image_file))
+
+
+def visualize_image_reconstruction(
+        project_name: str, image_type: Type[ImageBase], n_vis: int = 5):
+
+    chunk = MultiEpisodeChunk.load(project_name)
+    chunk_intact = chunk.get_intact_chunk()
+    chunk_not_intact = chunk.get_not_intact_chunk()
+
+    no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
+    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
+    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
+
+    tcache = TrainCache.load(project_name, AutoEncoder)
+
+    for dataset, postfix in zip([dataset_intact, dataset_not_intact], ['intact', 'not_intact']):
+        idxes = list(range(len(dataset)))
+        random.shuffle(idxes)
+        idxes_test = idxes[:min(n_vis, len(dataset))]
+
+        for i, idx in enumerate(idxes_test):
+
+            image_torch = dataset[idx].unsqueeze(dim=0)
+            image_torch_reconstructed = tcache.best_model(image_torch)
+
+            img = dataset.image_type.from_tensor(image_torch.squeeze(dim=0))
+            img_reconstructed = dataset.image_type.from_tensor(image_torch_reconstructed.squeeze(dim=0))
+
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            fig.suptitle('left: original, right: reconstructed')
+            ax1.imshow(img.to_rgb()._data)
+            ax2.imshow(img_reconstructed.to_rgb()._data)
+            save_dir = get_subproject_dir(project_name, 'autoencoder_result')
+
+            full_file_name = os.path.join(save_dir, 'result-{}-{}.png'.format(postfix, i))
+            plt.savefig(full_file_name)

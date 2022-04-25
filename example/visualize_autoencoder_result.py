@@ -1,41 +1,7 @@
 import argparse
-import os
-import random
 from typing import Type
-
-import matplotlib.pyplot as plt
-
-from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
-from mohou.file import get_subproject_dir
-from mohou.model import AutoEncoder
-from mohou.trainer import TrainCache
-from mohou.types import ImageBase, MultiEpisodeChunk, get_element_type
-
-
-def debug_visualize_reconstruction(
-        project_name: str, dataset: AutoEncoderDataset, tcache: TrainCache, postfix: str, n_vis: int = 5):
-
-    idxes = list(range(len(dataset)))
-    random.shuffle(idxes)
-    idxes_test = idxes[:min(n_vis, len(dataset))]
-
-    for i, idx in enumerate(idxes_test):
-
-        image_torch = dataset[idx].unsqueeze(dim=0)
-        image_torch_reconstructed = tcache.best_model(image_torch)
-
-        img = dataset.image_type.from_tensor(image_torch.squeeze(dim=0))
-        img_reconstructed = dataset.image_type.from_tensor(image_torch_reconstructed.squeeze(dim=0))
-
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        fig.suptitle('left: original, right: reconstructed')
-        ax1.imshow(img.to_rgb()._data)
-        ax2.imshow(img_reconstructed.to_rgb()._data)
-        save_dir = get_subproject_dir(project_name, 'autoencoder_result')
-
-        full_file_name = os.path.join(save_dir, 'result-{}-{}.png'.format(postfix, i))
-        plt.savefig(full_file_name)
-
+from mohou.types import ImageBase, get_element_type
+from mohou.script_utils import visualize_image_reconstruction
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -46,15 +12,4 @@ if __name__ == '__main__':
     project_name = args.pn
     n_vis = args.n
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
-
-    chunk = MultiEpisodeChunk.load(project_name)
-    chunk_intact = chunk.get_intact_chunk()
-    chunk_not_intact = chunk.get_not_intact_chunk()
-
-    no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
-    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
-    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
-
-    tcache = TrainCache.load(project_name, AutoEncoder)
-    debug_visualize_reconstruction(project_name, dataset_intact, tcache, 'intact', n_vis)
-    debug_visualize_reconstruction(project_name, dataset_not_intact, tcache, 'not_intact', n_vis)
+    visualize_image_reconstruction(project_name, image_type, n_vis)
