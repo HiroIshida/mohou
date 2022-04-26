@@ -1,3 +1,4 @@
+from abc import ABC
 import copy
 import hashlib
 import logging
@@ -52,7 +53,7 @@ class ModelConfigBase:
 ModelConfigT = TypeVar('ModelConfigT', bound=ModelConfigBase)
 
 
-class ModelBase(nn.Module, Generic[ModelConfigT]):
+class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
     config: ModelConfigT
     device: torch.device
 
