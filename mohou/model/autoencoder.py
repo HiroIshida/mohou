@@ -1,5 +1,6 @@
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Tuple, Type
+from typing import Generic, Tuple, Type, List
 
 import torch
 import torch.nn as nn
@@ -30,11 +31,11 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> Tuple[nn.Sequential, nn.Sequential]:
+def create_encoder_decoder_layers(n_channel: int, n_pixel: int, n_bottleneck: int) -> Tuple[List[nn.Module], List[nn.Module]]:
     assert n_pixel in [28, 112, 224]
 
     if n_pixel == 224:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 112x112
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 56x56
@@ -52,8 +53,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(512, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 256 * 16),
@@ -71,9 +72,9 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
+        ]
     elif n_pixel == 112:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 56x56
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 28x28
@@ -89,8 +90,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(512, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 128 * 16),
@@ -106,9 +107,9 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
+        ]
     else:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 14x14
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 7x7
@@ -120,8 +121,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(8 * 16, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 8 * 16),
             nn.ReLU(inplace=True),
             nn.Linear(8 * 16, 32 * 16),
@@ -133,34 +134,45 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
-    return encoder, decoder
+        ]
+    return encoder_layers, decoder_layers
 
 
 class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     image_type: Type[ImageT]
-    encoder: nn.Module
-    decoder: nn.Module
+    encoder_module: nn.Module
+    decoder_module: nn.Module
     n_pixel: int
 
+    @abstractmethod
     def loss(self, sample: torch.Tensor) -> LossDict:
-        f_loss = nn.MSELoss()
-        reconstructed = self.forward(sample)
-        loss_value = f_loss(sample, reconstructed)
-        return LossDict({'reconstruction': loss_value})
+        pass
+
+    @abstractmethod
+    def get_encoder(self) -> nn.Module:
+        """Must be deterministic """
+        pass
+
+    @abstractmethod
+    def get_decoder(self) -> nn.Module:
+        """Must be deterministic """
+        pass
+
+    def check_network_input(self, inp: torch.Tensor):
+        assert inp.ndim == 4
+        assert list(inp.shape[2:]) == [self.n_pixel, self.n_pixel]
+        assert self.image_type.channel() == inp.shape[1], 'channel mismatch'
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        assert input.ndim == 4
-        assert list(input.shape[2:]) == [self.n_pixel, self.n_pixel]
-        assert self.image_type.channel() == input.shape[1], 'channel mismatch'
-        return self.decoder(self.encoder(input))
+        self.check_network_input(input)
+        return self.get_decoder()(self.get_encoder()(input))
 
     def get_embedder(self) -> ImageEmbedder[ImageT]:
         np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
         embedder = ImageEmbedder[ImageT](
             self.image_type,
-            lambda image_tensor: self.encoder(image_tensor),
-            lambda encoding: self.decoder(encoding),
+            lambda image_tensor: self.get_encoder()(image_tensor),
+            lambda encoding: self.get_decoder()(encoding),
             np_image_shape,
             self.config.n_bottleneck)
         return embedder
@@ -168,14 +180,71 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     def channel(self) -> int:
         return self.image_type.channel()
 
+
+class AutoEncoder(AutoEncoderBase):
+
+    def loss(self, sample: torch.Tensor) -> LossDict:
+        self.check_network_input(sample)
+        f_loss = nn.MSELoss()
+        reconstructed = self.forward(sample)
+        loss_value = f_loss(sample, reconstructed)
+        return LossDict({'reconstruction': loss_value})
+
+    def get_encoder(self) -> nn.Module:
+        return self.encoder_module
+
+    def get_decoder(self) -> nn.Module:
+        return self.decoder_module
+
     def _setup_from_config(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore
         n_pixel = config.n_pixel
         self.n_pixel = n_pixel
-        encoder, decoder = create_encoder_decoder(self.channel(), config.n_pixel, config.n_bottleneck)
-        self.encoder = encoder
-        self.decoder = decoder
+        encoder_layers, decoder_layers = create_encoder_decoder_layers(self.channel(), config.n_pixel, config.n_bottleneck)
+        self.encoder_module = nn.Sequential(*encoder_layers)
+        self.decoder_module = nn.Sequential(*decoder_layers)
 
 
-class AutoEncoder(AutoEncoderBase):
-    pass
+class VariationalAutoEncoder(AutoEncoderBase):
+    dense_mean: nn.Module
+    dense_var: nn.Module
+
+    def loss(self, sample: torch.Tensor) -> LossDict:
+        self.check_network_input(sample)
+
+        encoded = self.encoder_module(sample)
+        mu = self.dense_mean(encoded)
+        logvar = self.dense_var(encoded)
+        z = self.reparameterize(mu, logvar)
+        reconstructed = self.decoder_module(z)
+
+        kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0)
+        loss_value = nn.MSELoss()(sample, reconstructed)
+        return LossDict({'reconstruction': loss_value, 'kld': kld_loss})
+
+    def get_encoder(self) -> nn.Module:
+        return nn.Sequential(self.encoder_module, self.dense_mean)
+
+    def get_decoder(self) -> nn.Module:
+        return self.decoder_module
+
+    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return eps * std + mu
+
+    def _setup_from_config(self, config: AutoEncoderConfig):
+        self.image_type = config.image_type  # type: ignore
+        n_pixel = config.n_pixel
+        encoder_layers, decoder_layers = create_encoder_decoder_layers(self.channel(), config.n_pixel, config.n_bottleneck)
+        encoder_layers.pop()  # remove relu
+        encoder_layers.pop()  # remove dense
+
+        encoder_last_dense: nn.Linear = encoder_layers[-2]  # type: ignore
+        out_dim = encoder_last_dense.out_features
+
+        self.encoder_module = nn.Sequential(*encoder_layers)
+        self.decoder_module = nn.Sequential(*decoder_layers)
+        self.dense_mean = nn.Linear(out_dim, config.n_bottleneck)
+        self.dense_var = nn.Linear(out_dim, config.n_bottleneck)
+        self.n_pixel = n_pixel

@@ -19,6 +19,7 @@ from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
 from mohou.model import LSTM
 from mohou.model import LSTMConfig
+from mohou.model import AutoEncoderBase
 from mohou.dataset import AutoEncoderDataset
 from mohou.dataset import AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset
@@ -56,6 +57,7 @@ def train_autoencoder(
         model_config: AutoEncoderConfig,
         dataset_config: AutoEncoderDatasetConfig,
         train_config: TrainConfig,
+        ae_type: Type[AutoEncoderBase] = AutoEncoder,
         warm_start: bool = False):
 
     logger = create_default_logger(project_name, 'autoencoder')
@@ -70,11 +72,11 @@ def train_autoencoder(
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
     if warm_start:
         logger.info('warm start')
-        tcache = TrainCache.load(project_name, AutoEncoder)
+        tcache = TrainCache.load(project_name, ae_type)
         train(tcache, dataset, model=None, config=train_config)
     else:
         tcache = TrainCache(project_name)  # type: ignore[var-annotated]
-        model = AutoEncoder(model_config)  # type: ignore
+        model = ae_type(model_config)  # type: ignore
         train(tcache, dataset, model=model, config=train_config)
 
 
@@ -120,13 +122,13 @@ def visualize_train_histories(project_name: str):
 
 
 def visualize_image_reconstruction(
-        project_name: str, n_vis: int = 5):
+        project_name: str, n_vis: int = 5, ae_type: Type[AutoEncoderBase] = AutoEncoder):
 
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_intact = chunk.get_intact_chunk()
     chunk_not_intact = chunk.get_not_intact_chunk()
 
-    tcache = TrainCache.load(project_name, AutoEncoder)
+    tcache = TrainCache.load(project_name, ae_type)
     assert tcache.best_model is not None
     image_type = tcache.best_model.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
@@ -156,10 +158,7 @@ def visualize_image_reconstruction(
             plt.savefig(full_file_name)
 
 
-def visualize_lstm_propagation(
-        project_name: str,
-        propagator: Propagator,
-        n_prop: int):
+def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     def add_text_to_image(image: ImageBase, text: str, color: str):
         fig = plt.figure(tight_layout={'pad': 0})
@@ -172,14 +171,13 @@ def visualize_lstm_propagation(
         return canvas_to_ndarray(fig)
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    chunk_spec = chunk.get_spec()
-    image_type = chunk_spec.get_image_type()
-    assert image_type is not None
-
     episode_data = chunk[0]
-    tcache_ae = TrainCache.load(project_name, AutoEncoder)
-    assert tcache_ae.best_model is not None
-    image_type = tcache_ae.best_model.image_type  # type: ignore[union-attr]
+
+    image_type = None
+    for key, embedder in propagator.embed_rule.items():
+        if issubclass(key, ImageBase):
+            image_type = key
+    assert image_type is not None
 
     n_feed = 10
     fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]

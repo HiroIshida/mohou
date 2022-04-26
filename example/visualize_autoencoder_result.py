@@ -1,6 +1,8 @@
 import argparse
 from mohou.script_utils import visualize_image_reconstruction
 
+from utils import auto_detect_autoencoder_type
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
@@ -8,4 +10,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     project_name = args.pn
     n_vis = args.n
-    visualize_image_reconstruction(project_name, n_vis)
+    ae_type = auto_detect_autoencoder_type(project_name)
+    visualize_image_reconstruction(project_name, n_vis, ae_type=ae_type)
