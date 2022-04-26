@@ -19,6 +19,7 @@ from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisode
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator
 from mohou.default import create_default_propagator
+from utils import auto_detect_autoencoder_type
 
 
 class BulletManager(object):
@@ -176,7 +177,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--feedback', action='store_true', help='feedback mode')
     parser.add_argument('-pn', type=str, default='kuka_reaching', help='project name')
-    parser.add_argument('-model', type=str, default='lstm', help='propagator model name')
     parser.add_argument('-n', type=int, default=100, help='epoch num')
     parser.add_argument('-m', type=int, default=112, help='pixel num')  # same as mnist
     parser.add_argument('-seed', type=int, default=1, help='seed')  # same as mnist
@@ -185,7 +185,6 @@ if __name__ == '__main__':
     n_pixel = args.m
     feedback_mode = args.feedback
     project_name = args.pn
-    model_name = args.model
     seed = args.seed
 
     np.random.seed(seed)
@@ -198,7 +197,8 @@ if __name__ == '__main__':
         target_pos, _ = bm.get_reachable_target_pos_and_av()
         bm.set_box(target_pos)
 
-        propagator = create_default_propagator(project_name, 7)
+        ae_type = auto_detect_autoencoder_type(project_name)
+        propagator = create_default_propagator(project_name, 7, ae_type=ae_type)
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 
         filename = os.path.join(get_project_dir(project_name), "feedback_simulation.gif")
