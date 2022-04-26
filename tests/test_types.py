@@ -196,6 +196,8 @@ def image_av_chunk_uneven():
 def test_chunk_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     spec = ChunkSpec(10, 5, types)
+    assert spec.get_image_type() == RGBImage
+
     spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 

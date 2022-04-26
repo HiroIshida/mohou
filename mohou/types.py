@@ -515,6 +515,12 @@ class ChunkSpec:
             for k, v in d['type_shape_table'].items()}
         return cls(**d)
 
+    def get_image_type(self) -> Optional[Type[ImageBase]]:
+        for k, v in self.type_shape_table.items():
+            if issubclass(k, ImageBase):
+                return k
+        return None
+
 
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]

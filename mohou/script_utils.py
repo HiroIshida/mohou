@@ -172,11 +172,15 @@ def visualize_lstm_propagation(
         return canvas_to_ndarray(fig)
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
+    chunk_spec = chunk.get_spec()
+    image_type = chunk_spec.get_image_type()
+    assert image_type is not None
 
     episode_data = chunk[0]
     tcache_ae = TrainCache.load(project_name, AutoEncoder)
     assert tcache_ae.best_model is not None
     image_type = tcache_ae.best_model.image_type  # type: ignore[union-attr]
+
     n_feed = 10
     fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
     fed_images = episode_data.filter_by_type(image_type)[:n_feed]
