@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, Tuple, Type
+from typing import Generic, Tuple, Type, List
 
 import torch
 import torch.nn as nn
@@ -30,11 +30,11 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> Tuple[nn.Sequential, nn.Sequential]:
+def create_encoder_decoder_layers(n_channel: int, n_pixel: int, n_bottleneck: int) -> Tuple[List[nn.Module], List[nn.Module]]:
     assert n_pixel in [28, 112, 224]
 
     if n_pixel == 224:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 112x112
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 56x56
@@ -52,8 +52,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(512, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 256 * 16),
@@ -71,9 +71,9 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
+        ]
     elif n_pixel == 112:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 56x56
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 28x28
@@ -89,8 +89,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(512, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 128 * 16),
@@ -106,9 +106,9 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
+        ]
     else:
-        encoder = nn.Sequential(
+        encoder_layers = [
             nn.Conv2d(n_channel, 8, 3, padding=1, stride=(2, 2)),  # 14x14
             nn.ReLU(inplace=True),
             nn.Conv2d(8, 16, 3, padding=1, stride=(2, 2)),  # 7x7
@@ -120,8 +120,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.Linear(8 * 16, n_bottleneck),
             nn.ReLU(inplace=True),
-        )
-        decoder = nn.Sequential(
+        ]
+        decoder_layers = [
             nn.Linear(n_bottleneck, 8 * 16),
             nn.ReLU(inplace=True),
             nn.Linear(8 * 16, 32 * 16),
@@ -133,8 +133,8 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(8, n_channel, 4, stride=2, padding=1),
             nn.Sigmoid(),
-        )
-    return encoder, decoder
+        ]
+    return encoder_layers, decoder_layers
 
 
 class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
@@ -172,9 +172,9 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         self.image_type = config.image_type  # type: ignore
         n_pixel = config.n_pixel
         self.n_pixel = n_pixel
-        encoder, decoder = create_encoder_decoder(self.channel(), config.n_pixel, config.n_bottleneck)
-        self.encoder = encoder
-        self.decoder = decoder
+        encoder_layers, decoder_layers = create_encoder_decoder_layers(self.channel(), config.n_pixel, config.n_bottleneck)
+        self.encoder = nn.Sequential(*encoder_layers)
+        self.decoder = nn.Sequential(*decoder_layers)
 
 
 class AutoEncoder(AutoEncoderBase):
