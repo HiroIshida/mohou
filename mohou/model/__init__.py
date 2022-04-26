@@ -10,6 +10,7 @@ from mohou.model.common import ModelConfigT
 
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
+from mohou.model.autoencoder import VariationalAutoEncoder
 
 from mohou.model.lstm import LSTM
 from mohou.model.lstm import LSTMConfig
