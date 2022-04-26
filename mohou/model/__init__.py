@@ -9,6 +9,7 @@ from mohou.model.common import ModelConfigBase
 from mohou.model.common import ModelConfigT
 
 from mohou.model.autoencoder import AutoEncoder
+from mohou.model.autoencoder import AutoEncoderBase
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.model.autoencoder import VariationalAutoEncoder
 
