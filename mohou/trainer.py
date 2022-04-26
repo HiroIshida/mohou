@@ -37,7 +37,7 @@ class TrainCache(Generic[ModelT]):
     train_loss_dict_seq: List[LossDict]
     validate_loss_dict_seq: List[LossDict]
     min_validate_loss: float
-    best_model: ModelT
+    best_model: Optional[ModelT]
     latest_model: ModelT
     file_uuid: str
     dump_always: bool
@@ -49,6 +49,7 @@ class TrainCache(Generic[ModelT]):
         self.timer_period = timer_period
         self.file_uuid = str(uuid.uuid4())[-6:]
         self.dump_always = dump_always
+        self.best_model = None
 
     def on_startof_epoch(self, epoch: int, dataset: MohouDataset):
         logger.info('new epoch: {}'.format(epoch))
@@ -142,12 +143,16 @@ class TrainCache(Generic[ModelT]):
 
 
 def train(
-        model: ModelBase,
-        dataset: MohouDataset,
         tcache: TrainCache,
+        dataset: MohouDataset,
+        model: Optional[ModelBase] = None,
         config: TrainConfig = TrainConfig()) -> None:
 
     logger.info('train start with config: {}'.format(config))
+
+    if model is None:
+        assert tcache.best_model is not None
+        model = tcache.best_model
 
     def move_to_device(sample):
         if isinstance(sample, torch.Tensor):

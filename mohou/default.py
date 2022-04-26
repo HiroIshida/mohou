@@ -8,7 +8,7 @@ from mohou.propagator import Propagator
 
 def create_default_embedding_rule(project_name: str, n_angle_vector: int) -> EmbeddingRule:
     tcache_autoencoder = TrainCache.load(project_name, AutoEncoder)
-
+    assert tcache_autoencoder.best_model is not None
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
     av_idendical_func = IdenticalEmbedder(AngleVector, n_angle_vector)
     ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
@@ -20,5 +20,6 @@ def create_default_embedding_rule(project_name: str, n_angle_vector: int) -> Emb
 def create_default_propagator(project_name: str, n_angle_vector: int) -> Propagator:
     tcach_lstm = TrainCache.load(project_name, LSTM)
     embed_rule = create_default_embedding_rule(project_name, n_angle_vector)
+    assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, embed_rule)
     return propagator

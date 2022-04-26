@@ -16,6 +16,7 @@ if __name__ == '__main__':
     parser.add_argument('-aug', type=int, default=2, help='number of augmentation X')
     parser.add_argument('-cov-scale', type=float, default=0.1, help='covariance scale in aug')
     parser.add_argument('-valid-ratio', type=float, default=0.1, help='split rate for validation dataset')
+    parser.add_argument('--warm', action='store_true', help='warm start')
     args = parser.parse_args()
 
     project_name = args.pn
@@ -23,6 +24,7 @@ if __name__ == '__main__':
     n_aug = args.aug
     cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
+    warm_start = args.warm
 
     chunk_spec = MultiEpisodeChunk.load_spec(project_name)
     av_dim = chunk_spec.type_shape_table[AngleVector][0]
@@ -30,4 +32,4 @@ if __name__ == '__main__':
     model_config = LSTMConfig(embedding_rule.dimension)
     dataset_config = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
-    train_lstm(project_name, embedding_rule, model_config, dataset_config, train_config)
+    train_lstm(project_name, embedding_rule, model_config, dataset_config, train_config, warm_start=warm_start)
