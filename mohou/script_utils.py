@@ -55,7 +55,8 @@ def train_autoencoder(
         use_aux_data: bool,
         model_config: AutoEncoderConfig,
         dataset_config: AutoEncoderDatasetConfig,
-        train_config: TrainConfig):
+        train_config: TrainConfig,
+        warm_start: bool = False):
 
     logger = create_default_logger(project_name, 'autoencoder')
 
@@ -67,9 +68,14 @@ def train_autoencoder(
         logger.info('aux data found and merged')
 
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
-    tcache = TrainCache(project_name)  # type: ignore[var-annotated]
-    model = AutoEncoder(model_config)  # type: ignore
-    train(model, dataset, tcache, config=train_config)
+    if warm_start:
+        logger.info('warm start')
+        tcache = TrainCache.load(project_name, AutoEncoder)
+        train(tcache, dataset, model=None, config=train_config)
+    else:
+        tcache = TrainCache(project_name)  # type: ignore[var-annotated]
+        model = AutoEncoder(model_config)  # type: ignore
+        train(tcache, dataset, model=model, config=train_config)
 
 
 def train_lstm(
@@ -77,15 +83,21 @@ def train_lstm(
         embedding_rule: EmbeddingRule,
         model_config: LSTMConfig,
         dataset_config: AutoRegressiveDatasetConfig,
-        train_config: TrainConfig):
+        train_config: TrainConfig,
+        warm_start: bool = False):
 
     logger = create_default_logger(project_name, 'lstm')  # noqa
 
     chunk = MultiEpisodeChunk.load(project_name)
     dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, dataset_config)
-    lstm_model = LSTM(model_config)
-    tcache = TrainCache(project_name)  # type: ignore[var-annotated]
-    train(lstm_model, dataset, tcache, config=train_config)
+    if warm_start:
+        logger.info('warm start')
+        tcache = TrainCache.load(project_name, LSTM)
+        train(tcache, dataset, model=None, config=train_config)
+    else:
+        tcache = TrainCache(project_name)  # type: ignore[var-annotated]
+        model = LSTM(model_config)
+        train(tcache, dataset, model=model, config=train_config)
 
 
 def visualize_train_histories(project_name: str):
@@ -115,7 +127,8 @@ def visualize_image_reconstruction(
     chunk_not_intact = chunk.get_not_intact_chunk()
 
     tcache = TrainCache.load(project_name, AutoEncoder)
-    image_type = tcache.best_model.image_type
+    assert tcache.best_model is not None
+    image_type = tcache.best_model.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
     dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
     dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
@@ -162,7 +175,8 @@ def visualize_lstm_propagation(
 
     episode_data = chunk[0]
     tcache_ae = TrainCache.load(project_name, AutoEncoder)
-    image_type = tcache_ae.best_model.image_type
+    assert tcache_ae.best_model is not None
+    image_type = tcache_ae.best_model.image_type  # type: ignore[union-attr]
     n_feed = 10
     fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
     fed_images = episode_data.filter_by_type(image_type)[:n_feed]

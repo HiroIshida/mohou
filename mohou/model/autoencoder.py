@@ -134,7 +134,7 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
     return encoder, decoder
 
 
-class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
+class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     image_type: Type[ImageT]
     encoder: nn.Module
     decoder: nn.Module
@@ -172,3 +172,7 @@ class AutoEncoder(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         encoder, decoder = create_encoder_decoder(self.channel(), config.n_pixel, config.n_bottleneck)
         self.encoder = encoder
         self.decoder = decoder
+
+
+class AutoEncoder(AutoEncoderBase):
+    pass
