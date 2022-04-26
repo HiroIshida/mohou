@@ -117,10 +117,13 @@ def create_encoder_decoder(n_channel: int, n_pixel: int, n_bottleneck: int) -> T
             nn.ReLU(inplace=True),  # 64x4x4
             nn.Flatten(),
             nn.Linear(32 * 16, 8 * 16),
-            nn.Linear(8 * 16, n_bottleneck)
+            nn.ReLU(inplace=True),
+            nn.Linear(8 * 16, n_bottleneck),
+            nn.ReLU(inplace=True),
         )
         decoder = nn.Sequential(
             nn.Linear(n_bottleneck, 8 * 16),
+            nn.ReLU(inplace=True),
             nn.Linear(8 * 16, 32 * 16),
             nn.ReLU(inplace=True),
             Reshape(-1, 32, 4, 4),
