@@ -158,10 +158,7 @@ def visualize_image_reconstruction(
             plt.savefig(full_file_name)
 
 
-def visualize_lstm_propagation(
-        project_name: str,
-        propagator: Propagator,
-        n_prop: int):
+def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     def add_text_to_image(image: ImageBase, text: str, color: str):
         fig = plt.figure(tight_layout={'pad': 0})
@@ -174,14 +171,13 @@ def visualize_lstm_propagation(
         return canvas_to_ndarray(fig)
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    chunk_spec = chunk.get_spec()
-    image_type = chunk_spec.get_image_type()
-    assert image_type is not None
-
     episode_data = chunk[0]
-    tcache_ae = TrainCache.load(project_name, AutoEncoder)
-    assert tcache_ae.best_model is not None
-    image_type = tcache_ae.best_model.image_type  # type: ignore[union-attr]
+
+    image_type = None
+    for key, embedder in propagator.embed_rule.items():
+        if issubclass(key, ImageBase):
+            image_type = key
+    assert image_type is not None
 
     n_feed = 10
     fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
