@@ -1,6 +1,6 @@
 from graphviz import Digraph
 
-from mohou.types import get_all_concrete_types
+from mohou.types import get_all_concrete_leaftypes, ElementBase
 
 
 if __name__ == '__main__':
@@ -18,6 +18,6 @@ if __name__ == '__main__':
             back_recursion(t_parent)
             dg.edge(t_parent.__name__, t.__name__)
 
-    for t in get_all_concrete_types():
+    for t in get_all_concrete_leaftypes(ElementBase):
         back_recursion(t, is_concrete=True)
     dg.render('graph', cleanup=True)

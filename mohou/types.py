@@ -332,10 +332,10 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
             assert False
 
 
-def get_all_concrete_types() -> List[Type[ElementBase]]:
+def get_all_concrete_leaftypes(root: Type) -> List[Type]:
     concrete_types: List[Type] = []
     q = queue.Queue()  # type: ignore
-    q.put(ElementBase)
+    q.put(root)
     while not q.empty():
         t: Type = q.get()
         if len(t.__subclasses__()) == 0:
@@ -347,7 +347,7 @@ def get_all_concrete_types() -> List[Type[ElementBase]]:
 
 
 def get_element_type(type_name: str) -> Type[ElementBase]:
-    for t in get_all_concrete_types():
+    for t in get_all_concrete_leaftypes(ElementBase):
         if type_name == t.__name__:
             return t
     assert False, 'type {} not found'.format(type_name)
