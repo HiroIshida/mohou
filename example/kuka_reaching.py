@@ -19,7 +19,7 @@ from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisode
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator
 from mohou.default import create_default_propagator
-from utils import auto_detect_autoencoder_type
+from mohou.script_utils import auto_detect_autoencoder_type
 
 
 class BulletManager(object):

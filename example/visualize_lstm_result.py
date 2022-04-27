@@ -2,9 +2,8 @@ import argparse
 
 from mohou.default import create_default_propagator
 from mohou.types import MultiEpisodeChunk, AngleVector
+from mohou.script_utils import auto_detect_autoencoder_type
 from mohou.script_utils import visualize_lstm_propagation
-
-from utils import auto_detect_autoencoder_type
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

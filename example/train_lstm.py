@@ -7,9 +7,7 @@ from mohou.types import AngleVector
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_embedding_rule
 from mohou.script_utils import train_lstm
-
-from utils import auto_detect_autoencoder_type
-
+from mohou.script_utils import auto_detect_autoencoder_type
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -5,7 +5,7 @@ import pickle
 import time
 import logging
 from logging import Logger
-from typing import Type
+from typing import Type, Optional
 import matplotlib.pyplot as plt
 
 try:
@@ -13,7 +13,7 @@ try:
 except Exception:
     ImageSequenceClip = None
 
-from mohou.types import ImageBase, AngleVector, ElementDict
+from mohou.types import ImageBase, AngleVector, ElementDict, get_all_concrete_leaftypes
 from mohou.types import MultiEpisodeChunk
 from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
@@ -202,3 +202,23 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
     assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
     clip = ImageSequenceClip(images_with_text, fps=20)
     clip.write_gif(full_file_name, fps=20)
+
+
+def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
+    # TODO(HiroIshida) dirty...
+    t: Optional[Type[AutoEncoderBase]] = None
+
+    t_cand_list = get_all_concrete_leaftypes(AutoEncoderBase)
+
+    detect_count = 0
+    for t_cand in t_cand_list:
+        try:
+            TrainCache.load(project_name, t_cand)
+            t = t_cand
+            detect_count += 1
+        except Exception:
+            pass
+
+    assert detect_count == 1
+    assert t is not None  # redundant but for mypy check
+    return t
