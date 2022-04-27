@@ -36,9 +36,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
     parser.add_argument('-n', type=int, default=250, help='step num')
+    parser.add_argument('-m', type=int, default=3, help='simulation num')
     args = parser.parse_args()
     project_name = args.pn
     n_step = args.n
+    n_sim = args.m
 
     obs_config = ObservationConfig()
     obs_config.set_all(True)
@@ -50,29 +52,31 @@ if __name__ == '__main__':
         headless=True)
     env.launch()
 
-    task = env.get_task(CloseDrawer)
-    task.reset()
-
     chunk = MultiEpisodeChunk.load(project_name)
     av_init = chunk.data_list_intact[0].filter_by_primitive_type(AngleVector)[0]
 
-    ae_type = auto_detect_autoencoder_type(project_name)
-    prop = create_default_propagator(project_name, n_angle_vector=7 + 1, ae_type=ae_type)  # 1 for gripper
+    task = env.get_task(CloseDrawer)
 
-    rgb_seq_gif = []
+    for i in range(n_sim):
+        task.reset()
 
-    obs, _, _ = task.step(av_to_action(av_init))
-    edict = obs_to_elemdict(obs)
-    prop.feed(edict)
-    for i in tqdm.tqdm(range(n_step)):
-        edict_next = prop.predict(n_prop=1)[0]
-        av_next = edict_next[AngleVector]
-        obs, _, _ = task.step(av_to_action(av_next))
+        ae_type = auto_detect_autoencoder_type(project_name)
+        prop = create_default_propagator(project_name, n_angle_vector=7 + 1, ae_type=ae_type)  # 1 for gripper
+
+        rgb_seq_gif = []
+
+        obs, _, _ = task.step(av_to_action(av_init))
         edict = obs_to_elemdict(obs)
         prop.feed(edict)
+        for _ in tqdm.tqdm(range(n_step)):
+            edict_next = prop.predict(n_prop=1)[0]
+            av_next = edict_next[AngleVector]
+            obs, _, _ = task.step(av_to_action(av_next))
+            edict = obs_to_elemdict(obs)
+            prop.feed(edict)
 
-        rgb_seq_gif.append(RGBImage(obs.overhead_rgb))
+            rgb_seq_gif.append(RGBImage(obs.overhead_rgb))
 
-    filename = os.path.join(get_project_dir(project_name), "feedback_simulation.gif")
-    clip = ImageSequenceClip([img.numpy() for img in rgb_seq_gif], fps=50)
-    clip.write_gif(filename, fps=50)
+        filename = os.path.join(get_project_dir(project_name), "feedback_simulation-{}.gif".format(i))
+        clip = ImageSequenceClip([img.numpy() for img in rgb_seq_gif], fps=50)
+        clip.write_gif(filename, fps=50)
