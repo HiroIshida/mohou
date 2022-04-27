@@ -64,11 +64,11 @@ class TrainCache(Generic[ModelT]):
 
     def on_train_loss(self, loss_dict: LossDict, epoch: int):
         self.train_loss_dict_seq.append(loss_dict)
-        logger.info('train_total_loss: {}'.format(loss_dict.total().item()))
+        logger.info('train loss => {}'.format(loss_dict))
 
     def on_validate_loss(self, loss_dict: LossDict, epoch: int):
         self.validate_loss_dict_seq.append(loss_dict)
-        logger.info('validate_total_loss: {}'.format(loss_dict.total().item()))
+        logger.info('validate loss => {}'.format(loss_dict))
 
     def on_endof_epoch(self, model: ModelT, epoch: int):
         model = copy.deepcopy(model)

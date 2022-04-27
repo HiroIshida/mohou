@@ -33,6 +33,12 @@ class LossDict(Dict[str, torch.Tensor]):
             val = self[key].detach().clone().cpu()
             self[key] = val
 
+    def __str__(self) -> str:
+        string = "total: {}".format(self.total().item())
+        for k, v in self.items():
+            string += ', {}: {}'.format(k, v.item())
+        return string
+
 
 def average_loss_dict(dicts: List[LossDict]):
     dict_new = copy.deepcopy(dicts[0])
