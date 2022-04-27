@@ -16,8 +16,7 @@ from mohou.file import get_project_dir
 from mohou.types import RGBImage, DepthImage, AngleVector, ElementDict
 from mohou.types import MultiEpisodeChunk
 from mohou.default import create_default_propagator
-
-from ..utils import auto_detect_autoencoder_type
+from mohou.script_utils import auto_detect_autoencoder_type
 
 
 def av_to_action(av: AngleVector) -> np.ndarray:
