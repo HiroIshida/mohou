@@ -1,6 +1,7 @@
 from graphviz import Digraph
 
-from mohou.types import get_all_concrete_leaftypes, ElementBase
+from mohou.utils import get_all_concrete_leaftypes
+from mohou.types import ElementBase
 
 
 if __name__ == '__main__':

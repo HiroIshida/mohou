@@ -1,6 +1,7 @@
 import logging
 from logging import Logger
 import os
+import queue
 import time
 from typing import Any, List, Iterator, TypeVar, Union, Type
 
@@ -10,6 +11,20 @@ import torch
 from torch.utils.data import Dataset, random_split
 
 from mohou.file import get_project_dir
+
+
+def get_all_concrete_leaftypes(root: Type) -> List[Type]:
+    concrete_types: List[Type] = []
+    q = queue.Queue()  # type: ignore
+    q.put(root)
+    while not q.empty():
+        t: Type = q.get()
+        if len(t.__subclasses__()) == 0:
+            concrete_types.append(t)
+
+        for st in t.__subclasses__():
+            q.put(st)
+    return list(set(concrete_types))
 
 
 def splitting_slices(n_elem_list: List[int]) -> Iterator[slice]:

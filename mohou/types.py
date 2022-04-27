@@ -5,7 +5,6 @@ import copy
 from dataclasses import dataclass, asdict
 import functools
 import operator
-import queue
 import random
 import yaml
 from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
@@ -20,6 +19,7 @@ from mohou.constant import N_DATA_INTACT
 from mohou.file import get_project_dir, load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
+from mohou.utils import get_all_concrete_leaftypes
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
@@ -330,20 +330,6 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
 
         else:
             assert False
-
-
-def get_all_concrete_leaftypes(root: Type) -> List[Type]:
-    concrete_types: List[Type] = []
-    q = queue.Queue()  # type: ignore
-    q.put(root)
-    while not q.empty():
-        t: Type = q.get()
-        if len(t.__subclasses__()) == 0:
-            concrete_types.append(t)
-
-        for st in t.__subclasses__():
-            q.put(st)
-    return list(set(concrete_types))
 
 
 def get_element_type(type_name: str) -> Type[ElementBase]:
