@@ -6,7 +6,7 @@ import functools
 import operator
 import random
 import yaml
-from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, Union
+from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -480,23 +480,6 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False, 'element with type {} not found'.format(elem_type)
-
-    def get_partial(self, indices: List[int], flag_seq: Optional[ElementSequence[TerminateFlag]] = None) -> 'EpisodeData':
-
-        partial_sequence_list = []
-        for seq in self.sequence_list:
-            if seq.elem_type == TerminateFlag:
-                # TerminateFlag is only the spatial type!
-                n_partial_length = len(indices)
-                if flag_seq is None:
-                    seq_partial = self.create_default_terminate_flag_seq(n_partial_length)
-                else:
-                    assert len(flag_seq) == n_partial_length
-                    seq_partial = flag_seq
-            else:
-                seq_partial = seq.get_partial(indices)
-            partial_sequence_list.append(seq_partial)
-        return EpisodeData.from_seq_list(partial_sequence_list)
 
 
 @dataclass(frozen=True)

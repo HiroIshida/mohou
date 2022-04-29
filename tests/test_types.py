@@ -138,20 +138,6 @@ def test_episode_data():
 
     assert set(data.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
-    # split
-    indices = [0, 2, 4]
-    partial_data = data.get_partial(indices)
-    image_seq_partial = partial_data.get_sequence_by_type(RGBImage)
-    av_seq_partial = partial_data.get_sequence_by_type(AngleVector)
-
-    for i, j in enumerate(indices):
-        np.testing.assert_equal(image_seq_partial[i].numpy(), image_seq[j].numpy())
-        np.testing.assert_equal(av_seq_partial[i].numpy(), av_seq[j].numpy())
-
-    # split using custom flag_seq
-    flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in [False, False, True]])
-    partial_data = data.get_partial(indices, flag_seq)
-
 
 def test_episode_data_assertion_different_size():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(3)])
