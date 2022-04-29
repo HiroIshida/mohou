@@ -443,22 +443,22 @@ class EpisodeData:
         assert all_different_type, 'all sequences must have different type'
         return cls(type_shape_table, sequence_list)
 
-    def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
-        for seq in self.sequence_list:
-            if isinstance(seq[0], elem_type):
-                # thanks to all_different_type
-                return seq
-        assert False
-
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
+        def get_sequence_by_primitive_type(elem_type):
+            for seq in self.sequence_list:
+                if isinstance(seq[0], elem_type):
+                    # thanks to all_different_type
+                    return seq
+            assert False, 'element with type {} not found'.format(elem_type)
+
         if issubclass(elem_type, PrimitiveElementBase):
-            return self.filter_by_primitive_type(elem_type)  # type: ignore
+            return get_sequence_by_primitive_type(elem_type)  # type: ignore
         elif issubclass(elem_type, CompositeImageBase):
-            seqs = [self.filter_by_primitive_type(t) for t in elem_type.image_types]
+            seqs = [get_sequence_by_primitive_type(t) for t in elem_type.image_types]
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
-            assert False
+            assert False, 'element with type {} not found'.format(elem_type)
 
     def get_partial(self, indices: List[int], flag_seq: Optional[ElementSequence[TerminateFlag]] = None) -> 'EpisodeData':
 

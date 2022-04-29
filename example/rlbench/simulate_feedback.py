@@ -53,7 +53,7 @@ if __name__ == '__main__':
     env.launch()
 
     chunk = MultiEpisodeChunk.load(project_name)
-    av_init = chunk.data_list_intact[0].filter_by_primitive_type(AngleVector)[0]
+    av_init = chunk.data_list_intact[0].get_sequence_by_type(AngleVector)[0]
 
     task = env.get_task(CloseDrawer)
 
