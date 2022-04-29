@@ -176,7 +176,7 @@ def image_av_chunk():
         data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
     lst = [create_edata(10) for _ in range(20)]
-    chunk = MultiEpisodeChunk(lst)
+    chunk = MultiEpisodeChunk.from_data_list(lst)
     return chunk
 
 
@@ -189,7 +189,7 @@ def image_av_chunk_uneven():
         return data
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    chunk = MultiEpisodeChunk(lst, shuffle=False, with_intact_data=False)
+    chunk = MultiEpisodeChunk.from_data_list(lst, shuffle=False, with_intact_data=False)
     return chunk
 
 
@@ -222,7 +222,7 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
     data2 = EpisodeData.from_seq_list([depth_seq, av_seq])
 
     with pytest.raises(AssertionError):
-        MultiEpisodeChunk([data1, data2])
+        MultiEpisodeChunk.from_data_list([data1, data2])
 
 
 def test_multi_episode_chunk_merge(image_av_chunk):
@@ -233,7 +233,7 @@ def test_multi_episode_chunk_merge(image_av_chunk):
     # OK
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     data = EpisodeData.from_seq_list([image_seq])
-    chunk2 = MultiEpisodeChunk([data], with_intact_data=False)
+    chunk2 = MultiEpisodeChunk.from_data_list([data], with_intact_data=False)
     chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
     chunk.merge(chunk2)
     assert set(chunk.type_shape_table.keys()) == set([RGBImage, TerminateFlag])
@@ -241,6 +241,6 @@ def test_multi_episode_chunk_merge(image_av_chunk):
     # NG
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
     data = EpisodeData.from_seq_list([image_seq, depth_seq])
-    chunk3 = MultiEpisodeChunk([data], with_intact_data=False)
+    chunk3 = MultiEpisodeChunk.from_data_list([data], with_intact_data=False)
     with pytest.raises(AssertionError):
         chunk.merge(chunk3)

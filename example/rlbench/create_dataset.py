@@ -62,7 +62,7 @@ if __name__ == '__main__':
         demo = task.get_demos(amount=1, live_demos=True)[0]
         mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo)
         mohou_episode_data_list.append(mohou_episode_data)
-    chunk = MultiEpisodeChunk(mohou_episode_data_list)
+    chunk = MultiEpisodeChunk.from_data_list(mohou_episode_data_list)
     chunk.dump(project_name)
 
     # create debug image

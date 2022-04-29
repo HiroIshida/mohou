@@ -481,7 +481,7 @@ class EpisodeData:
         return self.sequence_list.__iter__()
 
 
-@dataclass
+@dataclass(frozen=True)
 class ChunkSpec:
     n_episode: int
     n_episode_intact: int
@@ -502,14 +502,17 @@ class ChunkSpec:
         return cls(**d)
 
 
+@dataclass
 class MultiEpisodeChunk:
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
-    def __init__(
-            self, data_list: List[EpisodeData],
-            shuffle: bool = True, with_intact_data: bool = True):
+    @classmethod
+    def from_data_list(cls,
+                       data_list: List[EpisodeData],
+                       shuffle: bool = True,
+                       with_intact_data: bool = True) -> 'MultiEpisodeChunk':
 
         set_types = set(functools.reduce(
             operator.add,
@@ -523,13 +526,14 @@ class MultiEpisodeChunk:
             random.shuffle(data_list)
 
         if with_intact_data:
-            self.data_list_intact = data_list[:N_DATA_INTACT]
-            self.data_list = data_list[N_DATA_INTACT:]
+            data_list_intact = data_list[:N_DATA_INTACT]
+            data_list = data_list[N_DATA_INTACT:]
         else:
-            self.data_list_intact = []
-            self.data_list = data_list
+            data_list_intact = []
+            data_list = data_list
 
-        self.type_shape_table = data_list[0].type_shape_table
+        type_shape_table = data_list[0].type_shape_table
+        return cls(data_list, data_list_intact, type_shape_table)
 
     def __iter__(self) -> Iterator[EpisodeData]:
         return self.data_list.__iter__()
@@ -570,10 +574,10 @@ class MultiEpisodeChunk:
         dump_object(self, project_name, postfix='auxiliary')
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
+        return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table)
 
     def get_not_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list, shuffle=False, with_intact_data=False)
+        return MultiEpisodeChunk(self.data_list, [], self.type_shape_table)
 
     def merge(self, other: 'MultiEpisodeChunk') -> None:
         keys_self = set(self.type_shape_table.keys())
