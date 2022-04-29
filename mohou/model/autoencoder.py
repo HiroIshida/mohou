@@ -219,7 +219,7 @@ class VariationalAutoEncoder(AutoEncoderBase):
         z = self.reparameterize(mu, logvar)
         reconstructed = self.decoder_module(z)
 
-        weight = 1e-2 * self.config.n_bottleneck / np.prod(sample.shape)
+        weight = 1e-1 * self.config.n_bottleneck / np.prod(sample.shape)
         kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0) * weight
         loss_value = nn.MSELoss()(sample, reconstructed)
         return LossDict({'reconstruction': loss_value, 'kld': kld_loss})
