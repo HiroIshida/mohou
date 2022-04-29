@@ -95,6 +95,6 @@ if __name__ == '__main__':
 
         # create debug image
         filename = os.path.join(get_project_dir(project_name), "sample.gif")
-        rgb_seq = chunk[0].filter_by_type(RGBImage)
+        rgb_seq = chunk[0].get_sequence_by_type(RGBImage)
         clip = ImageSequenceClip([img.numpy() for img in rgb_seq], fps=50)
         clip.write_gif(filename, fps=50)

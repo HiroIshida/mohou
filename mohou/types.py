@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import os
-import collections.abc
 import copy
 from dataclasses import dataclass, asdict
 import functools
@@ -29,6 +28,25 @@ PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
 CompositeImageT = TypeVar('CompositeImageT', bound='CompositeImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
+
+
+CompositeListElementT = TypeVar('CompositeListElementT')
+
+
+class HasAList(Sequence, Generic[CompositeListElementT]):
+
+    @abstractmethod
+    def _get_has_a_list(self) -> List[CompositeListElementT]:
+        pass
+
+    def __iter__(self) -> Iterator[CompositeListElementT]:
+        return self._get_has_a_list().__iter__()
+
+    def __getitem__(self, indices_like):  # TODO(HiroIshida) add type hints?
+        return self._get_has_a_list()[indices_like]
+
+    def __len__(self) -> int:
+        return len(self._get_has_a_list())
 
 
 class ElementBase(ABC):
@@ -339,7 +357,7 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, 'type {} not found'.format(type_name)
 
 
-class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
+class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     elem_type: Optional[Type[ElementT]] = None
     elem_shape: Optional[Tuple[int, ...]] = None
     elem_list: List[ElementT]
@@ -354,14 +372,8 @@ class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
             self.elem_type = type(elem_list[0])
             self.elem_shape = elem_list[0].shape
 
-    def __len__(self):
-        return len(self.elem_list)
-
-    def __getitem__(self, index):
-        return self.elem_list[index]
-
-    def __iter__(self) -> Iterator[ElementT]:
-        return self.elem_list.__iter__()
+    def _get_has_a_list(self) -> List[ElementT]:
+        return self.elem_list
 
     def append(self, elem: ElementT):
         if self.elem_type is None:
@@ -389,14 +401,23 @@ def create_composite_image_sequence(
     return composite_image_seq
 
 
+class TypeShapeTableMixin:
+
+    def types(self) -> List[Type[ElementBase]]:
+        return list(self.type_shape_table.keys())  # type: ignore
+
+
 @dataclass(frozen=True)
-class EpisodeData:
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
     sequence_list: List[ElementSequence]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __post_init__(self):
-        ef_seq = self.filter_by_type(TerminateFlag)
+        ef_seq = self.get_sequence_by_type(TerminateFlag)
         self.check_terminate_seq(ef_seq)
+
+    def _get_has_a_list(self) -> List[ElementSequence]:
+        return self.sequence_list
 
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
@@ -441,48 +462,28 @@ class EpisodeData:
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
-        return cls(type_shape_table, sequence_list)
+        return cls(sequence_list, type_shape_table)
 
-    def filter_by_primitive_type(self, elem_type: Type[PrimitiveElementT]) -> ElementSequence[PrimitiveElementT]:
-        for seq in self.sequence_list:
-            if isinstance(seq[0], elem_type):
-                # thanks to all_different_type
-                return seq
-        assert False
+    def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
-    def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
+        def get_sequence_by_primitive_type(elem_type):
+            for seq in self.sequence_list:
+                if isinstance(seq[0], elem_type):
+                    # thanks to all_different_type
+                    return seq
+            assert False, 'element with type {} not found'.format(elem_type)
 
         if issubclass(elem_type, PrimitiveElementBase):
-            return self.filter_by_primitive_type(elem_type)  # type: ignore
+            return get_sequence_by_primitive_type(elem_type)  # type: ignore
         elif issubclass(elem_type, CompositeImageBase):
-            seqs = [self.filter_by_primitive_type(t) for t in elem_type.image_types]
+            seqs = [get_sequence_by_primitive_type(t) for t in elem_type.image_types]
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
-            assert False
-
-    def get_partial(self, indices: List[int], flag_seq: Optional[ElementSequence[TerminateFlag]] = None) -> 'EpisodeData':
-
-        partial_sequence_list = []
-        for seq in self.sequence_list:
-            if seq.elem_type == TerminateFlag:
-                # TerminateFlag is only the spatial type!
-                n_partial_length = len(indices)
-                if flag_seq is None:
-                    seq_partial = self.create_default_terminate_flag_seq(n_partial_length)
-                else:
-                    assert len(flag_seq) == n_partial_length
-                    seq_partial = flag_seq
-            else:
-                seq_partial = seq.get_partial(indices)
-            partial_sequence_list.append(seq_partial)
-        return EpisodeData.from_seq_list(partial_sequence_list)
-
-    def __iter__(self):
-        return self.sequence_list.__iter__()
+            assert False, 'element with type {} not found'.format(elem_type)
 
 
-@dataclass
-class ChunkSpec:
+@dataclass(frozen=True)
+class ChunkSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -502,40 +503,41 @@ class ChunkSpec:
         return cls(**d)
 
 
-class MultiEpisodeChunk:
+@dataclass
+class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
-    def __init__(
-            self, data_list: List[EpisodeData],
-            shuffle: bool = True, with_intact_data: bool = True):
+    def _get_has_a_list(self) -> List[EpisodeData]:
+        return self.data_list
+
+    @classmethod
+    def from_data_list(cls,
+                       data_list: List[EpisodeData],
+                       shuffle: bool = True,
+                       with_intact_data: bool = True) -> 'MultiEpisodeChunk':
 
         set_types = set(functools.reduce(
             operator.add,
-            [list(data.type_shape_table.keys()) for data in data_list]))
+            [list(data.types()) for data in data_list]))
 
         n_type_appeared = len(set_types)
-        n_type_expected = len(data_list[0].type_shape_table.keys())
+        n_type_expected = len(data_list[0].types())
         assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
 
         if shuffle:
             random.shuffle(data_list)
 
         if with_intact_data:
-            self.data_list_intact = data_list[:N_DATA_INTACT]
-            self.data_list = data_list[N_DATA_INTACT:]
+            data_list_intact = data_list[:N_DATA_INTACT]
+            data_list = data_list[N_DATA_INTACT:]
         else:
-            self.data_list_intact = []
-            self.data_list = data_list
+            data_list_intact = []
+            data_list = data_list
 
-        self.type_shape_table = data_list[0].type_shape_table
-
-    def __iter__(self) -> Iterator[EpisodeData]:
-        return self.data_list.__iter__()
-
-    def __getitem__(self, index):
-        return self.data_list.__getitem__(index)
+        type_shape_table = data_list[0].type_shape_table
+        return cls(data_list, data_list_intact, type_shape_table)
 
     def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
         return self.type_shape_table[elem_type]
@@ -570,24 +572,24 @@ class MultiEpisodeChunk:
         dump_object(self, project_name, postfix='auxiliary')
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list_intact, shuffle=False, with_intact_data=False)
+        return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table)
 
     def get_not_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list, shuffle=False, with_intact_data=False)
+        return MultiEpisodeChunk(self.data_list, [], self.type_shape_table)
 
     def merge(self, other: 'MultiEpisodeChunk') -> None:
-        keys_self = set(self.type_shape_table.keys())
-        keys_other = set(other.type_shape_table.keys())
+        keys_self = set(self.types())
+        keys_other = set(other.types())
         assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
         keys_common = keys_self.intersection(keys_other)
 
-        def filter_episode_data_list(episode_data_list):
+        def filter_episode_data_list(episode_data_list: List[EpisodeData]):
             # TODO(HiroIshida) not efficient at all...
             episode_data_list_filtered = []
             for episode_data in episode_data_list:
                 seqs = []
                 for key in keys_common:
-                    seqs.append(episode_data.filter_by_type(key))
+                    seqs.append(episode_data.get_sequence_by_type(key))
                 episode_data_list_filtered.append(EpisodeData.from_seq_list(seqs))
             assert len(episode_data_list) == len(episode_data_list_filtered)
             return episode_data_list_filtered

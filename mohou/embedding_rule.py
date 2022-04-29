@@ -37,7 +37,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
         def embed(elem_type, embedder) -> np.ndarray:
-            sequence = episode_data.filter_by_type(elem_type)
+            sequence = episode_data.get_sequence_by_type(elem_type)
             return np.stack([embedder.forward(e) for e in sequence])
 
         vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
@@ -56,7 +56,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
                     primitve_elem_type_list.extend(elem_type.image_types)
             return set(primitve_elem_type_list)
 
-        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.type_shape_table.keys()))
+        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.types()))
         required_elem_types = elem_types_to_primitive_elem_set(list(self.keys()))
         assert required_elem_types <= chunk_elem_types
 

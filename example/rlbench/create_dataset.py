@@ -62,11 +62,11 @@ if __name__ == '__main__':
         demo = task.get_demos(amount=1, live_demos=True)[0]
         mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo)
         mohou_episode_data_list.append(mohou_episode_data)
-    chunk = MultiEpisodeChunk(mohou_episode_data_list)
+    chunk = MultiEpisodeChunk.from_data_list(mohou_episode_data_list)
     chunk.dump(project_name)
 
     # create debug image
     filename = os.path.join(get_project_dir(project_name), "sample.gif")
-    rgb_seq = chunk[0].filter_by_type(RGBImage)
+    rgb_seq = chunk[0].get_sequence_by_type(RGBImage)
     clip = ImageSequenceClip([img.numpy() for img in rgb_seq], fps=50)
     clip.write_gif(filename, fps=50)
