@@ -136,7 +136,7 @@ def test_episode_data():
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     data = EpisodeData.from_seq_list([image_seq, av_seq])
 
-    assert set(data.keys()) == set([AngleVector, RGBImage, TerminateFlag])
+    assert set(data.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
     # split
     indices = [0, 2, 4]
@@ -202,7 +202,7 @@ def test_chunk_spec():
 
 def test_multi_episode_chunk(image_av_chunk, tmp_project_name):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk
-    assert set(chunk.keys()) == set([AngleVector, RGBImage, TerminateFlag])
+    assert set(chunk.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
     chunk.dump(tmp_project_name)
     loaded = chunk.load(tmp_project_name)
@@ -236,7 +236,7 @@ def test_multi_episode_chunk_merge(image_av_chunk):
     chunk2 = MultiEpisodeChunk.from_data_list([data], with_intact_data=False)
     chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
     chunk.merge(chunk2)
-    assert set(chunk.keys()) == set([RGBImage, TerminateFlag])
+    assert set(chunk.types()) == set([RGBImage, TerminateFlag])
 
     # NG
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])

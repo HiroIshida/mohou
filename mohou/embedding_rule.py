@@ -56,7 +56,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
                     primitve_elem_type_list.extend(elem_type.image_types)
             return set(primitve_elem_type_list)
 
-        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.keys()))
+        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.types()))
         required_elem_types = elem_types_to_primitive_elem_set(list(self.keys()))
         assert required_elem_types <= chunk_elem_types
 

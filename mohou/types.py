@@ -403,7 +403,7 @@ def create_composite_image_sequence(
 
 class TypeShapeTableMixin:
 
-    def keys(self) -> List[Type[ElementBase]]:
+    def types(self) -> List[Type[ElementBase]]:
         return list(self.type_shape_table.keys())  # type: ignore
 
 
@@ -537,10 +537,10 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         set_types = set(functools.reduce(
             operator.add,
-            [list(data.keys()) for data in data_list]))
+            [list(data.types()) for data in data_list]))
 
         n_type_appeared = len(set_types)
-        n_type_expected = len(data_list[0].keys())
+        n_type_expected = len(data_list[0].types())
         assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
 
         if shuffle:
@@ -595,8 +595,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return MultiEpisodeChunk(self.data_list, [], self.type_shape_table)
 
     def merge(self, other: 'MultiEpisodeChunk') -> None:
-        keys_self = set(self.keys())
-        keys_other = set(other.keys())
+        keys_self = set(self.types())
+        keys_other = set(other.types())
         assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
         keys_common = keys_self.intersection(keys_other)
 
