@@ -141,8 +141,8 @@ def test_episode_data():
     # split
     indices = [0, 2, 4]
     partial_data = data.get_partial(indices)
-    image_seq_partial = partial_data.filter_by_type(RGBImage)
-    av_seq_partial = partial_data.filter_by_type(AngleVector)
+    image_seq_partial = partial_data.get_sequence_by_type(RGBImage)
+    av_seq_partial = partial_data.get_sequence_by_type(AngleVector)
 
     for i, j in enumerate(indices):
         np.testing.assert_equal(image_seq_partial[i].numpy(), image_seq[j].numpy())

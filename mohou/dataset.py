@@ -60,7 +60,7 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
 
         image_list: List[ImageT] = []
         for episode_data in chunk:
-            image_list.extend(episode_data.filter_by_type(image_type))
+            image_list.extend(episode_data.get_sequence_by_type(image_type))
 
         use_periodic_augmentation = (augconfig.batch_augment_factor == 0)
         if use_periodic_augmentation:

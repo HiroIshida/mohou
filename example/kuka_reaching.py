@@ -242,7 +242,7 @@ if __name__ == '__main__':
             chunk.dump(project_name)
 
             # For debugging
-            img_seq = chunk[0].filter_by_type(RGBImage)
+            img_seq = chunk[0].get_sequence_by_type(RGBImage)
             filename = os.path.join(get_project_dir(project_name), "sample.gif")
             clip = ImageSequenceClip([img for img in img_seq], fps=50)
             clip.write_gif(filename, fps=50)

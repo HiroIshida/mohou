@@ -180,8 +180,8 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
     assert image_type is not None
 
     n_feed = 10
-    fed_avs = episode_data.filter_by_type(AngleVector)[:n_feed]
-    fed_images = episode_data.filter_by_type(image_type)[:n_feed]
+    fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
+    fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
     print("start lstm propagation")
     for elem_tuple in zip(fed_avs, fed_images):

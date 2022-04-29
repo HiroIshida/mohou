@@ -395,7 +395,7 @@ class EpisodeData:
     sequence_list: List[ElementSequence]
 
     def __post_init__(self):
-        ef_seq = self.filter_by_type(TerminateFlag)
+        ef_seq = self.get_sequence_by_type(TerminateFlag)
         self.check_terminate_seq(ef_seq)
 
     @staticmethod
@@ -450,7 +450,7 @@ class EpisodeData:
                 return seq
         assert False
 
-    def filter_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
+    def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
         if issubclass(elem_type, PrimitiveElementBase):
             return self.filter_by_primitive_type(elem_type)  # type: ignore
@@ -585,13 +585,13 @@ class MultiEpisodeChunk:
         assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
         keys_common = keys_self.intersection(keys_other)
 
-        def filter_episode_data_list(episode_data_list):
+        def filter_episode_data_list(episode_data_list: List[EpisodeData]):
             # TODO(HiroIshida) not efficient at all...
             episode_data_list_filtered = []
             for episode_data in episode_data_list:
                 seqs = []
                 for key in keys_common:
-                    seqs.append(episode_data.filter_by_type(key))
+                    seqs.append(episode_data.get_sequence_by_type(key))
                 episode_data_list_filtered.append(EpisodeData.from_seq_list(seqs))
             assert len(episode_data_list) == len(episode_data_list_filtered)
             return episode_data_list_filtered

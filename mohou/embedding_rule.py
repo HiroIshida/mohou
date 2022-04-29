@@ -37,7 +37,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
         def embed(elem_type, embedder) -> np.ndarray:
-            sequence = episode_data.filter_by_type(elem_type)
+            sequence = episode_data.get_sequence_by_type(elem_type)
             return np.stack([embedder.forward(e) for e in sequence])
 
         vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
