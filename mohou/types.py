@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 import os
-import collections.abc
 import copy
 from dataclasses import dataclass, asdict
 import functools
 import operator
 import random
 import yaml
-from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
+from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,6 +28,25 @@ PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
 CompositeImageT = TypeVar('CompositeImageT', bound='CompositeImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
+
+
+CompositeListElementT = TypeVar('CompositeListElementT')
+
+
+class HasAList(Sequence, Generic[CompositeListElementT]):
+
+    @abstractmethod
+    def _get_has_a_list(self) -> List[CompositeListElementT]:
+        pass
+
+    def __iter__(self) -> Iterator[CompositeListElementT]:
+        return self._get_has_a_list().__iter__()
+
+    def __getitem__(self, indices_like):  # TODO(HiroIshida) add type hints?
+        return self._get_has_a_list()[indices_like]
+
+    def __len__(self) -> int:
+        return len(self._get_has_a_list())
 
 
 class ElementBase(ABC):
@@ -339,7 +357,7 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, 'type {} not found'.format(type_name)
 
 
-class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
+class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     elem_type: Optional[Type[ElementT]] = None
     elem_shape: Optional[Tuple[int, ...]] = None
     elem_list: List[ElementT]
@@ -354,14 +372,8 @@ class ElementSequence(collections.abc.Sequence, Generic[ElementT]):
             self.elem_type = type(elem_list[0])
             self.elem_shape = elem_list[0].shape
 
-    def __len__(self):
-        return len(self.elem_list)
-
-    def __getitem__(self, index):
-        return self.elem_list[index]
-
-    def __iter__(self) -> Iterator[ElementT]:
-        return self.elem_list.__iter__()
+    def _get_has_a_list(self) -> List[ElementT]:
+        return self.elem_list
 
     def append(self, elem: ElementT):
         if self.elem_type is None:
@@ -396,13 +408,16 @@ class TypeShapeTableMixin:
 
 
 @dataclass(frozen=True)
-class EpisodeData(TypeShapeTableMixin):
+class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
     sequence_list: List[ElementSequence]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
         self.check_terminate_seq(ef_seq)
+
+    def _get_has_a_list(self) -> List[ElementSequence]:
+        return self.sequence_list
 
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
@@ -483,9 +498,6 @@ class EpisodeData(TypeShapeTableMixin):
             partial_sequence_list.append(seq_partial)
         return EpisodeData.from_seq_list(partial_sequence_list)
 
-    def __iter__(self):
-        return self.sequence_list.__iter__()
-
 
 @dataclass(frozen=True)
 class ChunkSpec(TypeShapeTableMixin):
@@ -509,10 +521,13 @@ class ChunkSpec(TypeShapeTableMixin):
 
 
 @dataclass
-class MultiEpisodeChunk(TypeShapeTableMixin):
+class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+
+    def _get_has_a_list(self) -> List[EpisodeData]:
+        return self.data_list
 
     @classmethod
     def from_data_list(cls,
@@ -540,12 +555,6 @@ class MultiEpisodeChunk(TypeShapeTableMixin):
 
         type_shape_table = data_list[0].type_shape_table
         return cls(data_list, data_list_intact, type_shape_table)
-
-    def __iter__(self) -> Iterator[EpisodeData]:
-        return self.data_list.__iter__()
-
-    def __getitem__(self, index):
-        return self.data_list.__getitem__(index)
 
     def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
         return self.type_shape_table[elem_type]
