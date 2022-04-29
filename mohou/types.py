@@ -389,10 +389,16 @@ def create_composite_image_sequence(
     return composite_image_seq
 
 
+class TypeShapeTableMixin:
+
+    def keys(self) -> List[Type[ElementBase]]:
+        return list(self.type_shape_table.keys())  # type: ignore
+
+
 @dataclass(frozen=True)
-class EpisodeData:
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+class EpisodeData(TypeShapeTableMixin):
     sequence_list: List[ElementSequence]
+    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
@@ -441,7 +447,7 @@ class EpisodeData:
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
-        return cls(type_shape_table, sequence_list)
+        return cls(sequence_list, type_shape_table)
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -482,7 +488,7 @@ class EpisodeData:
 
 
 @dataclass(frozen=True)
-class ChunkSpec:
+class ChunkSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -503,7 +509,7 @@ class ChunkSpec:
 
 
 @dataclass
-class MultiEpisodeChunk:
+class MultiEpisodeChunk(TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -516,10 +522,10 @@ class MultiEpisodeChunk:
 
         set_types = set(functools.reduce(
             operator.add,
-            [list(data.type_shape_table.keys()) for data in data_list]))
+            [list(data.keys()) for data in data_list]))
 
         n_type_appeared = len(set_types)
-        n_type_expected = len(data_list[0].type_shape_table.keys())
+        n_type_expected = len(data_list[0].keys())
         assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
 
         if shuffle:
@@ -580,8 +586,8 @@ class MultiEpisodeChunk:
         return MultiEpisodeChunk(self.data_list, [], self.type_shape_table)
 
     def merge(self, other: 'MultiEpisodeChunk') -> None:
-        keys_self = set(self.type_shape_table.keys())
-        keys_other = set(other.type_shape_table.keys())
+        keys_self = set(self.keys())
+        keys_other = set(other.keys())
         assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
         keys_common = keys_self.intersection(keys_other)
 
