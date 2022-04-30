@@ -481,6 +481,20 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
         else:
             assert False, 'element with type {} not found'.format(elem_type)
 
+    def save_debug_gif(self, filename: str, fps: int = 20):
+        t: Type[ImageBase]
+        if RGBDImage in self.types():
+            t = RGBDImage
+        elif RGBImage in self.types():
+            t = RGBImage
+        else:
+            assert False, 'Currently only RGB or RBGD is supported'
+
+        seq = self.get_sequence_by_type(t)
+        from moviepy.editor import ImageSequenceClip
+        clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
+        clip.write_gif(filename, fps=fps)
+
 
 @dataclass(frozen=True)
 class ChunkSpec(TypeShapeTableMixin):
