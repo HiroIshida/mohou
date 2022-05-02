@@ -113,8 +113,8 @@ class AutoRegressiveDataset(MohouDataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        flagged_state_seq_list = cls.make_same_length(state_seq_list, augconfig)
-        flagged_state_seq_list_auged = cls.augment_data(flagged_state_seq_list, augconfig)
+        state_seq_list_auged = cls.augment_data(state_seq_list, augconfig)
+        flagged_state_seq_list_auged = cls.make_same_length(state_seq_list_auged, augconfig)
         return cls(flagged_state_seq_list_auged, embed_rule)
 
     @staticmethod
