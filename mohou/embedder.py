@@ -129,7 +129,7 @@ class PCAEmbedder(EmbedderBase[VectorT]):
         return self.elem_type(out.flatten())
 
     @classmethod
-    def from_chunk(cls, vector_type: Type[VectorT], chunk: MultiEpisodeChunk, n_out: int) -> 'PCAEmbedder[VectorT]':
+    def from_chunk(cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int) -> 'PCAEmbedder[VectorT]':
         elem_list: List[VectorT] = []
         for data in chunk.data_list:
             elem_seq = data.get_sequence_by_type(vector_type)
