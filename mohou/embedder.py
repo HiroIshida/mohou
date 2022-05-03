@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Optional, Tuple, Type
+from typing import Callable, Generic, List, Optional, Tuple, Type
 
 import numpy as np
+from sklearn.decomposition import PCA
 import torch
 
+from mohou.types import MultiEpisodeChunk
 from mohou.types import ElementT, ImageT, VectorT
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
@@ -104,3 +106,35 @@ class IdenticalEmbedder(EmbedderBase[VectorT]):
 
     def _backward_impl(self, inp: np.ndarray) -> VectorT:
         return self.elem_type(inp)
+
+
+class PCAEmbedder(EmbedderBase[VectorT]):
+    input_shape: Tuple[int]
+    pca: PCA
+
+    def __init__(self, vector_type: Type[VectorT], pca: PCA):
+        input_shape = (pca.n_features_,)
+        output_dimension = pca.n_components
+        super().__init__(vector_type, input_shape, output_dimension)
+
+        self.pca = pca
+
+    def _forward_impl(self, inp: VectorT) -> np.ndarray:
+        inp_as_2d = np.expand_dims(inp.numpy(), axis=0)
+        out = self.pca.transform(inp_as_2d)
+        return out.flatten()
+
+    def _backward_impl(self, inp: np.ndarray) -> VectorT:
+        out = self.pca.inverse_transform(np.expand_dims(inp, axis=0))
+        return self.elem_type(out.flatten())
+
+    @classmethod
+    def from_chunk(cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int) -> 'PCAEmbedder[VectorT]':
+        elem_list: List[VectorT] = []
+        for data in chunk.data_list:
+            elem_seq = data.get_sequence_by_type(vector_type)
+            elem_list.extend(elem_seq.elem_list)
+        mat = np.array([e.numpy() for e in elem_list])
+        pca = PCA(n_components=n_out)
+        pca.fit(mat)
+        return cls(vector_type, pca)
