@@ -158,17 +158,18 @@ def visualize_image_reconstruction(
             plt.savefig(full_file_name)
 
 
-def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
+def add_text_to_image(image: ImageBase, text: str, color: str):
+    fig = plt.figure(tight_layout={'pad': 0})
+    ax = plt.subplot(1, 1, 1)
+    ax.axis('off')
+    ax.imshow(image.to_rgb()._data)
+    ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
+    fig.canvas.draw()
+    fig.canvas.flush_events()
+    return canvas_to_ndarray(fig)
 
-    def add_text_to_image(image: ImageBase, text: str, color: str):
-        fig = plt.figure(tight_layout={'pad': 0})
-        ax = plt.subplot(1, 1, 1)
-        ax.axis('off')
-        ax.imshow(image.to_rgb()._data)
-        ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        return canvas_to_ndarray(fig)
+
+def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
     episode_data = chunk[0]
