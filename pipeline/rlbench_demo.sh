@@ -6,12 +6,12 @@ function demo_batch {
     local image_type=$1Image
     local project_name=rlbench_demo
     python3 $example_path/rlbench/create_dataset.py -pn $project_name -n 105
-    python3 $example_path/train_autoencoder.py -pn $project_name -n 2000 -image $image_type
-    python3 $example_path/visualize_autoencoder_result.py -pn $project_name
-    python3 $example_path/train_lstm.py -pn $project_name -n 20000 -aug 9
+    python3 -m mohou.script.train_autoencoder -pn $project_name -n 2000 -image $image_type
+    python3 -m mohou.script.visualize_autoencoder_result -pn $project_name
+    python3 -m mohou.script.train_lstm -pn $project_name -n 20000 -aug 9
  
-    python3 $example_path/visualize_lstm_result.py -pn $project_name
-    python3 $example_path/visualize_train_history.py -pn $project_name
+    python3 -m mohou.script.visualize_lstm_result -pn $project_name
+    python3 -m mohou.script.visualize_train_history -pn $project_name
     python3 $example_path/rlbench/simulate_feedback.py -pn $project_name -n 250
 }
 
