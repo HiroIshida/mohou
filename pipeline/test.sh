@@ -29,7 +29,7 @@ function test_batch {
         python3 $example_path/train_lstm.py -pn $project_name -valid-ratio 0.5 -n 2 --warm
     fi
 
-    python3 $example_path/visualize_lstm_result.py -pn $project_name
+    python3 $example_path/visualize_lstm_result.py -pn $project_name -n 5
     python3 $example_path/visualize_train_history.py -pn $project_name
     python3 $example_path/kuka_reaching.py -pn $project_name --feedback
 }

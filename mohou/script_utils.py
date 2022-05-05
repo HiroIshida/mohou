@@ -172,37 +172,38 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    episode_data = chunk[0]
+    for phase, edata in enumerate(chunk):
+        episode_data = chunk[phase]
 
-    image_type = None
-    for key, embedder in propagator.embed_rule.items():
-        if issubclass(key, ImageBase):
-            image_type = key
-    assert image_type is not None
+        image_type = None
+        for key, embedder in propagator.embed_rule.items():
+            if issubclass(key, ImageBase):
+                image_type = key
+        assert image_type is not None
 
-    n_feed = 10
-    fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
-    fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
+        n_feed = 10
+        fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
+        fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
-    print("start lstm propagation")
-    for elem_tuple in zip(fed_avs, fed_images):
-        propagator.feed(ElementDict(elem_tuple))
-    print("finish lstm propagation")
+        print("start lstm propagation")
+        for elem_tuple in zip(fed_avs, fed_images):
+            propagator.feed(ElementDict(elem_tuple))
+        print("finish lstm propagation")
 
-    elem_dict_list = propagator.predict(n_prop)
-    pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
+        elem_dict_list = propagator.predict(n_prop)
+        pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
 
-    print("adding text to images...")
-    fed_images_with_text = [add_text_to_image(image, 'fed (original)', 'blue') for image in fed_images]
-    pred_images_with_text = [add_text_to_image(image, 'predicted by lstm', 'green') for image in pred_images]
+        print("adding text to images...")
+        fed_images_with_text = [add_text_to_image(image, 'fed (original)', 'blue') for image in fed_images]
+        pred_images_with_text = [add_text_to_image(image, 'predicted by lstm', 'green') for image in pred_images]
 
-    images_with_text = fed_images_with_text + pred_images_with_text
+        images_with_text = fed_images_with_text + pred_images_with_text
 
-    save_dir = get_subproject_dir(project_name, 'lstm_result')
-    full_file_name = os.path.join(save_dir, 'result.gif')
-    assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
-    clip = ImageSequenceClip(images_with_text, fps=20)
-    clip.write_gif(full_file_name, fps=20)
+        save_dir = get_subproject_dir(project_name, 'lstm_result')
+        full_file_name = os.path.join(save_dir, 'result{}.gif'.format(phase))
+        assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
+        clip = ImageSequenceClip(images_with_text, fps=20)
+        clip.write_gif(full_file_name, fps=20)
 
 
 def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
