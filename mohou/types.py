@@ -500,6 +500,7 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
 class ChunkSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
+    n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def to_dict(self) -> Dict:
@@ -557,7 +558,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return self.type_shape_table[elem_type]
 
     def get_spec(self) -> ChunkSpec:
-        spec = ChunkSpec(len(self.data_list), len(self.data_list_intact), self.type_shape_table)
+        n_average = int(sum([len(data[0]) for data in self.data_list]) / len(self))
+        spec = ChunkSpec(len(self.data_list), len(self.data_list_intact), n_average, self.type_shape_table)
         return spec
 
     @classmethod
