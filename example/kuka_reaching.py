@@ -240,6 +240,7 @@ if __name__ == '__main__':
                     data_list.append(pickle.load(f))
             chunk = MultiEpisodeChunk.from_data_list(data_list)
             chunk.dump(project_name)
+            chunk.plot_vector_histories(AngleVector, project_name)
 
             # For debugging
             img_seq = chunk[0].get_sequence_by_type(RGBImage)
