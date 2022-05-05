@@ -614,3 +614,25 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.data_list = data_list_new
         self.data_list_intact = data_list_intact_new
         self.type_shape_table = other.type_shape_table
+
+    def plot_vector_histories(self, elem_type: Type[VectorBase], project_name: Optional[str] = None) -> None:
+        n_vec_dim = self.get_spec().type_shape_table[elem_type][0]
+
+        fig = plt.figure()
+        gs = fig.add_gridspec(n_vec_dim, hspace=0)
+        axs = gs.subplots(sharex=True, sharey=True)
+
+        for i_dim, ax in enumerate(axs):
+            for data in self.data_list:
+                seq = data.get_sequence_by_type(AngleVector)
+                single_seq = np.array([e.numpy()[i_dim] for e in seq])
+                axs[i_dim].plot(single_seq, color='red', lw=0.5)
+
+        for ax in axs:
+            ax.grid()
+        if project_name is None:
+            plt.show()
+        else:
+            filename = os.path.join(get_project_dir(project_name), 'seq-{}.png'.format(elem_type.__name__))
+            fig.savefig(filename, format='png', dpi=300)
+            print('saved to {}'.format(filename))
