@@ -10,7 +10,7 @@ from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 class LSTMConfig(ModelConfigBase):
     n_state_with_flag: int
     n_hidden: int = 200
-    n_layer: int = 2
+    n_layer: int = 4
     n_output_layer: int = 1
 
 
