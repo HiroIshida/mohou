@@ -163,7 +163,8 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     ax = plt.subplot(1, 1, 1)
     ax.axis('off')
     ax.imshow(image.to_rgb()._data)
-    ax.text(7, 1, text, fontsize=25, color=color, verticalalignment='top')
+    bbox = dict(boxstyle='round', facecolor='white', alpha=0.7)
+    ax.text(7, 1, text, fontsize=15, color=color, verticalalignment='top', bbox=bbox)
     fig.canvas.draw()
     fig.canvas.flush_events()
     return canvas_to_ndarray(fig)
@@ -195,9 +196,10 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         pred_flags = [elem_dict[TerminateFlag].numpy().item() for elem_dict in elem_dict_list]
 
         print("adding text to images...")
-        fed_images_with_text = [add_text_to_image(image, 'fed (original)', 'blue') for image in fed_images]
+        fed_images_with_text = [add_text_to_image(image, 'fed (original) image)', 'blue') for image in fed_images]
+        clamp = lambda x: max(min(x, 1.0), 0.0)  # noqa
         pred_images_with_text = [
-            add_text_to_image(image, 'pred: isTerminated={}'.format(flag), 'green')
+            add_text_to_image(image, 'predicted image (prob-terminated={:.2f})'.format(clamp(flag)), 'green')
             for image, flag in zip(pred_images, pred_flags)]
 
         images_with_text = fed_images_with_text + pred_images_with_text
