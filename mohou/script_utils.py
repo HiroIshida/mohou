@@ -13,7 +13,7 @@ try:
 except Exception:
     ImageSequenceClip = None
 
-from mohou.types import ImageBase, AngleVector, ElementDict, get_all_concrete_leaftypes
+from mohou.types import ImageBase, AngleVector, TerminateFlag, ElementDict, get_all_concrete_leaftypes
 from mohou.types import MultiEpisodeChunk
 from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
@@ -192,10 +192,13 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
 
         elem_dict_list = propagator.predict(n_prop)
         pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
+        pred_flags = [elem_dict[TerminateFlag].numpy().item() for elem_dict in elem_dict_list]
 
         print("adding text to images...")
         fed_images_with_text = [add_text_to_image(image, 'fed (original)', 'blue') for image in fed_images]
-        pred_images_with_text = [add_text_to_image(image, 'predicted by lstm', 'green') for image in pred_images]
+        pred_images_with_text = [
+            add_text_to_image(image, 'pred: isTerminated={}'.format(flag), 'green')
+            for image, flag in zip(pred_images, pred_flags)]
 
         images_with_text = fed_images_with_text + pred_images_with_text
 
