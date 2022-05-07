@@ -32,7 +32,7 @@ class Propagator:
             elem_dict_list.append(elem_dict)
         return elem_dict_list
 
-    def _predict(self, n_prop: int) -> List[np.ndarray]:
+    def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
         for i in range(n_prop):
@@ -41,8 +41,8 @@ class Propagator:
             state_pred_torch: torch.Tensor = self.lstm(states_torch)[:, -1]
             state_pred = state_pred_torch.squeeze().detach().numpy()
 
-            # force override
-            state_pred[-1] = CONTINUE_FLAG_VALUE
+            if force_continue:
+                state_pred[-1] = CONTINUE_FLAG_VALUE
 
             pred_state_list.append(state_pred)
 
