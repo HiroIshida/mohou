@@ -7,7 +7,7 @@ function demo_batch {
     local project_name=pybullet_reaching_$1
     local n_pixel=$2
     python3 $example_path/kuka_reaching.py -pn $project_name -n 60 -m $2
-    python3 -m mohou.script.train_autoencoder -pn $project_name -n 1500 -image $image_type
+    python3 -m mohou.script.train_autoencoder -pn $project_name -n 1500 -image $image_type --vae
     python3 -m mohou.script.visualize_autoencoder_result -pn $project_name
 
     python3 -m mohou.script.train_lstm -pn $project_name -n 20000 -aug 9
