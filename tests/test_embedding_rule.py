@@ -1,10 +1,12 @@
 import pytest
+import numpy as np
 
 from itertools import permutations
 import torch
 
 from mohou.embedder import ImageEmbedder, IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
+from mohou.embedding_rule import ElemCovMatchNormalizer
 from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
 
 from test_types import image_av_chunk # noqa
@@ -58,3 +60,17 @@ def test_embedding_rule_assertion(image_av_chunk): # noqa
 
     with pytest.raises(AssertionError):
         rule.apply_to_multi_episode_chunk(chunk)
+
+
+def test_ElemCovMatchNormalizer():
+    dim1 = 2
+    dim2 = 3
+    bias = 10
+    a = np.random.randn(10000, dim1) + np.ones(2) * bias
+    b = np.random.randn(10000, dim2) * 3
+    c = np.concatenate([a, b], axis=1)
+    normalizer = ElemCovMatchNormalizer.from_feature_seqs(c, [dim1, dim2])
+    inp = np.random.randn(5)
+    normalized = normalizer.apply(inp)
+    denormalized = normalizer.inverse_apply(normalized)
+    np.testing.assert_almost_equal(inp, denormalized)

@@ -1,12 +1,63 @@
+from abc import ABC, abstractmethod
+import copy
+from dataclasses import dataclass
 import numpy as np
-from typing import Type, List, Dict
+from typing import Type, List, Dict, Generator, Optional
 
 from mohou.embedder import EmbedderBase
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
 from mohou.utils import assert_with_message
 
 
+class NormalizerBase(ABC):
+
+    @abstractmethod
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        pass
+
+
+@dataclass
+class ElemCovMatchNormalizer(NormalizerBase):
+    dims: List[int]
+    means: List[np.ndarray]
+    covs: List[np.ndarray]
+
+    @staticmethod
+    def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
+        head = 0
+        for dim in dims:
+            yield slice(head, head + dim)
+            head += dim
+
+    @classmethod
+    def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+        means = []
+        covs = []
+        for rang in cls.get_ranges(dims):
+            feature_seq_partial = feature_seq[:, rang]
+            means.append(np.mean(feature_seq_partial))
+            covs.append(np.cov(feature_seq_partial.T))
+        return cls(dims, means, covs)
+
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        vec_out = copy.deepcopy(vec)
+        for i, r in enumerate(self.get_ranges(self.dims)):
+            vec_out[r] -= self.means[i]
+        return vec_out
+
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        vec_out = copy.deepcopy(vec)
+        for i, r in enumerate(self.get_ranges(self.dims)):
+            vec_out[r] += self.means[i]
+        return vec_out
+
+
 class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
+    normalizer: Optional[ElemCovMatchNormalizer] = None
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
@@ -76,8 +127,16 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         return string
 
     @classmethod
-    def from_embedders(cls, embedder_list: List[EmbedderBase]) -> 'EmbeddingRule':
-        rule = cls()
+    def from_embedders(cls, embedder_list: List[EmbedderBase], chunk: Optional[MultiEpisodeChunk] = None) -> 'EmbeddingRule':
+        rule: EmbeddingRule = cls()
         for embedder in embedder_list:
             rule[embedder.elem_type] = embedder
+
+        if chunk is not None:
+            # compute normalizer and set to embedder
+            vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
+            vector_seq_concated = np.concatenate(vector_seqs, axis=0)
+            dims = [emb.output_size for emb in embedder_list]
+            normalizer = ElemCovMatchNormalizer.from_feature_seqs(vector_seq_concated, dims)
+            rule.normalizer = normalizer
         return rule
