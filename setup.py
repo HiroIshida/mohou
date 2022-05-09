@@ -15,7 +15,7 @@ install_requires = [
     "opencv-python",
     "pybullet",
     'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
-    'cached_propety;python_version<"3.8"',
+    'cached_property;python_version<"3.8"',
     "moviepy",
     "PyYAML>=5.1",
     "types-PyYAML"
