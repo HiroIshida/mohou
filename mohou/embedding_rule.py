@@ -9,7 +9,7 @@ from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict
 from mohou.utils import assert_with_message
 
 
-class NormalizerBase(ABC):
+class PostProcessor(ABC):
 
     @abstractmethod
     def apply(self, vec: np.ndarray) -> np.ndarray:
@@ -20,8 +20,17 @@ class NormalizerBase(ABC):
         pass
 
 
+class IdenticalPostProcessor(PostProcessor):
+
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
+
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
+
+
 @dataclass
-class ElemCovMatchNormalizer(NormalizerBase):
+class ElemCovMatchPostProcessor(PostProcessor):
     dims: List[int]
     means: List[np.ndarray]
     covs: List[np.ndarray]
@@ -57,16 +66,17 @@ class ElemCovMatchNormalizer(NormalizerBase):
 
 
 class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
-    normalizer: Optional[ElemCovMatchNormalizer] = None
+    post_processor: PostProcessor
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
         for elem_type, embedder in self.items():
             vector = embedder.forward(elem_dict[elem_type])
-            vector_list.append(vector)
+            vector_processed = self.post_processor.apply(vector)
+            vector_list.append(vector_processed)
         return np.hstack(vector_list)
 
-    def inverse_apply(self, vector: np.ndarray) -> ElementDict:
+    def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
 
         def split_vector(vector: np.ndarray, size_list: List[int]):
             head = 0
@@ -77,6 +87,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
                 head = tail
             return vector_list
 
+        vector = self.post_processor.inverse_apply(vector_processed)
         size_list = [embedder.output_size for elem_type, embedder in self.items()]
         vector_list = split_vector(vector, size_list)
 
@@ -87,11 +98,13 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
 
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
 
-        def embed(elem_type, embedder) -> np.ndarray:
+        def encode_and_postprocess(elem_type, embedder) -> np.ndarray:
             sequence = episode_data.get_sequence_by_type(elem_type)
-            return np.stack([embedder.forward(e) for e in sequence])
+            vector = np.stack([embedder.forward(e) for e in sequence])
+            vector_processed = self.post_processor.apply(vector)
+            return vector_processed
 
-        vector_seq = np.hstack([embed(k, v) for k, v in self.items()])
+        vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
         assert_with_message(vector_seq.ndim, 2, 'vector_seq dim')
         return vector_seq
 
@@ -132,11 +145,13 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         for embedder in embedder_list:
             rule[embedder.elem_type] = embedder
 
-        if chunk is not None:
+        if chunk is None:
+            rule.post_processor = IdenticalPostProcessor()
+        else:
             # compute normalizer and set to embedder
             vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
             dims = [emb.output_size for emb in embedder_list]
-            normalizer = ElemCovMatchNormalizer.from_feature_seqs(vector_seq_concated, dims)
-            rule.normalizer = normalizer
+            normalizer = ElemCovMatchPostProcessor.from_feature_seqs(vector_seq_concated, dims)
+            rule.post_processor = normalizer
         return rule
