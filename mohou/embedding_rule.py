@@ -76,7 +76,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
-        assert feature_seq.ndim == 2
+        assert_with_message(feature_seq.ndim, 2, 'feature_seq.ndim')
         means = []
         covs = []
         for rang in cls.get_ranges(dims):
@@ -101,7 +101,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return cls(dims, means, covs)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert vec.ndim == 1
+        assert_with_message(vec.ndim, 1, 'vector dim')
+        assert_with_message(len(vec), sum(self.dims), 'vector total dim')
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -110,7 +111,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert vec.ndim == 1
+        assert_with_message(vec.ndim, 1, 'vector dim')
+        assert_with_message(len(vec), sum(self.dims), 'vector total dim')
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -126,9 +128,8 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         vector_list = []
         for elem_type, embedder in self.items():
             vector = embedder.forward(elem_dict[elem_type])
-            vector_processed = self.post_processor.apply(vector)
-            vector_list.append(vector_processed)
-        return np.hstack(vector_list)
+            vector_list.append(vector)
+        return self.post_processor.apply(np.hstack(vector_list))
 
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
 
