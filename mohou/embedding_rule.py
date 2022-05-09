@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
 import copy
-import functools
+
+import functools  # for cached_property
+if hasattr(functools, 'cached_property'):
+    from functools import cached_property
+else:
+    from cached_property import cached_property  # type: ignore
+
 from dataclasses import dataclass
 import numpy as np
 from typing import Type, List, Dict, Generator, Optional
@@ -43,7 +49,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
             yield slice(head, head + dim)
             head += dim
 
-    @functools.cached_property
+    @cached_property
     def characteristic_stds(self) -> np.ndarray:
 
         def get_max_std(cov) -> float:
@@ -52,8 +58,12 @@ class ElemCovMatchPostProcessor(PostProcessor):
             return np.sqrt(max_eig_cov)
 
         char_stds = np.array(list(map(get_max_std, self.covs)))
-        char_std_scaled = char_stds / np.max(char_stds)
-        return char_std_scaled
+        return char_stds
+
+    @cached_property
+    def scaled_characteristic_stds(self) -> np.ndarray:
+        c_stds = self.characteristic_stds
+        return c_stds / np.max(c_stds)
 
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
@@ -67,7 +77,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
         vec_out = copy.deepcopy(vec)
-        char_stds = self.characteristic_stds
+        char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
             vec_out_new = (vec_out[rangee] - self.means[idx_elem]) * char_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
@@ -75,7 +85,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
         vec_out = copy.deepcopy(vec)
-        char_stds = self.characteristic_stds
+        char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
             vec_out_new = (vec_out[rangee] / char_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new

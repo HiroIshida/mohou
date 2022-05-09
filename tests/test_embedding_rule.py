@@ -62,15 +62,23 @@ def test_embedding_rule_assertion(image_av_chunk): # noqa
         rule.apply_to_multi_episode_chunk(chunk)
 
 
-def test_ElemCovMatchNormalizer():
+def test_ElemCovMatchPostProcessor():
     dim1 = 2
     dim2 = 3
     bias = 10
-    a = np.random.randn(10000, dim1) + np.ones(2) * bias
-    b = np.random.randn(10000, dim2) * 3
+    a = np.random.randn(100000, dim1) + np.ones(2) * bias
+    b = np.random.randn(100000, dim2)
+    b[:, 0] *= 3
+    b[:, 1] *= 2
+    b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
     normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
     inp = np.random.randn(5)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized)
+    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
+
+    cstds = normalizer.characteristic_stds
+    np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=2)
+    scaled_cstds = normalizer.scaled_characteristic_stds
+    np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
