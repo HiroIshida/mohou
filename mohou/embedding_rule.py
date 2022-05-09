@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
+import functools
 from dataclasses import dataclass
 import numpy as np
 from typing import Type, List, Dict, Generator, Optional
@@ -29,7 +30,7 @@ class IdenticalPostProcessor(PostProcessor):
         return vec
 
 
-@dataclass
+@dataclass(frozen=True)
 class ElemCovMatchPostProcessor(PostProcessor):
     dims: List[int]
     means: List[np.ndarray]
@@ -41,6 +42,18 @@ class ElemCovMatchPostProcessor(PostProcessor):
         for dim in dims:
             yield slice(head, head + dim)
             head += dim
+
+    @functools.cached_property
+    def characteristic_stds(self) -> np.ndarray:
+
+        def get_max_std(cov) -> float:
+            eig_values, _ = np.linalg.eig(cov)
+            max_eig_cov = max(eig_values)
+            return np.sqrt(max_eig_cov)
+
+        char_stds = np.array(list(map(get_max_std, self.covs)))
+        char_std_scaled = char_stds / np.max(char_stds)
+        return char_std_scaled
 
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
@@ -54,14 +67,18 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
         vec_out = copy.deepcopy(vec)
-        for i, r in enumerate(self.get_ranges(self.dims)):
-            vec_out[r] -= self.means[i]
+        char_stds = self.characteristic_stds
+        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) * char_stds[idx_elem]  # type: ignore
+            vec_out[rangee] = vec_out_new
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
         vec_out = copy.deepcopy(vec)
-        for i, r in enumerate(self.get_ranges(self.dims)):
-            vec_out[r] += self.means[i]
+        char_stds = self.characteristic_stds
+        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+            vec_out_new = (vec_out[rangee] / char_stds[idx_elem]) + self.means[idx_elem]
+            vec_out[rangee] = vec_out_new
         return vec_out
 
 
