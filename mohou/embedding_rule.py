@@ -171,10 +171,9 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         rule: EmbeddingRule = cls()
         for embedder in embedder_list:
             rule[embedder.elem_type] = embedder
+        rule.post_processor = IdenticalPostProcessor()
 
-        if chunk is None:
-            rule.post_processor = IdenticalPostProcessor()
-        else:
+        if chunk is not None:
             # compute normalizer and set to embedder
             vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
