@@ -13,24 +13,23 @@ function test_batch {
         vae_option="--vae"
     fi
     python3 $example_path/kuka_reaching.py -pn $project_name -n 7
-    # TODO(HiroIshida) bit dirty
-    python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -image $image_type $vae_option
+    python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type $vae_option
 
     cp ~/.mohou/$project_name/MultiEpisodeChunk.pkl ~/.mohou/$project_name/MultiEpisodeChunk-auxiliary.pkl
     if [ $image_type = RGBImage ]; then  # once is enough
-        python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -image $image_type --warm $vae_option
-        python3 $example_path/train_autoencoder.py -pn $project_name -n 2 -image $image_type --aux $vae_option
+        python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type --warm $vae_option
+        python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type --aux $vae_option
     fi
-    python3 $example_path/visualize_autoencoder_result.py -pn $project_name -n 2
+    python3 -m mohou.script.visualize_autoencoder_result -pn $project_name -n 2
 
     # train lstm two times
-    python3 $example_path/train_lstm.py -pn $project_name -valid-ratio 0.5 -n 2
+    python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2
     if [ $image_type RGBImage ]; then  # once is enough
-        python3 $example_path/train_lstm.py -pn $project_name -valid-ratio 0.5 -n 2 --warm
+        python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 --warm
     fi
 
-    python3 $example_path/visualize_lstm_result.py -pn $project_name -n 5
-    python3 $example_path/visualize_train_history.py -pn $project_name
+    python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
+    python3 -m mohou.script.visualize_train_history -pn $project_name
     python3 $example_path/kuka_reaching.py -pn $project_name --feedback
 }
 
