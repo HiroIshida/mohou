@@ -12,13 +12,26 @@ class Propagator:
     lstm: LSTM
     embed_rule: EmbeddingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
+    n_init_duplicate: int
+    is_initialized: bool
 
-    def __init__(self, lstm: LSTM, embed_rule: EmbeddingRule):
+    def __init__(self, lstm: LSTM, embed_rule: EmbeddingRule, n_init_duplicate: int = 0):
         self.lstm = lstm
         self.embed_rule = embed_rule
         self.fed_state_list = []
+        self.n_init_duplicate = n_init_duplicate
+        self.is_initialized = False
 
     def feed(self, elem_dict: ElementDict):
+        self._feed(elem_dict)
+        if not self.is_initialized:
+            for _ in range(self.n_init_duplicate):
+                self._feed(elem_dict)
+
+        if not self.is_initialized:
+            self.is_initialized = True
+
+    def _feed(self, elem_dict: ElementDict):
         if TerminateFlag not in elem_dict:
             elem_dict[TerminateFlag] = TerminateFlag.from_bool(False)
         state_with_flag = self.embed_rule.apply(elem_dict)

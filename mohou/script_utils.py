@@ -182,7 +182,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
                 image_type = key
         assert image_type is not None
 
-        n_feed = 10
+        n_feed = 20
         fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
         fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
