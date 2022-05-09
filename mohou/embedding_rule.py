@@ -42,6 +42,11 @@ class ElemCovMatchPostProcessor(PostProcessor):
     means: List[np.ndarray]
     covs: List[np.ndarray]
 
+    def __post_init__(self):
+        for i, dim in enumerate(self.dims):
+            assert_with_message(self.means[i].shape, (dim,), 'mean shape of {}'.format(i))
+            assert_with_message(self.covs[i].shape, (dim, dim), 'cov shape of {}'.format(i))
+
     @staticmethod
     def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
         head = 0
@@ -84,19 +89,19 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 maxx = np.max(feature_seq_partial)
                 diff = (maxx - minn)
                 cov = np.diag([diff * 0.5 for _ in range(dim)])
-                mean = 0.5 * (minn + maxx)
+                mean = np.array([0.5 * (minn + maxx)])
             else:
                 mean = np.mean(feature_seq_partial, axis=0)
                 cov = np.cov(feature_seq_partial.T)
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
-            assert cov.shape == (dim, dim)
             means.append(mean)
             covs.append(cov)
         return cls(dims, means, covs)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
+        assert vec.ndim == 1
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -105,6 +110,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        assert vec.ndim == 1
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
