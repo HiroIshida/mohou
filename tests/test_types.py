@@ -10,7 +10,7 @@ from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
 from mohou.types import ChunkSpec
-from mohou.types import MultiEpisodeChunk
+from mohou.types import MultiEpisodeChunk, _chunk_cache
 
 from test_file import tmp_project_name  # noqa
 
@@ -191,8 +191,10 @@ def test_multi_episode_chunk(image_av_chunk, tmp_project_name):  # noqa
     assert set(chunk.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
     chunk.dump(tmp_project_name)
+    assert tmp_project_name not in _chunk_cache
     loaded = chunk.load(tmp_project_name)
     assert pickle.dumps(chunk) == pickle.dumps(loaded)
+    assert tmp_project_name in _chunk_cache
 
     chunk_spec = chunk.get_spec()
     chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name)

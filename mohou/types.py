@@ -518,6 +518,9 @@ class ChunkSpec(TypeShapeTableMixin):
         return cls(**d)
 
 
+_chunk_cache: Dict[str, 'MultiEpisodeChunk'] = {}  # used MultiEpisodeChunk.load
+
+
 @dataclass
 class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
@@ -564,7 +567,9 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
     @classmethod
     def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
-        return load_object(cls, project_name, postfix)
+        if project_name not in _chunk_cache:
+            _chunk_cache[project_name] = load_object(cls, project_name, postfix)
+        return _chunk_cache[project_name]
 
     @classmethod
     def load_aux(cls, project_name: str) -> 'MultiEpisodeChunk':
