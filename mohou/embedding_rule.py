@@ -154,13 +154,13 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
 
         def encode_and_postprocess(elem_type, embedder) -> np.ndarray:
             sequence = episode_data.get_sequence_by_type(elem_type)
-            vector = np.stack([embedder.forward(e) for e in sequence])
-            vector_processed = self.post_processor.apply(vector)
-            return vector_processed
+            vectors = [embedder.forward(e) for e in sequence]
+            return np.stack(vectors)
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
-        assert_with_message(vector_seq.ndim, 2, 'vector_seq dim')
-        return vector_seq
+        vector_seq_processed = np.array([self.post_processor.apply(e) for e in vector_seq])
+        assert_with_message(vector_seq_processed.ndim, 2, 'vector_seq dim')
+        return vector_seq_processed
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
 
