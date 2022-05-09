@@ -86,7 +86,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 cov = np.diag([diff * 0.5 for _ in range(dim)])
                 mean = 0.5 * (minn + maxx)
             else:
-                mean = np.mean(feature_seq_partial)
+                mean = np.mean(feature_seq_partial, axis=0)
                 cov = np.cov(feature_seq_partial.T)
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
