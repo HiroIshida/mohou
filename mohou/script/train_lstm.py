@@ -2,12 +2,9 @@ import argparse
 
 from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainConfig
-from mohou.types import MultiEpisodeChunk
-from mohou.types import AngleVector
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_embedding_rule
 from mohou.script_utils import train_lstm
-from mohou.script_utils import auto_detect_autoencoder_type
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -26,11 +23,7 @@ if __name__ == '__main__':
     valid_ratio = args.valid_ratio
     warm_start = args.warm
 
-    chunk_spec = MultiEpisodeChunk.load_spec(project_name)
-    av_dim = chunk_spec.type_shape_table[AngleVector][0]
-    ae_type = auto_detect_autoencoder_type(project_name)
-
-    embedding_rule = create_default_embedding_rule(project_name, av_dim, ae_type=ae_type)
+    embedding_rule = create_default_embedding_rule(project_name)
     model_config = LSTMConfig(embedding_rule.dimension)
     dataset_config = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)

@@ -19,7 +19,6 @@ from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisode
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator
 from mohou.default import create_default_propagator
-from mohou.script_utils import auto_detect_autoencoder_type
 
 
 class BulletManager(object):
@@ -197,8 +196,7 @@ if __name__ == '__main__':
         target_pos, _ = bm.get_reachable_target_pos_and_av()
         bm.set_box(target_pos)
 
-        ae_type = auto_detect_autoencoder_type(project_name)
-        propagator = create_default_propagator(project_name, 7, ae_type=ae_type)
+        propagator = create_default_propagator(project_name)
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 
         filename = os.path.join(get_project_dir(project_name), "feedback_simulation.gif")

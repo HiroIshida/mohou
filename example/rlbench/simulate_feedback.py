@@ -16,7 +16,6 @@ from mohou.file import get_project_dir
 from mohou.types import RGBImage, DepthImage, AngleVector, ElementDict
 from mohou.types import MultiEpisodeChunk
 from mohou.default import create_default_propagator
-from mohou.script_utils import auto_detect_autoencoder_type
 
 
 def av_to_action(av: AngleVector) -> np.ndarray:
@@ -60,8 +59,7 @@ if __name__ == '__main__':
     for i in range(n_sim):
         task.reset()
 
-        ae_type = auto_detect_autoencoder_type(project_name)
-        prop = create_default_propagator(project_name, n_angle_vector=7 + 1, ae_type=ae_type)  # 1 for gripper
+        prop = create_default_propagator(project_name)
 
         rgb_seq_gif = []
 

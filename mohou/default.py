@@ -1,34 +1,51 @@
-from typing import Type
+from typing import Type, Optional
 from mohou.trainer import TrainCache
-from mohou.model import AutoEncoderBase, AutoEncoder, LSTM
-from mohou.types import AngleVector, TerminateFlag
+from mohou.model import AutoEncoderBase, LSTM
+from mohou.types import AngleVector, TerminateFlag, MultiEpisodeChunk, get_all_concrete_leaftypes
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
 from mohou.propagator import Propagator
 
 
-def create_default_embedding_rule(
-        project_name: str,
-        n_angle_vector: int,
-        ae_type: Type[AutoEncoderBase] = AutoEncoder) -> EmbeddingRule:
+def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
+    # TODO(HiroIshida) dirty...
+    t: Optional[Type[AutoEncoderBase]] = None
+
+    t_cand_list = get_all_concrete_leaftypes(AutoEncoderBase)
+
+    detect_count = 0
+    for t_cand in t_cand_list:
+        try:
+            TrainCache.load(project_name, t_cand)
+            t = t_cand
+            detect_count += 1
+        except Exception:
+            pass
+
+    assert detect_count == 1
+    assert t is not None  # redundant but for mypy check
+    return t
+
+
+def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
+
+    chunk_spec = MultiEpisodeChunk.load_spec(project_name)
+    av_dim = chunk_spec.type_shape_table[AngleVector][0]
+    ae_type = auto_detect_autoencoder_type(project_name)
 
     tcache_autoencoder = TrainCache.load(project_name, ae_type)
     assert tcache_autoencoder.best_model is not None
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
-    av_idendical_func = IdenticalEmbedder(AngleVector, n_angle_vector)
+    av_idendical_func = IdenticalEmbedder(AngleVector, av_dim)
     ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
     embed_rule = EmbeddingRule.from_embedders(
         [image_embed_func, av_idendical_func, ef_identical_func])
     return embed_rule
 
 
-def create_default_propagator(
-        project_name: str,
-        n_angle_vector: int,
-        ae_type: Type[AutoEncoderBase] = AutoEncoder) -> Propagator:
-
+def create_default_propagator(project_name: str) -> Propagator:
     tcach_lstm = TrainCache.load(project_name, LSTM)
-    embed_rule = create_default_embedding_rule(project_name, n_angle_vector, ae_type=ae_type)
+    embed_rule = create_default_embedding_rule(project_name)
     assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, embed_rule)
     return propagator

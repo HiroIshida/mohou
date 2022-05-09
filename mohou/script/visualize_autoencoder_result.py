@@ -1,5 +1,5 @@
 import argparse
-from mohou.script_utils import auto_detect_autoencoder_type
+from mohou.default import auto_detect_autoencoder_type
 from mohou.script_utils import visualize_image_reconstruction
 
 if __name__ == '__main__':
