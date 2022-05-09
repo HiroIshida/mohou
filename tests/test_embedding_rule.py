@@ -29,7 +29,7 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
     cstds = normalizer.characteristic_stds
-    np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=2)
+    np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=1)
     scaled_cstds = normalizer.scaled_characteristic_stds
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
@@ -44,12 +44,13 @@ def test_embedding_rule(image_av_chunk): # noqa
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3), n_image_embed)
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
+    f3 = IdenticalEmbedder(TerminateFlag, 1)
 
-    rule = EmbeddingRule.from_embedders([f1, f2], chunk=chunk)
+    rule = EmbeddingRule.from_embedders([f1, f2, f3], chunk=chunk)
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
 
-    assert vector_seq.shape == (10, n_image_embed + n_av_embed)
+    assert vector_seq.shape == (10, n_image_embed + n_av_embed + 1)
 
     class Dummy(VectorBase):
         pass

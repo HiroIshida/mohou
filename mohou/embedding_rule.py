@@ -65,14 +65,35 @@ class ElemCovMatchPostProcessor(PostProcessor):
         c_stds = self.characteristic_stds
         return c_stds / np.max(c_stds)
 
+    @staticmethod
+    def is_binary_sequence(partial_feature_seq: np.ndarray):
+        return len(set(partial_feature_seq.flatten().tolist())) == 2
+
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+        assert feature_seq.ndim == 2
         means = []
         covs = []
         for rang in cls.get_ranges(dims):
             feature_seq_partial = feature_seq[:, rang]
-            means.append(np.mean(feature_seq_partial))
-            covs.append(np.cov(feature_seq_partial.T))
+            dim = feature_seq_partial.shape[1]
+            if cls.is_binary_sequence(feature_seq_partial):
+                # because it's strange to compute covariance for binary sequence
+                assert dim == 1, 'this restriction maybe removed'
+                minn = np.min(feature_seq_partial)
+                maxx = np.max(feature_seq_partial)
+                diff = (maxx - minn)
+                cov = np.diag([diff * 0.5 for _ in range(dim)])
+                mean = 0.5 * (minn + maxx)
+            else:
+                mean = np.mean(feature_seq_partial)
+                cov = np.cov(feature_seq_partial.T)
+                if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
+                    cov = np.expand_dims(cov, axis=0)
+                    cov = np.array([[cov.item()]])
+            assert cov.shape == (dim, dim)
+            means.append(mean)
+            covs.append(cov)
         return cls(dims, means, covs)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
