@@ -29,7 +29,8 @@ def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
 
 def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
 
-    chunk_spec = MultiEpisodeChunk.load_spec(project_name)
+    chunk = MultiEpisodeChunk.load(project_name)
+    chunk_spec = chunk.get_spec()
     av_dim = chunk_spec.type_shape_table[AngleVector][0]
     ae_type = auto_detect_autoencoder_type(project_name)
 
@@ -38,8 +39,8 @@ def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
     av_idendical_func = IdenticalEmbedder(AngleVector, av_dim)
     ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
-    embed_rule = EmbeddingRule.from_embedders(
-        [image_embed_func, av_idendical_func, ef_identical_func])
+    embedders = [image_embed_func, av_idendical_func, ef_identical_func]
+    embed_rule = EmbeddingRule.from_embedders(embedders, chunk)
     return embed_rule
 
 
