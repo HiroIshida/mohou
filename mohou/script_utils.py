@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import re
 import random
 import pickle
@@ -13,7 +14,7 @@ try:
 except Exception:
     ImageSequenceClip = None
 
-from mohou.types import ImageBase, AngleVector, TerminateFlag, ElementDict
+from mohou.types import ImageBase, AngleVector, TerminateFlag, ElementDict, GripperState
 from mohou.types import MultiEpisodeChunk
 from mohou.model import AutoEncoder
 from mohou.model import AutoEncoderConfig
@@ -173,8 +174,10 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    for phase, edata in enumerate(chunk):
-        episode_data = chunk[phase]
+    save_dir = get_subproject_dir(project_name, 'lstm_result')
+
+    for idx, edata in enumerate(chunk):
+        episode_data = chunk[idx]
 
         image_type = None
         for key, embedder in propagator.embed_rule.items():
@@ -186,15 +189,51 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
         fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
+        if GripperState in propagator.embed_rule:
+            fed_grippers = episode_data.get_sequence_by_type(GripperState)[:n_feed]
+        else:
+            fed_grippers = None
+
         print("start lstm propagation")
-        for elem_tuple in zip(fed_avs, fed_images):
-            propagator.feed(ElementDict(elem_tuple))
+        for i in range(n_feed):
+            elem_dict = ElementDict([fed_avs[i], fed_images[i]])
+            if fed_grippers is not None:
+                elem_dict[GripperState] = fed_grippers[i]
+            propagator.feed(elem_dict)
         print("finish lstm propagation")
 
         elem_dict_list = propagator.predict(n_prop)
         pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
         pred_flags = [elem_dict[TerminateFlag].numpy().item() for elem_dict in elem_dict_list]
+        pred_avs = [elem_dict[AngleVector].numpy() for elem_dict in elem_dict_list]
 
+        # plot angle vectors
+        fig = plt.figure()
+        n_av_dim = chunk.get_spec().type_shape_table[AngleVector][0]
+        gs = fig.add_gridspec(n_av_dim, hspace=0)
+        axs = gs.subplots(sharex=True, sharey=False)
+
+        av_seq_gt = episode_data.get_sequence_by_type(AngleVector)
+        np_av_seq_gt = np.array([av.numpy() for av in av_seq_gt])
+        np_av_seq_pred = np.concatenate((np_av_seq_gt[:n_feed], np.array(pred_avs)), axis=0)
+        for i_dim in range(n_av_dim):
+            axs[i_dim].plot(np_av_seq_gt[:, i_dim], color='blue', lw=1)
+            axs[i_dim].plot(np_av_seq_pred[:, i_dim], color='red', lw=1)
+
+            # determine axes min max
+            conc = np.hstack((np_av_seq_gt[:, i_dim], np_av_seq_pred[:, i_dim]))
+            y_min = np.min(conc)
+            y_max = np.max(conc)
+            diff = y_max - y_min
+            axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
+
+        for ax in axs:
+            ax.grid()
+        filename = os.path.join(save_dir, 'seq-{}{}.png'.format(AngleVector.__name__, idx))
+        fig.savefig(filename, format='png', dpi=300)
+        print('saved to {}'.format(filename))
+
+        # save gif image
         print("adding text to images...")
         fed_images_with_text = [add_text_to_image(image, 'fed (original) image)', 'blue') for image in fed_images]
         clamp = lambda x: max(min(x, 1.0), 0.0)  # noqa
@@ -204,8 +243,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
 
         images_with_text = fed_images_with_text + pred_images_with_text
 
-        save_dir = get_subproject_dir(project_name, 'lstm_result')
-        full_file_name = os.path.join(save_dir, 'result{}.gif'.format(phase))
+        full_file_name = os.path.join(save_dir, 'result-image{}.gif'.format(idx))
         assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
         clip = ImageSequenceClip(images_with_text, fps=20)
         clip.write_gif(full_file_name, fps=20)
