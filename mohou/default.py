@@ -1,7 +1,7 @@
 from typing import Type, Optional
 from mohou.trainer import TrainCache
 from mohou.model import AutoEncoderBase, LSTM
-from mohou.types import AngleVector, TerminateFlag, MultiEpisodeChunk, get_all_concrete_leaftypes
+from mohou.types import AngleVector, GripperState, TerminateFlag, MultiEpisodeChunk, get_all_concrete_leaftypes
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
 from mohou.propagator import Propagator
@@ -38,8 +38,16 @@ def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
     assert tcache_autoencoder.best_model is not None
     image_embed_func = tcache_autoencoder.best_model.get_embedder()
     av_idendical_func = IdenticalEmbedder(AngleVector, av_dim)
-    ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
-    embedders = [image_embed_func, av_idendical_func, ef_identical_func]
+
+    embedders = [image_embed_func, av_idendical_func]
+
+    if GripperState in chunk_spec.type_shape_table:
+        gs_identital_func = IdenticalEmbedder(GripperState, chunk_spec.type_shape_table[GripperState][0])
+        embedders.append(gs_identital_func)
+
+    tf_identical_func = IdenticalEmbedder(TerminateFlag, 1)
+    embedders.append(tf_identical_func)
+
     embed_rule = EmbeddingRule.from_embedders(embedders, chunk)
     return embed_rule
 
