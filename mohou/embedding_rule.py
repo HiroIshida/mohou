@@ -87,8 +87,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 assert dim == 1, 'this restriction maybe removed'
                 minn = np.min(feature_seq_partial)
                 maxx = np.max(feature_seq_partial)
-                diff = (maxx - minn)
-                cov = np.diag([diff * 0.5 for _ in range(dim)])
+                cov = np.diag(np.ones(dim))
                 mean = np.array([0.5 * (minn + maxx)])
             else:
                 mean = np.mean(feature_seq_partial, axis=0)
