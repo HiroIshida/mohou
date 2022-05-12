@@ -189,15 +189,15 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
         fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
-        if GripperState in propagator.embed_rule:
+        use_gripper = GripperState in propagator.embed_rule
+
+        if use_gripper:
             fed_grippers = episode_data.get_sequence_by_type(GripperState)[:n_feed]
-        else:
-            fed_grippers = None
 
         print("start lstm propagation")
         for i in range(n_feed):
             elem_dict = ElementDict([fed_avs[i], fed_images[i]])
-            if fed_grippers is not None:
+            if use_gripper:
                 elem_dict[GripperState] = fed_grippers[i]
             propagator.feed(elem_dict)
         print("finish lstm propagation")
@@ -206,29 +206,52 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
         pred_flags = [elem_dict[TerminateFlag].numpy().item() for elem_dict in elem_dict_list]
         pred_avs = [elem_dict[AngleVector].numpy() for elem_dict in elem_dict_list]
+        if use_gripper:
+            pred_gss = [elem_dict[GripperState].numpy() for elem_dict in elem_dict_list]
+
+        n_av_dim = chunk.get_spec().type_shape_table[AngleVector][0]
+        n_gs_dim = chunk.get_spec().type_shape_table[GripperState][0] if use_gripper else 0
+        fig, axs = plt.subplots(n_av_dim + n_gs_dim, 1)
 
         # plot angle vectors
-        fig = plt.figure()
-        n_av_dim = chunk.get_spec().type_shape_table[AngleVector][0]
-        gs = fig.add_gridspec(n_av_dim, hspace=0)
-        axs = gs.subplots(sharex=True, sharey=False)
-
         av_seq_gt = episode_data.get_sequence_by_type(AngleVector)
         np_av_seq_gt = np.array([av.numpy() for av in av_seq_gt])
         np_av_seq_pred = np.concatenate((np_av_seq_gt[:n_feed], np.array(pred_avs)), axis=0)
-        for i_dim in range(n_av_dim):
-            axs[i_dim].plot(np_av_seq_gt[:, i_dim], color='blue', lw=1)
-            axs[i_dim].plot(np_av_seq_pred[:, i_dim], color='red', lw=1)
+
+        i_dim = 0
+        for i_av_dim in range(n_av_dim):
+            axs[i_dim].plot(np_av_seq_gt[:, i_av_dim], color='blue', lw=1)
+            axs[i_dim].plot(np_av_seq_pred[:, i_av_dim], color='red', lw=1)
 
             # determine axes min max
-            conc = np.hstack((np_av_seq_gt[:, i_dim], np_av_seq_pred[:, i_dim]))
+            conc = np.hstack((np_av_seq_gt[:, i_av_dim], np_av_seq_pred[:, i_av_dim]))
             y_min = np.min(conc)
             y_max = np.max(conc)
             diff = y_max - y_min
             axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
+            axs[i_dim].set_title('AngleVector dim {}'.format(i_av_dim), fontsize=5, pad=0.0)
+            i_dim += 1
+
+        if use_gripper:
+            gs_seq_gt = episode_data.get_sequence_by_type(GripperState)
+            np_gs_seq_gt = np.array([gs.numpy() for gs in gs_seq_gt])
+            np_gs_seq_pred = np.concatenate((np_gs_seq_gt[:n_feed], np.array(pred_gss)), axis=0)
+            for i_gs_dim in range(n_gs_dim):
+                axs[i_dim].plot(np_gs_seq_gt[:, i_gs_dim], color='blue', lw=1)
+                axs[i_dim].plot(np_gs_seq_pred[:, i_gs_dim], color='red', lw=1)
+
+                # determine axes min max
+                conc = np.hstack((np_gs_seq_gt[:, i_gs_dim], np_gs_seq_pred[:, i_gs_dim]))
+                y_min = np.min(conc)
+                y_max = np.max(conc)
+                diff = y_max - y_min
+                axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
+                axs[i_dim].set_title('GripperState dim {}'.format(i_gs_dim), fontsize=5, pad=0.0)
+                i_dim += 1
 
         for ax in axs:
             ax.grid()
+
         filename = os.path.join(save_dir, 'seq-{}{}.png'.format(AngleVector.__name__, idx))
         fig.savefig(filename, format='png', dpi=300)
         print('saved to {}'.format(filename))
