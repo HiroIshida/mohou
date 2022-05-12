@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import copy
+import logging
 
 import functools  # for cached_property
 if hasattr(functools, 'cached_property'):
@@ -14,6 +15,8 @@ from typing import Type, List, Dict, Generator, Optional
 from mohou.embedder import EmbedderBase
 from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
 from mohou.utils import assert_with_message
+
+logger = logging.getLogger(__name__)
 
 
 class PostProcessor(ABC):
@@ -63,6 +66,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
             return np.sqrt(max_eig_cov)
 
         char_stds = np.array(list(map(get_max_std, self.covs)))
+        logger.info('char stds: {}'.format(char_stds))
         return char_stds
 
     @cached_property
@@ -105,7 +109,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) * char_stds[idx_elem]  # type: ignore
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
 
@@ -115,7 +119,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
-            vec_out_new = (vec_out[rangee] / char_stds[idx_elem]) + self.means[idx_elem]
+            vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new
         return vec_out
 
