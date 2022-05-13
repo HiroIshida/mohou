@@ -103,6 +103,7 @@ class TrainCache(Generic[ModelT]):
     def load(cls, project_name: str, model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
         postfix = model_type.__name__
         tcache_list = load_objects(TrainCache, project_name, postfix)
+        assert len(tcache_list) > 0, 'No train cache found for {}'.format(model_type.__name__)
         min_validate_loss_list = []
 
         for tcache in tcache_list:
