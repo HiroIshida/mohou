@@ -15,10 +15,8 @@ function test_batch {
     python3 $example_path/kuka_reaching.py -pn $project_name -n 7
     python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type $vae_option
 
-    cp ~/.mohou/$project_name/MultiEpisodeChunk.pkl ~/.mohou/$project_name/MultiEpisodeChunk-auxiliary.pkl
     if [ $image_type = RGBImage ]; then  # once is enough
         python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type --warm $vae_option
-        python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type --aux $vae_option
     fi
     python3 -m mohou.script.visualize_autoencoder_result -pn $project_name -n 2
 

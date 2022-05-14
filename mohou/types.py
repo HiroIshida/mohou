@@ -572,10 +572,6 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return _chunk_cache[project_name]
 
     @classmethod
-    def load_aux(cls, project_name: str) -> 'MultiEpisodeChunk':
-        return load_object(cls, project_name, postfix='auxiliary')
-
-    @classmethod
     def load_spec(cls, project_name: str) -> ChunkSpec:
         yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
         with open(yaml_file_name, 'r') as f:
@@ -588,9 +584,6 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
         with open(yaml_file_name, 'w') as f:
             yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False, sort_keys=False)
-
-    def dump_aux(self, project_name: str) -> None:
-        dump_object(self, project_name, postfix='auxiliary')
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table)

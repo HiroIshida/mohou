@@ -54,7 +54,6 @@ def create_default_logger(project_name: str, prefix: str) -> Logger:
 def train_autoencoder(
         project_name: str,
         image_type: Type[ImageBase],
-        use_aux_data: bool,
         model_config: AutoEncoderConfig,
         dataset_config: AutoEncoderDatasetConfig,
         train_config: TrainConfig,
@@ -64,11 +63,6 @@ def train_autoencoder(
     logger = create_default_logger(project_name, 'autoencoder')
 
     chunk = MultiEpisodeChunk.load(project_name)
-
-    if use_aux_data:
-        chunk_aux = MultiEpisodeChunk.load_aux(project_name)
-        chunk.merge(chunk_aux)
-        logger.info('aux data found and merged')
 
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
     if warm_start:

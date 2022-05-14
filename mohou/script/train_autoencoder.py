@@ -16,7 +16,6 @@ if __name__ == '__main__':
     parser.add_argument('-latent', type=int, default=16, help='latent space dim')
     parser.add_argument('-image', type=str, default='RGBImage', help='image type')
     parser.add_argument('-valid-ratio', type=float, default=0.1, help='split rate for validation dataset')
-    parser.add_argument('--aux', action='store_true', help='use auxiliary data')
     parser.add_argument('--vae', action='store_true', help='use vae')
     parser.add_argument('--warm', action='store_true', help='warm start')
     args = parser.parse_args()
@@ -26,7 +25,6 @@ if __name__ == '__main__':
     n_aug = args.aug
     n_bottleneck = args.latent
     valid_ratio = args.valid_ratio
-    use_aux_data = args.aux
     use_vae = args.vae
     warm_start = args.warm
 
@@ -37,4 +35,4 @@ if __name__ == '__main__':
     dataset_config = AutoEncoderDatasetConfig(n_aug)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     ae_type: Type[AutoEncoderBase] = VariationalAutoEncoder if use_vae else AutoEncoder  # type: ignore
-    train_autoencoder(project_name, image_type, use_aux_data, model_config, dataset_config, train_config, ae_type=ae_type, warm_start=warm_start)
+    train_autoencoder(project_name, image_type, model_config, dataset_config, train_config, ae_type=ae_type, warm_start=warm_start)
