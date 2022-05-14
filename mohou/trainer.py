@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import tqdm
+from torch.utils.data import Dataset
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from mohou.dataset import MohouDataset
 from mohou.file import dump_object, load_objects
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
 from mohou.utils import split_with_ratio
@@ -33,7 +33,6 @@ TrainCacheT = TypeVar('TrainCacheT', bound='TrainCache')
 class TrainCache(Generic[ModelT]):
     project_name: str
     epoch: int
-    timer_period: int
     train_loss_dict_seq: List[LossDict]
     validate_loss_dict_seq: List[LossDict]
     min_validate_loss: float
@@ -42,25 +41,17 @@ class TrainCache(Generic[ModelT]):
     file_uuid: str
     dump_always: bool
 
-    def __init__(self, project_name: str, timer_period: int = 5, dump_always: bool = False):
+    def __init__(self, project_name: str, dump_always: bool = False):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
-        self.timer_period = timer_period
         self.file_uuid = str(uuid.uuid4())[-6:]
         self.dump_always = dump_always
         self.best_model = None
 
-    def on_startof_epoch(self, epoch: int, dataset: MohouDataset):
+    def on_startof_epoch(self, epoch: int, dataset: Dataset):
         logger.info('new epoch: {}'.format(epoch))
         self.epoch = epoch
-        self._on_period(dataset)
-
-    def _on_period(self, dataset: MohouDataset):
-        if self.epoch == 0:
-            return
-        if self.epoch % self.timer_period == 0:
-            dataset.update_dataset()
 
     def on_train_loss(self, loss_dict: LossDict, epoch: int):
         self.train_loss_dict_seq.append(loss_dict)
@@ -145,7 +136,7 @@ class TrainCache(Generic[ModelT]):
 
 def train(
         tcache: TrainCache,
-        dataset: MohouDataset,
+        dataset: Dataset,
         model: Optional[ModelBase] = None,
         config: TrainConfig = TrainConfig()) -> None:
 
