@@ -13,17 +13,19 @@ from rlbench.tasks import CloseDrawer
 from rlbench.demo import Demo
 
 from mohou.file import get_project_dir
-from mohou.types import AngleVector, RGBImage, DepthImage
+from mohou.types import AngleVector, GripperState, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 
 def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
     seq_av = ElementSequence()  # type: ignore[var-annotated]
+    seq_gs = ElementSequence()  # type: ignore[var-annotated]
     seq_rgb = ElementSequence()  # type: ignore[var-annotated]
     seq_depth = ElementSequence()  # type: ignore[var-annotated]
 
     for obs in demo:
-        av = AngleVector(np.array(obs.joint_positions.tolist() + [obs.gripper_open]))
+        av = AngleVector(obs.joint_positions)
+        gs = GripperState(np.array([obs.gripper_open]))
         rgb = RGBImage(obs.overhead_rgb)
         depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
 
@@ -31,9 +33,10 @@ def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
         depth.resize((112, 112))
 
         seq_av.append(av)
+        seq_gs.append(gs)
         seq_rgb.append(rgb)
         seq_depth.append(depth)
-    return EpisodeData.from_seq_list([seq_rgb, seq_depth, seq_av])
+    return EpisodeData.from_seq_list([seq_rgb, seq_depth, seq_av, seq_gs])
 
 
 if __name__ == '__main__':

@@ -13,22 +13,25 @@ from rlbench.backend.observation import Observation
 from rlbench.tasks import CloseDrawer
 
 from mohou.file import get_project_dir
-from mohou.types import RGBImage, DepthImage, AngleVector, ElementDict
+from mohou.types import RGBImage, DepthImage, AngleVector, GripperState, ElementDict
 from mohou.types import MultiEpisodeChunk
 from mohou.default import create_default_propagator
 
 
-def av_to_action(av: AngleVector) -> np.ndarray:
-    return av.numpy()
+def edict_to_action(edict: ElementDict) -> np.ndarray:
+    av_next = edict[AngleVector]
+    gs_next = edict[GripperState]
+    return np.hstack([av_next.numpy(), gs_next.numpy()])
 
 
-def obs_to_elemdict(obs: Observation) -> ElementDict:
-    av = AngleVector(np.array(obs.joint_positions.tolist() + [obs.gripper_open]))
+def obs_to_edict(obs: Observation) -> ElementDict:
+    av = AngleVector(obs.joint_positions)
+    gs = GripperState(np.array([obs.gripper_open]))
     rgb = RGBImage(obs.overhead_rgb)
     rgb.resize((112, 112))
     depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
     depth.resize((112, 112))
-    return ElementDict([av, rgb, depth])
+    return ElementDict([av, gs, rgb, depth])
 
 
 if __name__ == '__main__':
@@ -53,6 +56,8 @@ if __name__ == '__main__':
 
     chunk = MultiEpisodeChunk.load(project_name)
     av_init = chunk.data_list_intact[0].get_sequence_by_type(AngleVector)[0]
+    gs_init = chunk.data_list_intact[0].get_sequence_by_type(GripperState)[0]
+    edict_init = ElementDict([av_init, gs_init])
 
     task = env.get_task(CloseDrawer)
 
@@ -63,14 +68,13 @@ if __name__ == '__main__':
 
         rgb_seq_gif = []
 
-        obs, _, _ = task.step(av_to_action(av_init))
-        edict = obs_to_elemdict(obs)
+        obs, _, _ = task.step(edict_to_action(edict_init))
+        edict = obs_to_edict(obs)
         prop.feed(edict)
         for _ in tqdm.tqdm(range(n_step)):
             edict_next = prop.predict(n_prop=1)[0]
-            av_next = edict_next[AngleVector]
-            obs, _, _ = task.step(av_to_action(av_next))
-            edict = obs_to_elemdict(obs)
+            obs, _, _ = task.step(edict_to_action(edict_next))
+            edict = obs_to_edict(obs)
             prop.feed(edict)
 
             rgb_seq_gif.append(RGBImage(obs.overhead_rgb))
