@@ -208,8 +208,8 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         if use_gripper:
             pred_gss = [elem_dict[GripperState].numpy() for elem_dict in elem_dict_list]
 
-        n_av_dim = chunk.get_spec().type_shape_table[AngleVector][0]
-        n_gs_dim = chunk.get_spec().type_shape_table[GripperState][0] if use_gripper else 0
+        n_av_dim = chunk.spec.type_shape_table[AngleVector][0]
+        n_gs_dim = chunk.spec.type_shape_table[GripperState][0] if use_gripper else 0
         fig, axs = plt.subplots(n_av_dim + n_gs_dim, 1)
 
         # plot angle vectors

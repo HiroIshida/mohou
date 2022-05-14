@@ -6,7 +6,7 @@ import functools
 import operator
 import random
 import yaml
-from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict
+from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -496,12 +496,16 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
         clip.write_gif(filename, fps=fps)
 
 
+ExtraInfoType = Optional[Dict[str, Union[str, int, float]]]
+
+
 @dataclass(frozen=True)
 class ChunkSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    extra_info: ExtraInfoType = None
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -526,6 +530,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    spec: ChunkSpec
     _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
@@ -534,6 +539,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     @classmethod
     def from_data_list(cls,
                        data_list: List[EpisodeData],
+                       extra_info: ExtraInfoType = None,
                        shuffle: bool = True,
                        with_intact_data: bool = True) -> 'MultiEpisodeChunk':
 
@@ -556,15 +562,14 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             data_list = data_list
 
         type_shape_table = data_list[0].type_shape_table
-        return cls(data_list, data_list_intact, type_shape_table)
+
+        # chunk spec
+        n_average = int(sum([len(data[0]) for data in data_list]) / len(data_list))
+        spec = ChunkSpec(len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info)
+        return cls(data_list, data_list_intact, type_shape_table, spec)
 
     def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
         return self.type_shape_table[elem_type]
-
-    def get_spec(self) -> ChunkSpec:
-        n_average = int(sum([len(data[0]) for data in self.data_list]) / len(self))
-        spec = ChunkSpec(len(self.data_list), len(self.data_list_intact), n_average, self.type_shape_table)
-        return spec
 
     @classmethod
     def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
@@ -595,13 +600,13 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         dump_object(self, project_name, postfix)
         yaml_file_name = self.spec_file_name(project_name, postfix)
         with open(yaml_file_name, 'w') as f:
-            yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False, sort_keys=False)
+            yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table)
+        return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table, self.spec)
 
     def get_not_intact_chunk(self) -> 'MultiEpisodeChunk':
-        return MultiEpisodeChunk(self.data_list, [], self.type_shape_table)
+        return MultiEpisodeChunk(self.data_list, [], self.type_shape_table, self.spec)
 
     def merge(self, other: 'MultiEpisodeChunk') -> None:
         keys_self = set(self.types())
@@ -628,7 +633,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.type_shape_table = other.type_shape_table
 
     def plot_vector_histories(self, elem_type: Type[VectorBase], project_name: Optional[str] = None) -> None:
-        n_vec_dim = self.get_spec().type_shape_table[elem_type][0]
+        n_vec_dim = self.spec.type_shape_table[elem_type][0]
 
         fig = plt.figure()
         gs = fig.add_gridspec(n_vec_dim, hspace=0)

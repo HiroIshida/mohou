@@ -192,7 +192,8 @@ def image_av_chunk_uneven():
 
 def test_chunk_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
-    spec = ChunkSpec(10, 5, 10, types)
+    extra_info = {'hz': 20, 'author': 'HiroIshida'}
+    spec = ChunkSpec(10, 5, 10, types, extra_info=extra_info)
     spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
@@ -207,9 +208,8 @@ def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # 
     assert pickle.dumps(chunk) == pickle.dumps(loaded)
     assert (tmp_project_name, None) in _chunk_cache
 
-    chunk_spec = chunk.get_spec()
     chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name)
-    assert pickle.dumps(chunk_spec) == pickle.dumps(chunk_spec_loaded)
+    assert pickle.dumps(chunk.spec) == pickle.dumps(chunk_spec_loaded)
 
     # test having multiple chunk in one project
     postfix = 'extra'
@@ -218,9 +218,8 @@ def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # 
     extra_chunk_loaded = MultiEpisodeChunk.load(tmp_project_name, postfix)
     assert pickle.dumps(extra_chunk) == pickle.dumps(extra_chunk_loaded)
 
-    extra_chunk_spec = extra_chunk.get_spec()
     extra_chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name, postfix)
-    assert pickle.dumps(extra_chunk_spec) == pickle.dumps(extra_chunk_spec_loaded)
+    assert pickle.dumps(extra_chunk.spec) == pickle.dumps(extra_chunk_spec_loaded)
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():

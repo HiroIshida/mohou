@@ -30,7 +30,7 @@ def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
 def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
 
     chunk = MultiEpisodeChunk.load(project_name)
-    chunk_spec = chunk.get_spec()
+    chunk_spec = chunk.spec
     av_dim = chunk_spec.type_shape_table[AngleVector][0]
     ae_type = auto_detect_autoencoder_type(project_name)
 
