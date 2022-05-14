@@ -6,7 +6,7 @@ import pickle
 import time
 import logging
 from logging import Logger
-from typing import Type
+from typing import Type, Optional
 import matplotlib.pyplot as plt
 
 try:
@@ -58,11 +58,13 @@ def train_autoencoder(
         dataset_config: AutoEncoderDatasetConfig,
         train_config: TrainConfig,
         ae_type: Type[AutoEncoderBase] = AutoEncoder,
+        chunk: Optional[MultiEpisodeChunk] = None,
         warm_start: bool = False):
 
     logger = create_default_logger(project_name, 'autoencoder')
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    if chunk is None:
+        chunk = MultiEpisodeChunk.load(project_name)
 
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
     if warm_start:
@@ -81,11 +83,14 @@ def train_lstm(
         model_config: LSTMConfig,
         dataset_config: AutoRegressiveDatasetConfig,
         train_config: TrainConfig,
+        chunk: Optional[MultiEpisodeChunk] = None,
         warm_start: bool = False):
 
     logger = create_default_logger(project_name, 'lstm')  # noqa
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    if chunk is None:
+        chunk = MultiEpisodeChunk.load(project_name)
+
     dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, dataset_config)
     if warm_start:
         logger.info('warm start')
