@@ -31,6 +31,8 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.embedding_rule import EmbeddingRule
 from mohou.utils import canvas_to_ndarray
 
+logger = logging.getLogger(__name__)
+
 
 def create_default_logger(project_name: str, prefix: str) -> Logger:
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
@@ -61,8 +63,6 @@ def train_autoencoder(
         chunk: Optional[MultiEpisodeChunk] = None,
         warm_start: bool = False):
 
-    logger = create_default_logger(project_name, 'autoencoder')
-
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)
 
@@ -85,8 +85,6 @@ def train_lstm(
         train_config: TrainConfig,
         chunk: Optional[MultiEpisodeChunk] = None,
         warm_start: bool = False):
-
-    logger = create_default_logger(project_name, 'lstm')  # noqa
 
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)

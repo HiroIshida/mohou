@@ -4,7 +4,7 @@ from mohou.model.lstm import LSTMConfig
 from mohou.trainer import TrainConfig
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_embedding_rule
-from mohou.script_utils import train_lstm
+from mohou.script_utils import train_lstm, create_default_logger
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -22,6 +22,8 @@ if __name__ == '__main__':
     cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
     warm_start = args.warm
+
+    logger = create_default_logger(project_name, 'lstm')  # noqa
 
     embedding_rule = create_default_embedding_rule(project_name)
     model_config = LSTMConfig(embedding_rule.dimension)

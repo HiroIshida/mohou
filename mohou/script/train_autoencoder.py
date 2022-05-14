@@ -6,7 +6,7 @@ from mohou.model import AutoEncoderBase, AutoEncoder, VariationalAutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.trainer import TrainConfig
 from mohou.types import RGBImage, ImageBase, MultiEpisodeChunk, get_element_type
-from mohou.script_utils import train_autoencoder
+from mohou.script_utils import train_autoencoder, create_default_logger
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -29,6 +29,8 @@ if __name__ == '__main__':
     use_vae = args.vae
     warm_start = args.warm
     chunk_postfix = args.chunk_postfix
+
+    logger = create_default_logger(project_name, 'autoencoder')
 
     if chunk_postfix == "":
         chunk_postfix = None
