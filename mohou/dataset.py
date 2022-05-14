@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import copy
 from dataclasses import dataclass
 import logging
@@ -14,13 +13,6 @@ from mohou.types import ImageT, MultiEpisodeChunk, TerminateFlag
 logger = logging.getLogger(__name__)
 
 
-class MohouDataset(Dataset):
-
-    @abstractmethod
-    def update_dataset(self) -> None:
-        pass
-
-
 @dataclass
 class AutoEncoderDatasetConfig:
     batch_augment_factor: int = 2  # if you have large enough RAM, set to large (like 4)
@@ -31,22 +23,16 @@ class AutoEncoderDatasetConfig:
 
 
 @dataclass
-class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
+class AutoEncoderDataset(Dataset, Generic[ImageT]):
     image_type: Type[ImageT]
     image_list: List[ImageT]
     image_list_rand: List[ImageT]
-    use_periodic_augmentation: bool
 
     def __len__(self) -> int:
         return len(self.image_list)
 
     def __getitem__(self, idx) -> torch.Tensor:
         return self.image_list_rand[idx].to_tensor()
-
-    def update_dataset(self):
-        if self.use_periodic_augmentation:
-            logger.info('randomizing data...')
-            self.image_list_rand = [image.randomize() for image in self.image_list]
 
     @classmethod
     def from_chunk(
@@ -62,17 +48,11 @@ class AutoEncoderDataset(MohouDataset, Generic[ImageT]):
         for episode_data in chunk:
             image_list.extend(episode_data.get_sequence_by_type(image_type))
 
-        use_periodic_augmentation = (augconfig.batch_augment_factor == 0)
-        if use_periodic_augmentation:
-            # same as self.update_dataset
-            image_list_rand = [image.randomize() for image in image_list]
-        else:
-            logger.info('augmentation done in batch. thus, perirodic augmentation will be deactivated.')
-            image_list_rand = copy.deepcopy(image_list)
-            for i in range(augconfig.batch_augment_factor):
-                image_list_rand.extend([image.randomize() for image in image_list])
+        image_list_rand = copy.deepcopy(image_list)
+        for i in range(augconfig.batch_augment_factor):
+            image_list_rand.extend([image.randomize() for image in image_list])
 
-        return cls(image_type, image_list, image_list_rand, use_periodic_augmentation)
+        return cls(image_type, image_list, image_list_rand)
 
 
 @dataclass
@@ -87,7 +67,7 @@ class AutoRegressiveDatasetConfig:
 
 
 @dataclass
-class AutoRegressiveDataset(MohouDataset):
+class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
     embed_rule: EmbeddingRule
 
@@ -96,9 +76,6 @@ class AutoRegressiveDataset(MohouDataset):
 
     def __getitem__(self, idx) -> torch.Tensor:
         return torch.from_numpy(self.state_seq_list[idx]).float()
-
-    def update_dataset(self) -> None:
-        pass
 
     @classmethod
     def from_chunk(

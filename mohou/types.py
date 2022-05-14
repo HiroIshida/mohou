@@ -518,7 +518,7 @@ class ChunkSpec(TypeShapeTableMixin):
         return cls(**d)
 
 
-_chunk_cache: Dict[str, 'MultiEpisodeChunk'] = {}  # used MultiEpisodeChunk.load
+_chunk_cache: Dict[Tuple[str, Optional[str]], 'MultiEpisodeChunk'] = {}  # used MultiEpisodeChunk.load
 
 
 @dataclass
@@ -526,6 +526,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
         return self.data_list
@@ -568,29 +569,33 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     @classmethod
     def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
         if project_name not in _chunk_cache:
-            _chunk_cache[project_name] = load_object(cls, project_name, postfix)
-        return _chunk_cache[project_name]
+            _chunk_cache[(project_name, postfix)] = load_object(cls, project_name, postfix)
+        chunk = _chunk_cache[(project_name, postfix)]
+        assert chunk._postfix == postfix
+        return chunk
+
+    @staticmethod
+    def spec_file_name(project_name: str, postfix: Optional[str] = None) -> str:
+        if postfix is None:
+            yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+        else:
+            yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec-{}.yaml'.format(postfix))
+        return yaml_file_name
 
     @classmethod
-    def load_aux(cls, project_name: str) -> 'MultiEpisodeChunk':
-        return load_object(cls, project_name, postfix='auxiliary')
-
-    @classmethod
-    def load_spec(cls, project_name: str) -> ChunkSpec:
-        yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+    def load_spec(cls, project_name: str, postfix: Optional[str] = None) -> ChunkSpec:
+        yaml_file_name = cls.spec_file_name(project_name, postfix)
         with open(yaml_file_name, 'r') as f:
             d = yaml.safe_load(f)
             spec = ChunkSpec.from_dict(d)
         return spec
 
     def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
+        self._postfix = postfix
         dump_object(self, project_name, postfix)
-        yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+        yaml_file_name = self.spec_file_name(project_name, postfix)
         with open(yaml_file_name, 'w') as f:
             yaml.dump(self.get_spec().to_dict(), f, default_flow_style=False, sort_keys=False)
-
-    def dump_aux(self, project_name: str) -> None:
-        dump_object(self, project_name, postfix='auxiliary')
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
         return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table)
