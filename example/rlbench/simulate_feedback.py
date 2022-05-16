@@ -1,16 +1,18 @@
 import argparse
 import os
+from typing import Type
 
 import tqdm
 from moviepy.editor import ImageSequenceClip
 import numpy as np
+import rlbench.tasks
+from rlbench.backend.task import Task
 from rlbench.action_modes.action_mode import MoveArmThenGripper
 from rlbench.action_modes.arm_action_modes import JointPosition
 from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.backend.observation import Observation
-from rlbench.tasks import CloseDrawer
 
 from mohou.file import get_project_dir
 from mohou.types import RGBImage, DepthImage, AngleVector, GripperState, ElementDict
@@ -37,10 +39,12 @@ def obs_to_edict(obs: Observation) -> ElementDict:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
+    parser.add_argument('-tn', type=str, default='CloseDrawer', help='task name')
     parser.add_argument('-n', type=int, default=250, help='step num')
     parser.add_argument('-m', type=int, default=3, help='simulation num')
     args = parser.parse_args()
     project_name = args.pn
+    task_name = args.tn
     n_step = args.n
     n_sim = args.m
 
@@ -59,7 +63,9 @@ if __name__ == '__main__':
     gs_init = chunk.data_list_intact[0].get_sequence_by_type(GripperState)[0]
     edict_init = ElementDict([av_init, gs_init])
 
-    task = env.get_task(CloseDrawer)
+    assert hasattr(rlbench.tasks, task_name)
+    task_type: Type[Task] = getattr(rlbench.tasks, task_name)
+    task = env.get_task(task_type)
 
     for i in range(n_sim):
         task.reset()

@@ -1,15 +1,17 @@
 import argparse
 import os
 import tqdm
+from typing import Type
 
 from moviepy.editor import ImageSequenceClip
 import numpy as np
+import rlbench.tasks
+from rlbench.backend.task import Task
 from rlbench.action_modes.action_mode import MoveArmThenGripper
 from rlbench.action_modes.arm_action_modes import JointVelocity
 from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
-from rlbench.tasks import CloseDrawer
 from rlbench.demo import Demo
 
 from mohou.file import get_project_dir
@@ -42,10 +44,12 @@ def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
+    parser.add_argument('-tn', type=str, default='CloseDrawer', help='task name')
     parser.add_argument('-n', type=int, default=55, help='epoch num')
     args = parser.parse_args()
     n_episode = args.n
     project_name = args.pn
+    task_name = args.tn
 
     # Data generation by rlbench
     obs_config = ObservationConfig()
@@ -58,7 +62,9 @@ if __name__ == '__main__':
         headless=True)
     env.launch()
 
-    task = env.get_task(CloseDrawer)
+    assert hasattr(rlbench.tasks, task_name)
+    task_type: Type[Task] = getattr(rlbench.tasks, task_name)
+    task = env.get_task(task_type)
 
     mohou_episode_data_list = []
     for i in tqdm.tqdm(range(n_episode)):
