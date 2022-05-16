@@ -14,7 +14,7 @@ from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.demo import Demo
 
-from mohou.file import get_project_dir
+from mohou.file import get_subproject_dir
 from mohou.types import AngleVector, GripperState, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
@@ -66,16 +66,18 @@ if __name__ == '__main__':
     task_type: Type[Task] = getattr(rlbench.tasks, task_name)
     task = env.get_task(task_type)
 
+    gif_dir = get_subproject_dir(project_name, 'train_data_gif')
     mohou_episode_data_list = []
     for i in tqdm.tqdm(range(n_episode)):
         demo = task.get_demos(amount=1, live_demos=True)[0]
         mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo)
         mohou_episode_data_list.append(mohou_episode_data)
+
+        # dump debug gif
+        rgb_seq = mohou_episode_data.get_sequence_by_type(RGBImage)
+        clip = ImageSequenceClip([img.numpy() for img in rgb_seq], fps=50)
+        filename = os.path.join(gif_dir, 'sample{}.gif'.format(i))
+        clip.write_gif(filename, fps=50)
+
     chunk = MultiEpisodeChunk.from_data_list(mohou_episode_data_list)
     chunk.dump(project_name)
-
-    # create debug image
-    filename = os.path.join(get_project_dir(project_name), "sample.gif")
-    rgb_seq = chunk[0].get_sequence_by_type(RGBImage)
-    clip = ImageSequenceClip([img.numpy() for img in rgb_seq], fps=50)
-    clip.write_gif(filename, fps=50)
