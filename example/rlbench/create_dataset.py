@@ -19,7 +19,7 @@ from mohou.types import AngleVector, GripperState, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 
-def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
+def rlbench_demo_to_mohou_episode_data(demo: Demo, camera_name: str, resolution: int) -> EpisodeData:
     seq_av = ElementSequence()  # type: ignore[var-annotated]
     seq_gs = ElementSequence()  # type: ignore[var-annotated]
     seq_rgb = ElementSequence()  # type: ignore[var-annotated]
@@ -28,11 +28,11 @@ def rlbench_demo_to_mohou_episode_data(demo: Demo) -> EpisodeData:
     for obs in demo:
         av = AngleVector(obs.joint_positions)
         gs = GripperState(np.array([obs.gripper_open]))
-        rgb = RGBImage(obs.overhead_rgb)
-        depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
+        rgb = RGBImage(obs.__dict__[camera_name + '_rgb'])
+        depth = DepthImage(np.expand_dims(obs.__dict__[camera_name + '_depth'], axis=2))
 
-        rgb.resize((112, 112))
-        depth.resize((112, 112))
+        rgb.resize((resolution, resolution))
+        depth.resize((resolution, resolution))
 
         seq_av.append(av)
         seq_gs.append(gs)
@@ -45,11 +45,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
     parser.add_argument('-tn', type=str, default='CloseDrawer', help='task name')
+    parser.add_argument('-cn', type=str, default='overhead', help='camera name')
     parser.add_argument('-n', type=int, default=55, help='epoch num')
+    parser.add_argument('-resol', type=int, default=112, help='epoch num')
     args = parser.parse_args()
     n_episode = args.n
     project_name = args.pn
     task_name = args.tn
+    camera_name = args.cn
+    resolution = args.resol
+
+    assert camera_name in ['left_shoulder', 'right_shoulder', 'overhead', 'wrist', 'front']
+    assert resolution in [112, 224]
 
     # Data generation by rlbench
     obs_config = ObservationConfig()
@@ -70,7 +77,7 @@ if __name__ == '__main__':
     mohou_episode_data_list = []
     for i in tqdm.tqdm(range(n_episode)):
         demo = task.get_demos(amount=1, live_demos=True)[0]
-        mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo)
+        mohou_episode_data = rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution)
         mohou_episode_data_list.append(mohou_episode_data)
 
         # dump debug gif
