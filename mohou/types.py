@@ -551,15 +551,17 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         n_type_expected = len(data_list[0].types())
         assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
 
+        data_list_intact = []
+        if with_intact_data:
+            assert N_DATA_INTACT > 0
+            interval = len(data_list) // N_DATA_INTACT
+            indices_intact = [interval * i for i in range(N_DATA_INTACT)]
+            # sorted is necessary because pop changes index
+            for idx in sorted(indices_intact, reverse=True):
+                data_list_intact.append(data_list.pop(idx))
+
         if shuffle:
             random.shuffle(data_list)
-
-        if with_intact_data:
-            data_list_intact = data_list[:N_DATA_INTACT]
-            data_list = data_list[N_DATA_INTACT:]
-        else:
-            data_list_intact = []
-            data_list = data_list
 
         type_shape_table = data_list[0].type_shape_table
 
