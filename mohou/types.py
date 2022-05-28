@@ -244,6 +244,20 @@ class GrayImage(ColorImageBase['GrayImage']):
         self._data = np.expand_dims(arr, axis=2)
 
 
+def extract_contour_by_laplacian(
+        rgb: RGBImage,
+        laplace_kernel_size: int = 3,
+        blur_kernel_size: Optional[Tuple[int, int]] = None) -> GrayImage:
+
+    if blur_kernel_size is None:
+        blur_kernel_size = (int(rgb.shape[0] * 0.02), int(rgb.shape[1] * 0.02))
+
+    src_gray = cv2.cvtColor(rgb.numpy(), cv2.COLOR_BGR2GRAY)
+    dst = cv2.Laplacian(src_gray, cv2.CV_8U, ksize=laplace_kernel_size)
+    dst2 = cv2.blur(dst, (blur_kernel_size[0], blur_kernel_size[1]))
+    return GrayImage(np.expand_dims(np.uint8(dst2), axis=2))
+
+
 class DepthImage(PrimitiveImageBase):
     _channel: ClassVar[int] = 1
     _max_value: ClassVar[float] = 4.0

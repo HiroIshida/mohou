@@ -8,6 +8,7 @@ import pathlib
 import numpy as np
 
 from mohou.types import GrayImage, VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag, GripperState
+from mohou.types import extract_contour_by_laplacian
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -17,8 +18,12 @@ from mohou.types import MultiEpisodeChunk, _chunk_cache
 from test_file import tmp_project_name  # noqa
 
 
-def test_elements():
+@pytest.fixture(scope='session')
+def sample_image_path():
+    return os.path.join(pathlib.Path(__file__).resolve().parent, 'data', 'sample.png')
 
+
+def test_elements():
     with pytest.raises(Exception):
         VectorBase(np.zeros(3))
     with pytest.raises(Exception):
@@ -32,7 +37,7 @@ def test_gripper_state():
         np.testing.assert_almost_equal(gs._data, gs_reconstructed._data)
 
 
-def test_rdb_image_creation():
+def test_rdb_image_creation(sample_image_path):
 
     with pytest.raises(AssertionError):
         RGBImage(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
@@ -41,8 +46,7 @@ def test_rdb_image_creation():
 
     RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
 
-    data_path = os.path.join(pathlib.Path(__file__).resolve().parent, 'data', 'sample.png')
-    RGBImage.from_file(data_path)
+    RGBImage.from_file(sample_image_path)
 
 
 def test_gray_image_creation():
@@ -114,6 +118,12 @@ def test_rdbd_image():
 
     with pytest.raises(AssertionError):  # order mismatch
         RGBDImage([depth, rgb])
+
+
+def test_extract_contour_by_laplacian(sample_image_path):
+    # just a pipeline test
+    rgb = RGBImage.from_file(sample_image_path)
+    extract_contour_by_laplacian(rgb)
 
 
 def test_element_dict():
