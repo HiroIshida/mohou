@@ -25,6 +25,7 @@ from mohou.utils import assert_with_message, assert_isinstance_with_message
 ElementT = TypeVar('ElementT', bound='ElementBase')
 PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
 PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
+ColorImageT = TypeVar('ColorImageT', bound='ColorImageBase')
 CompositeImageT = TypeVar('CompositeImageT', bound='CompositeImageBase')
 ImageT = TypeVar('ImageT', bound='ImageBase')
 VectorT = TypeVar('VectorT', bound='VectorBase')
@@ -175,8 +176,7 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
         return cls._channel
 
 
-class RGBImage(PrimitiveImageBase):
-    _channel: ClassVar[int] = 3
+class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
@@ -186,27 +186,31 @@ class RGBImage(PrimitiveImageBase):
         return torchvision.transforms.ToTensor()(self._data).float()
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
+    def from_tensor(cls: Type[ColorImageT], tensor: torch.Tensor) -> ColorImageT:
         tf = torchvision.transforms.ToPILImage()
         pil_iamge = tf(tensor)
         return cls(np.array(pil_iamge))
+
+    @classmethod
+    def dummy_from_shape(cls: Type[ColorImageT], shape2d: Tuple[int, int]) -> ColorImageT:
+        shape = (shape2d[0], shape2d[1], cls.channel())
+        dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
+        return cls(dummy_array)
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+
+
+class RGBImage(ColorImageBase):
+    _channel: ClassVar[int] = 3
 
     def randomize(self) -> 'RGBImage':
         assert _f_randomize_rgb_image is not None
         rand_image_arr = _f_randomize_rgb_image(self._data)
         return RGBImage(rand_image_arr)
 
-    @classmethod
-    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'RGBImage':
-        shape = (shape2d[0], shape2d[1], cls.channel())
-        dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
-        return cls(dummy_array)
-
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         return self
-
-    def resize(self, shape2d_new: Tuple[int, int]) -> None:
-        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
 
 
 class DepthImage(PrimitiveImageBase):
