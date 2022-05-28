@@ -5,7 +5,7 @@ import pickle
 
 import numpy as np
 
-from mohou.types import VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag, GripperState
+from mohou.types import GrayImage, VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag, GripperState
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
 from mohou.types import EpisodeData
@@ -40,6 +40,18 @@ def test_rdb_image_creation():
     RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
 
 
+def test_gray_image_creation():
+
+    with pytest.raises(AssertionError):
+        GrayImage(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
+    with pytest.raises(AssertionError):
+        GrayImage(np.random.randint(0, 255, (100, 100, 2), dtype=np.uint8))
+    with pytest.raises(AssertionError):
+        GrayImage(np.random.randn(100, 100, 1))
+
+    GrayImage(np.random.randint(0, 255, (100, 100, 1), dtype=np.uint8))
+
+
 def test_depth_image_creation():
 
     with pytest.raises(AssertionError):
@@ -52,8 +64,8 @@ def test_depth_image_creation():
     DepthImage(np.random.randn(100, 100, 1))
 
 
-@pytest.mark.parametrize('T', [RGBImage, DepthImage])
-def test_rgb_and_depth(T: Type[PrimitiveImageBase]):
+@pytest.mark.parametrize('T', [RGBImage, GrayImage, DepthImage])
+def test_primitive_images(T: Type[PrimitiveImageBase]):
     img = T.dummy_from_shape((100, 100))
     img2 = T.from_tensor(img.to_tensor())
     np.testing.assert_almost_equal(img._data, img2._data, decimal=5)
@@ -62,6 +74,7 @@ def test_rgb_and_depth(T: Type[PrimitiveImageBase]):
         np.testing.assert_almost_equal(img.randomize()._data, img.randomize()._data, decimal=5)
 
     img.to_rgb()
+    assert img.shape == (100, 100, img.channel())
     img.resize((224, 224))
     assert img.shape == (224, 224, img.channel())
 
