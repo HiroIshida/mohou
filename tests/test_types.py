@@ -1,7 +1,9 @@
+import os
 import pytest
 from typing import Type
 import copy
 import pickle
+import pathlib
 
 import numpy as np
 
@@ -38,6 +40,9 @@ def test_rdb_image_creation():
         RGBImage(np.random.randn(100, 100, 3))
 
     RGBImage(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
+
+    data_path = os.path.join(pathlib.Path(__file__).resolve().parent, 'data', 'sample.png')
+    RGBImage.from_file(data_path)
 
 
 def test_gray_image_creation():

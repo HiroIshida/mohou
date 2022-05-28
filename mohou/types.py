@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision
 import cv2
+import PIL.Image
 
 from mohou.constant import N_DATA_INTACT
 from mohou.file import get_project_dir, load_object, dump_object
@@ -194,6 +195,12 @@ class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
 
 class RGBImage(ColorImageBase['RGBImage']):
     _channel: ClassVar[int] = 3
+
+    @classmethod
+    def from_file(cls, filename: str) -> 'RGBImage':
+        pil_img = PIL.Image.open(filename).convert('RGB')
+        arr = np.array(pil_img)
+        return cls(arr)
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
