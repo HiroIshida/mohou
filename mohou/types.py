@@ -16,7 +16,7 @@ import cv2
 
 from mohou.constant import N_DATA_INTACT
 from mohou.file import get_project_dir, load_object, dump_object
-from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image
+from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image, _f_randomize_gray_image
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import get_all_concrete_leaftypes
 from mohou.utils import split_sequence, canvas_to_ndarray
@@ -186,23 +186,20 @@ class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
         return torchvision.transforms.ToTensor()(self._data).float()
 
     @classmethod
-    def from_tensor(cls: Type[ColorImageT], tensor: torch.Tensor) -> ColorImageT:
-        tf = torchvision.transforms.ToPILImage()
-        pil_iamge = tf(tensor)
-        return cls(np.array(pil_iamge))
-
-    @classmethod
     def dummy_from_shape(cls: Type[ColorImageT], shape2d: Tuple[int, int]) -> ColorImageT:
         shape = (shape2d[0], shape2d[1], cls.channel())
         dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
         return cls(dummy_array)
 
-    def resize(self, shape2d_new: Tuple[int, int]) -> None:
-        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
 
-
-class RGBImage(ColorImageBase):
+class RGBImage(ColorImageBase['RGBImage']):
     _channel: ClassVar[int] = 3
+
+    @classmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
+        tf = torchvision.transforms.ToPILImage()
+        pil_iamge = tf(tensor)
+        return cls(np.array(pil_iamge))
 
     def randomize(self) -> 'RGBImage':
         assert _f_randomize_rgb_image is not None
@@ -211,6 +208,33 @@ class RGBImage(ColorImageBase):
 
     def to_rgb(self, *args, **kwargs) -> 'RGBImage':
         return self
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+
+
+class GrayImage(ColorImageBase['GrayImage']):
+    _channel: ClassVar[int] = 1
+
+    @classmethod
+    def from_tensor(cls, tensor: torch.Tensor) -> 'GrayImage':
+        tensor2d = tensor.squeeze(dim=0)
+        tf = torchvision.transforms.ToPILImage()
+        pil_iamge = tf(tensor2d)
+        return cls(np.expand_dims(np.array(pil_iamge), axis=2))
+
+    def randomize(self) -> 'GrayImage':
+        assert _f_randomize_gray_image is not None
+        rand_image_arr = _f_randomize_gray_image(self._data)
+        return GrayImage(rand_image_arr)
+
+    def to_rgb(self, *args, **kwargs) -> RGBImage:
+        arr = np.array(cv2.cvtColor(self._data[:, :, 0], cv2.COLOR_GRAY2RGB))
+        return RGBImage(arr)
+
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        arr = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+        self._data = np.expand_dims(arr, axis=2)
 
 
 class DepthImage(PrimitiveImageBase):
