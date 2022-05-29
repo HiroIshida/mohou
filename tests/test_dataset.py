@@ -1,11 +1,29 @@
 import torch
+from torch.utils.data import DataLoader
 
 from mohou.embedder import ImageEmbedder, IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
+from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
 
 from test_types import image_av_chunk_uneven # noqa
+
+
+def test_autoencoder_dataset(image_av_chunk_uneven): # noqa
+
+    n_image_original = 0
+    for episode_data in image_av_chunk_uneven:
+        n_image_original += len(episode_data.get_sequence_by_type(RGBImage))
+
+    config = AutoEncoderDatasetConfig(batch_augment_factor=4)
+    dataset = AutoEncoderDataset.from_chunk(image_av_chunk_uneven, RGBImage, config)
+
+    train_loader = DataLoader(dataset=dataset, batch_size=3, shuffle=True)
+    n_sample_total = 0
+    for samples in train_loader:
+        n_sample_total += samples.shape[0]
+    assert n_sample_total == n_image_original * (config.batch_augment_factor + 1)
 
 
 def test_auto_regressive_dataset(image_av_chunk_uneven): # noqa

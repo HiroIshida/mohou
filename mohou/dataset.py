@@ -26,13 +26,12 @@ class AutoEncoderDatasetConfig:
 class AutoEncoderDataset(Dataset, Generic[ImageT]):
     image_type: Type[ImageT]
     image_list: List[ImageT]
-    image_list_rand: List[ImageT]
 
     def __len__(self) -> int:
         return len(self.image_list)
 
     def __getitem__(self, idx) -> torch.Tensor:
-        return self.image_list_rand[idx].to_tensor()
+        return self.image_list[idx].to_tensor()
 
     @classmethod
     def from_chunk(
@@ -50,9 +49,9 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
 
         image_list_rand = copy.deepcopy(image_list)
         for i in range(augconfig.batch_augment_factor):
-            image_list_rand.extend([image.randomize() for image in image_list])
+            image_list_rand.extend([copy.deepcopy(image).randomize() for image in image_list])
 
-        return cls(image_type, image_list, image_list_rand)
+        return cls(image_type, image_list_rand)
 
 
 @dataclass
