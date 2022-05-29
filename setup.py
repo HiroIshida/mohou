@@ -8,7 +8,7 @@ install_requires = [
     "sklearn",
     "torch",
     "torchvision",
-    "tinyfk",
+    "tinyfk>=0.4.8",
     "tqdm",
     "matplotlib",
     "albumentations",
