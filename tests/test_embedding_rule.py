@@ -34,13 +34,23 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
+def test_ElemCovMatchPostProcessor_assertion_with_degenerated_data():
+    dim1 = 2
+    dim2 = 3
+    a = np.random.randn(100000, dim1)
+    b = np.ones((100000, dim2)) * np.random.randn()  # degenerated
+    c = np.concatenate([a, b], axis=1)
+    with pytest.raises(AssertionError):
+        ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
+
+
 def test_embedding_rule(image_av_chunk): # noqa
     chunk = image_av_chunk
     n_image_embed = 5
     n_av_embed = 10
     f1 = ImageEmbedder(
         RGBImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.randn(n_image_embed),
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3), n_image_embed)
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
@@ -68,7 +78,7 @@ def test_embedding_rule(image_av_chunk): # noqa
         assert list(rule.keys()) == ts
 
 
-def test_embedding_rule_assertion(image_av_chunk): # noqa
+def test_embedding_rule_assertion_with_nonsupported_type(image_av_chunk): # noqa
 
     chunk = image_av_chunk
     n_image_embed = 5
@@ -82,4 +92,5 @@ def test_embedding_rule_assertion(image_av_chunk): # noqa
     rule = EmbeddingRule.from_embedders([f1, f2])
 
     with pytest.raises(AssertionError):
+        # because RGBD conversion is not described in the rule
         rule.apply_to_multi_episode_chunk(chunk)

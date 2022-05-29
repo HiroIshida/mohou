@@ -100,6 +100,11 @@ class ElemCovMatchPostProcessor(PostProcessor):
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
             means.append(mean)
+
+            is_degenerated = abs(np.linalg.det(cov)) == 0.0
+            message = 'the cov with {} dim is degenerated (your data takes the same value throughout the sequence)'.format(dim)
+            assert not is_degenerated, message
+
             covs.append(cov)
         return cls(dims, means, covs)
 
