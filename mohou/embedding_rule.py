@@ -101,9 +101,12 @@ class ElemCovMatchPostProcessor(PostProcessor):
                     cov = np.array([[cov.item()]])
             means.append(mean)
 
-            is_degenerated = abs(np.linalg.det(cov)) == 0.0
+            def has_maxeig_valid(cov):
+                e, _ = np.linalg.eig(cov)
+                return np.max(e) > 1e-6
+
             message = 'the cov with {} dim is degenerated (your data takes the same value throughout the sequence)'.format(dim)
-            assert not is_degenerated, message
+            assert has_maxeig_valid(cov), message
 
             covs.append(cov)
         return cls(dims, means, covs)
