@@ -93,7 +93,7 @@ class AutoRegressiveDataset(Dataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        weight_seq_list = [edata.weight_sequence for edata in chunk]
+        weight_seq_list = [edata.weight_seq for edata in chunk]
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 

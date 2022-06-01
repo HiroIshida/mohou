@@ -459,7 +459,7 @@ class TypeShapeTableMixin:
 @dataclass(frozen=True)
 class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
     sequence_list: List[ElementSequence]
-    weight_sequence: np.ndarray
+    weight_seq: np.ndarray
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __post_init__(self):
@@ -494,7 +494,7 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
     def from_seq_list(
             cls,
             sequence_list: List[ElementSequence],
-            weight_sequence: Optional[np.ndarray] = None):
+            weight_seq: Optional[np.ndarray] = None):
 
         for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
@@ -504,9 +504,9 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
 
         types = [type(seq[0]) for seq in sequence_list]
 
-        if weight_sequence is None:
+        if weight_seq is None:
             seq_length = len(sequence_list[0])
-            weight_sequence = np.ones(seq_length)
+            weight_seq = np.ones(seq_length)
 
         if TerminateFlag not in set(types):
             terminate_flag_seq = cls.create_default_terminate_flag_seq(len(sequence_list[0]))
@@ -519,7 +519,7 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, 'all sequences must have different type'
-        return cls(sequence_list, weight_sequence, type_shape_table)
+        return cls(sequence_list, weight_seq, type_shape_table)
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
