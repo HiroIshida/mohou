@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -27,13 +28,16 @@ class LSTM(ModelBase[LSTMConfig]):
         output_layers.append(nn.Linear(config.n_hidden, n_state))
         self.output_layer = nn.Sequential(*output_layers)
 
-    def loss(self, sample: torch.Tensor) -> LossDict:
-        sample_input, sample_output = sample[:, :-1], sample[:, 1:]
-        pred_output = self.forward(sample_input)
-        loss_value = nn.MSELoss()(pred_output, sample_output)
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
+        state_sample, weight_seqs = sample
+        state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
+        pred_output = self.forward(state_sample_input)
+
+        weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
+        loss_value = torch.mean(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
         return LossDict({'prediction': loss_value})
 
-    def forward(self, sample: torch.Tensor) -> torch.Tensor:
-        tmp, _ = self.lstm_layer(sample)
+    def forward(self, state_sample: torch.Tensor) -> torch.Tensor:
+        tmp, _ = self.lstm_layer(state_sample)
         out = self.output_layer(tmp)
         return out
