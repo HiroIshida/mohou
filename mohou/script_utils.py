@@ -89,7 +89,7 @@ def train_lstm(
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)
 
-    dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, dataset_config)
+    dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, augconfig=dataset_config)
     if warm_start:
         logger.info('warm start')
         tcache = TrainCache.load(project_name, LSTM)

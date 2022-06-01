@@ -210,8 +210,7 @@ def image_av_chunk_uneven():
     def create_edata(n_length):
         image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
-        weight_seq = np.array([i + 1for i in range(n_length)])
-        data = EpisodeData.from_seq_list([image_seq, av_seq], weight_seq=weight_seq)
+        data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))

@@ -1,7 +1,7 @@
 import copy
 from dataclasses import dataclass
 import logging
-from typing import Generic, List, Tuple, Type, Optional
+from typing import Callable, Generic, List, Tuple, Type, Optional, Union
 
 import numpy as np
 import torch
@@ -66,6 +66,21 @@ class AutoRegressiveDatasetConfig:
         logger.info('ar dataset config: {}'.format(self))
 
 
+WeightPolocy = Callable[[int], np.ndarray]
+
+
+def create_constant_weight_policy() -> WeightPolocy:
+    def f(n_seq_len: int) -> np.ndarray:
+        return np.ones(n_seq_len)
+    return f
+
+
+def create_pw_linear_weight_policy(w_left: float, w_right: float) -> WeightPolocy:
+    def f(n_seq_len) -> np.ndarray:
+        return np.linspace(w_left, w_right, n_seq_len)
+    return f
+
+
 @dataclass
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
@@ -85,7 +100,8 @@ class AutoRegressiveDataset(Dataset):
             cls,
             chunk: MultiEpisodeChunk,
             embed_rule: EmbeddingRule,
-            augconfig: Optional[AutoRegressiveDatasetConfig] = None) -> 'AutoRegressiveDataset':
+            augconfig: Optional[AutoRegressiveDatasetConfig] = None,
+            weighting: Optional[Union[WeightPolocy, List[np.ndarray]]] = None) -> 'AutoRegressiveDataset':
 
         last_key_of_rule = list(embed_rule.keys())[-1]
         assert last_key_of_rule == TerminateFlag
@@ -93,7 +109,14 @@ class AutoRegressiveDataset(Dataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
-        weight_seq_list = [edata.weight_seq for edata in chunk]
+
+        if weighting is None:
+            weighting = create_constant_weight_policy()
+
+        if isinstance(weighting, list):
+            weight_seq_list: List[np.ndarray] = weighting
+        else:
+            weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
