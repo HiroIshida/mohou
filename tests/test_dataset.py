@@ -6,6 +6,7 @@ from mohou.embedding_rule import EmbeddingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
 from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
+from mohou.utils import assert_two_sequences_same_length
 
 from test_types import image_av_chunk_uneven # noqa
 
@@ -44,6 +45,7 @@ def test_auto_regressive_dataset(image_av_chunk_uneven): # noqa
     config = AutoRegressiveDatasetConfig(n_aug)
     dataset = AutoRegressiveDataset.from_chunk(chunk, rule, config)
     assert len(dataset.state_seq_list) == len(chunk.data_list) * (n_aug + 1)
+    assert_two_sequences_same_length(dataset.state_seq_list, dataset.weight_seq_list)
 
     for state_seq in dataset.state_seq_list:
         n_length, n_dim = state_seq.shape
