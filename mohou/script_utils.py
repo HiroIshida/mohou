@@ -6,7 +6,7 @@ import pickle
 import time
 import logging
 from logging import Logger
-from typing import Type, Optional
+from typing import Type, Optional, Union, List
 import matplotlib.pyplot as plt
 
 try:
@@ -25,6 +25,7 @@ from mohou.dataset import AutoEncoderDataset
 from mohou.dataset import AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset
 from mohou.dataset import AutoRegressiveDatasetConfig
+from mohou.dataset import WeightPolicy
 from mohou.propagator import Propagator
 from mohou.file import get_project_dir, get_subproject_dir
 from mohou.trainer import TrainCache, TrainConfig, train
@@ -83,13 +84,17 @@ def train_lstm(
         model_config: LSTMConfig,
         dataset_config: AutoRegressiveDatasetConfig,
         train_config: TrainConfig,
+        weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
         chunk: Optional[MultiEpisodeChunk] = None,
         warm_start: bool = False):
 
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)
 
-    dataset = AutoRegressiveDataset.from_chunk(chunk, embedding_rule, augconfig=dataset_config)
+    dataset = AutoRegressiveDataset.from_chunk(
+        chunk, embedding_rule,
+        augconfig=dataset_config, weighting=weighting)
+
     if warm_start:
         logger.info('warm start')
         tcache = TrainCache.load(project_name, LSTM)
