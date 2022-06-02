@@ -38,8 +38,19 @@ def remove_project(project_name: str) -> None:
     shutil.rmtree(str(path))
 
 
-def resolve_file_path(obj_type: Type, project_name: str, postfix: Optional[str] = None) -> Path:
+def resolve_file_path(
+        obj_type: Type,
+        project_name: str,
+        postfix: Optional[str] = None,
+        subpath: Optional[Path] = None) -> Path:
+
     dir_path = get_project_path(project_name)
+
+    if subpath is not None:
+        dir_path = dir_path / subpath
+
+    dir_path.mkdir(parents=True, exist_ok=True)
+
     if postfix is None:
         file_path = dir_path / (obj_type.__name__ + '.pkl')
     else:
@@ -50,8 +61,14 @@ def resolve_file_path(obj_type: Type, project_name: str, postfix: Optional[str] 
 DataT = TypeVar('DataT')
 
 
-def load_object(obj_type: Type[DataT], project_name: str, postfix: Optional[str] = None) -> DataT:
-    file_path = resolve_file_path(obj_type, project_name, postfix)
+def load_object(
+        obj_type: Type[DataT],
+        project_name: str,
+        postfix: Optional[str] = None,
+        subpath: Optional[Path] = None) -> DataT:
+
+    file_path = resolve_file_path(
+        obj_type, project_name, postfix=postfix, subpath=subpath)
     time_stamp = os.path.getmtime(str(file_path))
     modified_time = datetime.datetime.fromtimestamp(time_stamp)
 
@@ -60,11 +77,18 @@ def load_object(obj_type: Type[DataT], project_name: str, postfix: Optional[str]
 
     with file_path.open(mode='rb') as f:
         obj = pickle.load(f)
+
     return obj
 
 
-def load_objects(obj_type: Type[DataT], project_name: str, postfix: Optional[str] = None) -> List[DataT]:
-    file_path = resolve_file_path(obj_type, project_name, postfix)
+def load_objects(
+        obj_type: Type[DataT],
+        project_name: str,
+        postfix: Optional[str] = None,
+        subpath: Optional[Path] = None) -> List[DataT]:
+
+    file_path = resolve_file_path(
+        obj_type, project_name, postfix=postfix, subpath=subpath)
     file_name_common = str(file_path)
     base, file_name_common_local = os.path.split(file_name_common)
     _, ext = os.path.splitext(file_name_common_local)
@@ -81,8 +105,14 @@ def load_objects(obj_type: Type[DataT], project_name: str, postfix: Optional[str
     return obj_list
 
 
-def dump_object(obj: Any, project_name: str, postfix: Optional[str] = None) -> None:
-    file_path = resolve_file_path(obj.__class__, project_name, postfix)
+def dump_object(
+        obj: Any,
+        project_name: str,
+        postfix: Optional[str] = None,
+        subpath: Optional[Path] = None) -> None:
+
+    file_path = resolve_file_path(
+        obj.__class__, project_name, postfix=postfix, subpath=subpath)
     logger.info('dump pickle to {}'.format(file_path))
 
     # Not using with statement to use custom exception handling
