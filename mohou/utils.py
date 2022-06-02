@@ -3,7 +3,7 @@ from logging import Logger
 import os
 import queue
 import time
-from typing import Any, List, Iterator, TypeVar, Union, Type
+from typing import Any, List, Iterator, TypeVar, Union, Type, Sequence
 
 import numpy as np
 import PIL
@@ -90,6 +90,13 @@ def assert_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name
 def assert_isinstance_with_message(given: Any, expected: Type):
     message = '{0}: given {1}, exepcted {2}'.format('not isinstance', given, expected)
     assert isinstance(given, expected), message
+
+
+def assert_two_sequences_same_length(seq_list1: Sequence[np.ndarray], seq_list2: Sequence[np.ndarray]):
+    if __debug__:
+        assert_with_message(len(seq_list1), len(seq_list2), 'seq_list length of lhs')
+        for seq1, seq2 in zip(seq_list1, seq_list2):
+            assert_with_message(len(seq1), len(seq2), 'seq length of lhs')
 
 
 def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
