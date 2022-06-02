@@ -123,7 +123,9 @@ class AutoRegressiveDataset(Dataset):
 
         if isinstance(weighting, list):
             weight_seq_list: List[np.ndarray] = weighting
+            logger.info("use user-provided numpy weighting")
         else:
+            logger.info("use weight policy: {}".format(weighting))
             weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
