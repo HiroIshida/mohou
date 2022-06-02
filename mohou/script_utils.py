@@ -48,7 +48,8 @@ def create_default_logger(project_name: str, prefix: str) -> Logger:
     log_sym_path = log_dir_path / ('latest_' + prefix + '.log')
 
     logger.info('create log symlink :{0} => {1}'.format(log_file_path, log_sym_path))
-    log_sym_path.unlink(missing_ok=True)
+    if log_sym_path.is_symlink():
+        log_sym_path.unlink()
     log_sym_path.symlink_to(log_file_path)
     return logger
 
