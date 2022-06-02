@@ -14,7 +14,7 @@ import pybullet_data
 import tinyfk
 import tqdm
 
-from mohou.file import get_data_path, get_project_path
+from mohou.file import get_project_path
 from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisodeChunk,
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator

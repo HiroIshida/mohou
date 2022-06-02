@@ -1,5 +1,4 @@
 import argparse
-import os
 import tqdm
 from typing import Type
 
@@ -72,7 +71,6 @@ if __name__ == '__main__':
     assert hasattr(rlbench.tasks, task_name)
     task_type: Type[Task] = getattr(rlbench.tasks, task_name)
     task = env.get_task(task_type)
-
 
     gif_dir_path = get_subproject_path(project_name, "train_data_gif")
     mohou_episode_data_list = []

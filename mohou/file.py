@@ -1,8 +1,7 @@
 import logging
 import datetime
-import os
 import shutil
-import os.path as osp
+import os
 from pathlib import Path
 import re
 import pickle
