@@ -102,6 +102,9 @@ def load_objects(
             with open(whole_name, 'rb') as f:
                 obj = pickle.load(f)
             obj_list.append(obj)
+    if len(obj_list) == 0:
+        raise FileNotFoundError
+
     return obj_list
 
 

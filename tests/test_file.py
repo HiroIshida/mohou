@@ -70,3 +70,14 @@ def test_load_objects_with_postfix(tmp_project_name):
 
     objects = load_objects(SampleClass, tmp_project_name, postfix)
     np.testing.assert_almost_equal(a.data + b.data, objects[0].data + objects[1].data)
+
+
+def test_filenotfounderrro_in_loading(tmp_project_name):
+    class HogeHoge:
+        pass
+
+    with pytest.raises(FileNotFoundError):
+        load_object(HogeHoge, tmp_project_name)
+
+    with pytest.raises(FileNotFoundError):
+        load_objects(HogeHoge, tmp_project_name)
