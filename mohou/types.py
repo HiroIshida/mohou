@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-import os
 import copy
 from dataclasses import dataclass, asdict
 import functools
 import operator
 import random
+from pathlib import Path
 import yaml
 from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, Union
 
@@ -16,7 +16,7 @@ import cv2
 import PIL.Image
 
 from mohou.constant import N_DATA_INTACT
-from mohou.file import get_project_dir, load_object, dump_object
+from mohou.file import get_project_path, load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image, _f_randomize_gray_image
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import get_all_concrete_leaftypes
@@ -631,17 +631,18 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return chunk
 
     @staticmethod
-    def spec_file_name(project_name: str, postfix: Optional[str] = None) -> str:
+    def spec_file_path(project_name: str, postfix: Optional[str] = None) -> Path:
+        project_path = get_project_path(project_name)
         if postfix is None:
-            yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec.yaml')
+            yaml_file_path = project_path / 'chunk_spec.yaml'
         else:
-            yaml_file_name = os.path.join(get_project_dir(project_name), 'chunk_spec-{}.yaml'.format(postfix))
-        return yaml_file_name
+            yaml_file_path = project_path / 'chunk_spec-{}.yaml'.format(postfix)
+        return yaml_file_path
 
     @classmethod
     def load_spec(cls, project_name: str, postfix: Optional[str] = None) -> ChunkSpec:
-        yaml_file_name = cls.spec_file_name(project_name, postfix)
-        with open(yaml_file_name, 'r') as f:
+        yaml_file_path = cls.spec_file_path(project_name, postfix)
+        with yaml_file_path.open(mode='r') as f:
             d = yaml.safe_load(f)
             spec = ChunkSpec.from_dict(d)
         return spec
@@ -649,8 +650,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
         self._postfix = postfix
         dump_object(self, project_name, postfix)
-        yaml_file_name = self.spec_file_name(project_name, postfix)
-        with open(yaml_file_name, 'w') as f:
+        yaml_file_path = self.spec_file_path(project_name, postfix)
+        with yaml_file_path.open(mode='w') as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
     def get_intact_chunk(self) -> 'MultiEpisodeChunk':
@@ -701,6 +702,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         if project_name is None:
             plt.show()
         else:
-            filename = os.path.join(get_project_dir(project_name), 'seq-{}.png'.format(elem_type.__name__))
-            fig.savefig(filename, format='png', dpi=300)
-            print('saved to {}'.format(filename))
+            project_path = get_project_path(project_name)
+            file_path = project_path / 'seq-{}.png'.format(elem_type.__name__)
+            file_name = str(file_path)
+            fig.savefig(file_name, format='png', dpi=300)
+            print('saved to {}'.format(file_name))

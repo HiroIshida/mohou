@@ -1,5 +1,4 @@
 import argparse
-import os
 from typing import Type
 
 import tqdm
@@ -14,7 +13,7 @@ from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
 from rlbench.backend.observation import Observation
 
-from mohou.file import get_project_dir
+from mohou.file import get_project_path
 from mohou.types import RGBImage, DepthImage, AngleVector, GripperState, ElementDict
 from mohou.types import MultiEpisodeChunk
 from mohou.default import create_default_propagator
@@ -85,6 +84,6 @@ if __name__ == '__main__':
 
             rgb_seq_gif.append(RGBImage(obs.overhead_rgb))
 
-        filename = os.path.join(get_project_dir(project_name), "feedback_simulation-{}.gif".format(i))
+        file_path = get_project_path(project_name) / "feedback_simulation-{}.gif".format(i)
         clip = ImageSequenceClip([img.numpy() for img in rgb_seq_gif], fps=50)
-        clip.write_gif(filename, fps=50)
+        clip.write_gif(str(file_path), fps=50)

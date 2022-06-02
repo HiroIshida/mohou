@@ -14,7 +14,7 @@ import pybullet_data
 import tinyfk
 import tqdm
 
-from mohou.file import get_project_dir
+from mohou.file import get_project_path
 from mohou.types import (AngleVector, ElementDict, ElementSequence, MultiEpisodeChunk,
                          RGBImage, DepthImage, EpisodeData)
 from mohou.propagator import Propagator
@@ -199,9 +199,9 @@ if __name__ == '__main__':
         propagator = create_default_propagator(project_name)
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 
-        filename = os.path.join(get_project_dir(project_name), "feedback_simulation.gif")
+        file_path = get_project_path(project_name) / "feedback_simulation.gif"
         clip = ImageSequenceClip([rgb.numpy() for rgb in rgb_list], fps=50)
-        clip.write_gif(filename, fps=50)
+        clip.write_gif(str(file_path), fps=50)
     else:
         with tempfile.TemporaryDirectory() as td:
 
@@ -242,6 +242,6 @@ if __name__ == '__main__':
 
             # For debugging
             img_seq = chunk[0].get_sequence_by_type(RGBImage)
-            filename = os.path.join(get_project_dir(project_name), "sample.gif")
+            file_path = get_project_path(project_name) / "sample.gif"
             clip = ImageSequenceClip([img for img in img_seq], fps=50)
-            clip.write_gif(filename, fps=50)
+            clip.write_gif(str(file_path), fps=50)

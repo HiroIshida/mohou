@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import re
 import random
@@ -27,7 +26,7 @@ from mohou.dataset import AutoRegressiveDataset
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.dataset import WeightPolicy
 from mohou.propagator import Propagator
-from mohou.file import get_project_dir, get_subproject_dir
+from mohou.file import get_project_path, get_subproject_path
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.embedding_rule import EmbeddingRule
 from mohou.utils import canvas_to_ndarray
@@ -37,20 +36,21 @@ logger = logging.getLogger(__name__)
 
 def create_default_logger(project_name: str, prefix: str) -> Logger:
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
-    log_dir = os.path.join(get_project_dir(project_name), 'log')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_file_name = os.path.join(log_dir, (prefix + timestr + '.log'))
+    log_dir_path = get_project_path(project_name) / "log"
+    log_dir_path.mkdir(parents=True, exist_ok=True)
+    log_file_path = log_dir_path / (prefix + timestr + '.log')
+
     FORMAT = '[%(levelname)s] %(asctime)s %(name)s: %(message)s'
-    logging.basicConfig(filename=log_file_name, format=FORMAT)
+    logging.basicConfig(filename=str(log_file_path), format=FORMAT)
     logger = logging.getLogger('mohou')
     logger.setLevel(level=logging.INFO)
 
-    log_sym_name = os.path.join(log_dir, ('latest_' + prefix + '.log'))
-    logger.info('create log symlink :{0} => {1}'.format(log_file_name, log_sym_name))
-    if os.path.islink(log_sym_name):
-        os.unlink(log_sym_name)
-    os.symlink(log_file_name, log_sym_name)
+    log_sym_path = log_dir_path / ('latest_' + prefix + '.log')
+
+    logger.info('create log symlink :{0} => {1}'.format(log_file_path, log_sym_path))
+    if log_sym_path.is_symlink():
+        log_sym_path.unlink()
+    log_sym_path.symlink_to(log_file_path)
     return logger
 
 
@@ -106,22 +106,22 @@ def train_lstm(
 
 
 def visualize_train_histories(project_name: str):
-    project_dir = get_project_dir(project_name)
-    fnames = os.listdir(project_dir)
+    project_path = get_project_path(project_name)
+    file_paths = sorted(project_path.iterdir())
 
-    plot_dir = get_subproject_dir(project_name, 'train_history')
-    for fname in fnames:
-        m = re.match(r'.*TrainCache.*', fname)
+    plot_dir_path = get_subproject_path(project_name, 'train_history')
+    for path in file_paths:
+        m = re.match(r'.*TrainCache.*', path.name)
         if m is not None:
-            pickle_file = os.path.join(project_dir, fname)
+            pickle_path = project_path / path.name
 
-            with open(pickle_file, 'rb') as f:
+            with pickle_path.open(mode='rb') as f:
                 tcache: TrainCache = pickle.load(f)
                 fig, ax = plt.subplots()
                 tcache.visualize((fig, ax))
-                image_file = os.path.join(plot_dir, fname + '.png')
-                fig.savefig(image_file)
-                print('saved to {}'.format(image_file))
+                image_path = plot_dir_path / (path.name + '.png')
+                fig.savefig(str(image_path))
+                print('saved to {}'.format(image_path))
 
 
 def visualize_image_reconstruction(
@@ -155,10 +155,9 @@ def visualize_image_reconstruction(
             fig.suptitle('left: original, right: reconstructed')
             ax1.imshow(img.to_rgb()._data)
             ax2.imshow(img_reconstructed.to_rgb()._data)
-            save_dir = get_subproject_dir(project_name, 'autoencoder_result')
-
-            full_file_name = os.path.join(save_dir, 'result-{}-{}.png'.format(postfix, i))
-            plt.savefig(full_file_name)
+            save_dir_path = get_subproject_path(project_name, 'autoencoder_result')
+            file_path = save_dir_path / 'result-{}-{}.png'.format(postfix, i)
+            plt.savefig(str(file_path))
 
 
 def add_text_to_image(image: ImageBase, text: str, color: str):
@@ -176,7 +175,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
-    save_dir = get_subproject_dir(project_name, 'lstm_result')
+    save_dir_path = get_subproject_path(project_name, 'lstm_result')
 
     for idx, edata in enumerate(chunk):
         episode_data = chunk[idx]
@@ -254,9 +253,9 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         for ax in axs:
             ax.grid()
 
-        filename = os.path.join(save_dir, 'seq-{}{}.png'.format(AngleVector.__name__, idx))
-        fig.savefig(filename, format='png', dpi=300)
-        print('saved to {}'.format(filename))
+        image_path = save_dir_path / 'seq-{}{}.png'.format(AngleVector.__name__, idx)
+        fig.savefig(str(image_path), format='png', dpi=300)
+        print('saved to {}'.format(image_path))
 
         # save gif image
         print("adding text to images...")
@@ -268,7 +267,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
 
         images_with_text = fed_images_with_text + pred_images_with_text
 
-        full_file_name = os.path.join(save_dir, 'result-image{}.gif'.format(idx))
+        image_path = save_dir_path / 'result-image{}.gif'.format(idx)
         assert ImageSequenceClip is not None, 'check if your moviepy is properly installed'
         clip = ImageSequenceClip(images_with_text, fps=20)
-        clip.write_gif(full_file_name, fps=20)
+        clip.write_gif(str(image_path), fps=20)
