@@ -36,7 +36,6 @@ def test_dump_and_load_object_subdir(tmp_project_name):
     remove_project(tmp_project_name)
 
 
-
 def test_load_objects(tmp_project_name):
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
