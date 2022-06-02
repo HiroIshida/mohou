@@ -1,4 +1,5 @@
 import logging
+import datetime
 import os
 import shutil
 import os.path as osp
@@ -49,7 +50,12 @@ DataT = TypeVar('DataT')
 
 def load_object(obj_type: Type[DataT], project_name: str, postfix: Optional[str] = None) -> DataT:
     file_name = resolve_file_name(obj_type, project_name, postfix)
-    logger.info('load pickle from {}'.format(file_name))
+    time_stamp = os.path.getmtime(file_name)
+    modified_time = datetime.datetime.fromtimestamp(time_stamp)
+
+    logger.info('load pickle from {} (modification time is {})'.format(
+        file_name, modified_time))
+
     with open(file_name, 'rb') as f:
         obj = pickle.load(f)
     return obj
