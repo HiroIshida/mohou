@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
 import copy
 from dataclasses import dataclass
 import logging
-from typing import Callable, Generic, List, Tuple, Type, Optional, Union
+from typing import Generic, List, Tuple, Type, Optional, Union
 
 import numpy as np
 import torch
@@ -66,19 +67,26 @@ class AutoRegressiveDatasetConfig:
         logger.info('ar dataset config: {}'.format(self))
 
 
-WeightPolocy = Callable[[int], np.ndarray]
+class WeightPolicy(ABC):
+
+    @abstractmethod
+    def __call__(self, n_seq_lne: int) -> np.ndarray:
+        pass
 
 
-def create_constant_weight_policy() -> WeightPolocy:
-    def f(n_seq_len: int) -> np.ndarray:
-        return np.ones(n_seq_len)
-    return f
+class ConstantWeightPolicy(WeightPolicy):
+
+    def __call__(self, n_seq_lne: int) -> np.ndarray:
+        return np.ones(n_seq_lne)
 
 
-def create_pw_linear_weight_policy(w_left: float, w_right: float) -> WeightPolocy:
-    def f(n_seq_len) -> np.ndarray:
-        return np.linspace(w_left, w_right, n_seq_len)
-    return f
+@dataclass
+class PWLinearWeightPolicy(WeightPolicy):
+    w_left: float
+    w_right: float
+
+    def __call__(self, n_seq_len: int) -> np.ndarray:
+        return np.linspace(self.w_left, self.w_right, n_seq_len)
 
 
 @dataclass
@@ -101,7 +109,7 @@ class AutoRegressiveDataset(Dataset):
             chunk: MultiEpisodeChunk,
             embed_rule: EmbeddingRule,
             augconfig: Optional[AutoRegressiveDatasetConfig] = None,
-            weighting: Optional[Union[WeightPolocy, List[np.ndarray]]] = None) -> 'AutoRegressiveDataset':
+            weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None) -> 'AutoRegressiveDataset':
 
         last_key_of_rule = list(embed_rule.keys())[-1]
         assert last_key_of_rule == TerminateFlag
@@ -111,7 +119,7 @@ class AutoRegressiveDataset(Dataset):
         state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
 
         if weighting is None:
-            weighting = create_constant_weight_policy()
+            weighting = ConstantWeightPolicy()
 
         if isinstance(weighting, list):
             weight_seq_list: List[np.ndarray] = weighting
