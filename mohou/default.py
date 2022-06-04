@@ -11,7 +11,8 @@ class DefaultNotFoundError(Exception):
     pass
 
 
-def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
+def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[AutoEncoderBase]:
+
     # TODO(HiroIshida) dirty...
     t: Optional[Type[AutoEncoderBase]] = None
 
@@ -35,7 +36,7 @@ def auto_detect_autoencoder_type(project_name: str) -> Type[AutoEncoderBase]:
     return t
 
 
-def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
+def create_default_embedding_rule(project_name: Optional[str] = None) -> EmbeddingRule:
 
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_spec = chunk.spec
@@ -65,7 +66,7 @@ def create_default_embedding_rule(project_name: str) -> EmbeddingRule:
     return embed_rule
 
 
-def create_default_propagator(project_name: str) -> Propagator:
+def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     try:
         tcach_lstm = TrainCache.load(project_name, LSTM)
     except Exception:

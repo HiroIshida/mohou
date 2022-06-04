@@ -7,23 +7,31 @@ import re
 import pickle
 from typing import Any, List, Optional, Type, TypeVar, Union
 
+from mohou.setting import setting
+
 logger = logging.getLogger(__name__)
 
 
-def get_data_path() -> Path:
-    path = Path('~/.mohou').expanduser()
+def get_root_path() -> Path:
+    path = setting.root_path
     path.mkdir(exist_ok=True)
     return path
 
 
-def get_project_path(project_name: str) -> Path:
-    path = get_data_path()
-    project_dir_path = path / project_name
+def get_project_path(project_name: Optional[str] = None) -> Path:
+    root_path = get_root_path()
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+    project_dir_path = root_path / project_name
     project_dir_path.mkdir(exist_ok=True)
     return project_dir_path
 
 
-def get_subproject_path(project_name: str, subpath: Union[str, Path]):
+def get_subproject_path(
+        project_name: Optional[str],
+        subpath: Union[str, Path]) -> Path:
+
     if isinstance(subpath, str):
         subpath = Path(subpath)
 
@@ -40,7 +48,7 @@ def remove_project(project_name: str) -> None:
 
 def resolve_file_path(
         obj_type: Type,
-        project_name: str,
+        project_name: Optional[str] = None,
         postfix: Optional[str] = None,
         subpath: Optional[Path] = None) -> Path:
 
@@ -63,7 +71,7 @@ DataT = TypeVar('DataT')
 
 def load_object(
         obj_type: Type[DataT],
-        project_name: str,
+        project_name: Optional[str] = None,
         postfix: Optional[str] = None,
         subpath: Optional[Path] = None) -> DataT:
 
@@ -83,7 +91,7 @@ def load_object(
 
 def load_objects(
         obj_type: Type[DataT],
-        project_name: str,
+        project_name: Optional[str] = None,
         postfix: Optional[str] = None,
         subpath: Optional[Path] = None) -> List[DataT]:
 
@@ -110,7 +118,7 @@ def load_objects(
 
 def dump_object(
         obj: Any,
-        project_name: str,
+        project_name: Optional[str] = None,
         postfix: Optional[str] = None,
         subpath: Optional[Path] = None) -> None:
 

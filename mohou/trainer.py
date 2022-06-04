@@ -91,7 +91,7 @@ class TrainCache(Generic[ModelT]):
         ax.legend(['train', 'valid'])
 
     @classmethod
-    def load(cls, project_name: str, model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
+    def load(cls, project_name: Optional[str], model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
         postfix = model_type.__name__
         tcache_list = load_objects(TrainCache, project_name, postfix)
         assert len(tcache_list) > 0, 'No train cache found for {}'.format(model_type.__name__)

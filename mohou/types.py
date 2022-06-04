@@ -15,6 +15,7 @@ import torchvision
 import cv2
 import PIL.Image
 
+from mohou.setting import setting
 from mohou.constant import N_DATA_INTACT
 from mohou.file import get_project_path, load_object, dump_object
 from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image, _f_randomize_gray_image
@@ -623,7 +624,15 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return self.type_shape_table[elem_type]
 
     @classmethod
-    def load(cls, project_name: str, postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
+    def load(
+            cls,
+            project_name: Optional[str] = None,
+            postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
+
+        if project_name is None:
+            project_name = setting.primary_project_name
+        assert isinstance(project_name, str)  # for mypy check
+
         if project_name not in _chunk_cache:
             _chunk_cache[(project_name, postfix)] = load_object(cls, project_name, postfix)
         chunk = _chunk_cache[(project_name, postfix)]
@@ -631,7 +640,10 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return chunk
 
     @staticmethod
-    def spec_file_path(project_name: str, postfix: Optional[str] = None) -> Path:
+    def spec_file_path(
+            project_name: Optional[str] = None,
+            postfix: Optional[str] = None) -> Path:
+
         project_path = get_project_path(project_name)
         if postfix is None:
             yaml_file_path = project_path / 'chunk_spec.yaml'
@@ -640,14 +652,18 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return yaml_file_path
 
     @classmethod
-    def load_spec(cls, project_name: str, postfix: Optional[str] = None) -> ChunkSpec:
+    def load_spec(
+            cls,
+            project_name: Optional[str] = None,
+            postfix: Optional[str] = None) -> ChunkSpec:
+
         yaml_file_path = cls.spec_file_path(project_name, postfix)
         with yaml_file_path.open(mode='r') as f:
             d = yaml.safe_load(f)
             spec = ChunkSpec.from_dict(d)
         return spec
 
-    def dump(self, project_name: str, postfix: Optional[str] = None) -> None:
+    def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
         self._postfix = postfix
         dump_object(self, project_name, postfix)
         yaml_file_path = self.spec_file_path(project_name, postfix)
@@ -684,7 +700,11 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.data_list_intact = data_list_intact_new
         self.type_shape_table = other.type_shape_table
 
-    def plot_vector_histories(self, elem_type: Type[VectorBase], project_name: Optional[str] = None) -> None:
+    def plot_vector_histories(
+            self,
+            elem_type: Type[VectorBase],
+            project_name: Optional[str] = None) -> None:
+
         n_vec_dim = self.spec.type_shape_table[elem_type][0]
 
         fig = plt.figure()
@@ -699,11 +719,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         for ax in axs:
             ax.grid()
-        if project_name is None:
-            plt.show()
-        else:
-            project_path = get_project_path(project_name)
-            file_path = project_path / 'seq-{}.png'.format(elem_type.__name__)
-            file_name = str(file_path)
-            fig.savefig(file_name, format='png', dpi=300)
-            print('saved to {}'.format(file_name))
+        project_path = get_project_path(project_name)
+        file_path = project_path / 'seq-{}.png'.format(elem_type.__name__)
+        file_name = str(file_path)
+        fig.savefig(file_name, format='png', dpi=300)
+        print('saved to {}'.format(file_name))
