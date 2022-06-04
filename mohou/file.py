@@ -7,17 +7,19 @@ import re
 import pickle
 from typing import Any, List, Optional, Type, TypeVar, Union
 
+from mohou.setting import setting
+
 logger = logging.getLogger(__name__)
 
 
-def get_data_path() -> Path:
-    path = Path('~/.mohou').expanduser()
+def get_root_path() -> Path:
+    path = setting.root_path
     path.mkdir(exist_ok=True)
     return path
 
 
 def get_project_path(project_name: str) -> Path:
-    path = get_data_path()
+    path = get_root_path()
     project_dir_path = path / project_name
     project_dir_path.mkdir(exist_ok=True)
     return project_dir_path
