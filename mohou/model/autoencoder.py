@@ -159,6 +159,11 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         """Must be deterministic """
         pass
 
+    @abstractmethod
+    def compute_reconstruction_loss(self, img: ImageT) -> float:
+        """Must be deterministic """
+        pass
+
     def check_network_input(self, inp: torch.Tensor):
         assert inp.ndim == 4
         assert list(inp.shape[2:]) == [self.n_pixel, self.n_pixel]
@@ -182,7 +187,7 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         return self.image_type.channel()
 
 
-class AutoEncoder(AutoEncoderBase):
+class AutoEncoder(AutoEncoderBase[ImageT]):
 
     def loss(self, sample: torch.Tensor) -> LossDict:
         self.check_network_input(sample)
@@ -197,6 +202,12 @@ class AutoEncoder(AutoEncoderBase):
     def get_decoder(self) -> nn.Module:
         return self.decoder_module
 
+    def compute_reconstruction_loss(self, img: ImageT) -> float:
+        tens = img.to_tensor().unsqueeze(dim=0)
+        tens_reconst = nn.Sequential(self.encoder_module, self.decoder_module)(tens)
+        loss = nn.MSELoss()(tens_reconst, tens)
+        return loss.item()
+
     def _setup_from_config(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore
         n_pixel = config.n_pixel
@@ -206,7 +217,7 @@ class AutoEncoder(AutoEncoderBase):
         self.decoder_module = nn.Sequential(*decoder_layers)
 
 
-class VariationalAutoEncoder(AutoEncoderBase):
+class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
     dense_mean: nn.Module
     dense_var: nn.Module
 
@@ -229,6 +240,12 @@ class VariationalAutoEncoder(AutoEncoderBase):
 
     def get_decoder(self) -> nn.Module:
         return self.decoder_module
+
+    def compute_reconstruction_loss(self, img: ImageT) -> float:
+        tens = img.to_tensor().unsqueeze(dim=0)
+        tens_reconst = nn.Sequential(self.encoder_module, self.dense_mean, self.decoder_module)(tens)
+        loss = nn.MSELoss()(tens_reconst, tens)
+        return loss.item()
 
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
         std = torch.exp(0.5 * logvar)
