@@ -25,6 +25,10 @@ def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
         img_strange: PrimitiveImageBase = T.dummy_from_shape((10, 10))
         model.forward(img_strange.to_tensor().unsqueeze(dim=0))
 
+    # test reconstruction
+    loss = model.compute_reconstruction_loss(img)
+    assert loss > 0.0
+
     # test embedder (This also test ImageEmbedder)
     embedder = model.get_embedder()
     feature_vec: np.ndarray = embedder.forward(img)
