@@ -28,10 +28,12 @@ def test_dump_and_load_object(tmp_project_name):
 
 def test_dump_and_load_object_subdir(tmp_project_name):
     a = SampleClass(np.random.randn(10, 10))
-    subpath = pathlib.Path('hoge/hoge')
-    dump_object(a, tmp_project_name, subpath=subpath)
-    b = load_object(SampleClass, tmp_project_name, subpath=subpath)
-    np.testing.assert_almost_equal(a.data, b.data)
+
+    subpath_list = [pathlib.Path('hoge/hoge'), "fuga/fuga"]
+    for subpath in subpath_list:
+        dump_object(a, tmp_project_name, subpath=subpath)
+        b = load_object(SampleClass, tmp_project_name, subpath=subpath)
+        np.testing.assert_almost_equal(a.data, b.data)
 
     remove_project(tmp_project_name)
 
@@ -49,16 +51,17 @@ def test_load_objects(tmp_project_name):
 
 
 def test_load_objects_subdir(tmp_project_name):
-    subpath = pathlib.Path('hoge/hoge')
-    a = SampleClass(np.random.randn(10, 10))
-    b = SampleClass(np.random.randn(10, 10))
-    dump_object(a, tmp_project_name, str(uuid.uuid4()), subpath=subpath)
-    dump_object(b, tmp_project_name, str(uuid.uuid4()), subpath=subpath)
+    subpath_list = [pathlib.Path('hoge/hoge'), "fuga/fuga"]
+    for subpath in subpath_list:
+        a = SampleClass(np.random.randn(10, 10))
+        b = SampleClass(np.random.randn(10, 10))
+        dump_object(a, tmp_project_name, str(uuid.uuid4()), subpath=subpath)
+        dump_object(b, tmp_project_name, str(uuid.uuid4()), subpath=subpath)
 
-    objects = load_objects(SampleClass, tmp_project_name, subpath=subpath)
-    np.testing.assert_almost_equal(a.data + b.data, objects[0].data + objects[1].data)
+        objects = load_objects(SampleClass, tmp_project_name, subpath=subpath)
+        np.testing.assert_almost_equal(a.data + b.data, objects[0].data + objects[1].data)
 
-    remove_project(tmp_project_name)
+        remove_project(tmp_project_name)
 
 
 def test_load_objects_with_postfix(tmp_project_name):

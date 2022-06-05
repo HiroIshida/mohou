@@ -50,11 +50,13 @@ def resolve_file_path(
         obj_type: Type,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        subpath: Optional[Path] = None) -> Path:
+        subpath: Optional[Union[Path, str]] = None) -> Path:
 
     dir_path = get_project_path(project_name)
 
     if subpath is not None:
+        if isinstance(subpath, str):
+            subpath = Path(subpath)
         dir_path = dir_path / subpath
 
     dir_path.mkdir(parents=True, exist_ok=True)
@@ -73,7 +75,7 @@ def load_object(
         obj_type: Type[DataT],
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        subpath: Optional[Path] = None) -> DataT:
+        subpath: Optional[Union[Path, str]] = None) -> DataT:
 
     file_path = resolve_file_path(
         obj_type, project_name, postfix=postfix, subpath=subpath)
@@ -93,7 +95,7 @@ def load_objects(
         obj_type: Type[DataT],
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        subpath: Optional[Path] = None) -> List[DataT]:
+        subpath: Optional[Union[Path, str]] = None) -> List[DataT]:
 
     file_path = resolve_file_path(
         obj_type, project_name, postfix=postfix, subpath=subpath)
@@ -120,7 +122,7 @@ def dump_object(
         obj: Any,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        subpath: Optional[Path] = None) -> None:
+        subpath: Optional[Union[Path, str]] = None) -> None:
 
     file_path = resolve_file_path(
         obj.__class__, project_name, postfix=postfix, subpath=subpath)
