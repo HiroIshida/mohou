@@ -2,11 +2,11 @@ import argparse
 from typing import Type
 
 from mohou.dataset import AutoEncoderDatasetConfig
-from mohou.model import AutoEncoderBase, AutoEncoder, VariationalAutoEncoder
+from mohou.model import AutoEncoder, AutoEncoderBase, VariationalAutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
+from mohou.script_utils import create_default_logger, train_autoencoder
 from mohou.trainer import TrainConfig
-from mohou.types import RGBImage, ImageBase, MultiEpisodeChunk, get_element_type
-from mohou.script_utils import train_autoencoder, create_default_logger
+from mohou.types import ImageBase, MultiEpisodeChunk, RGBImage, get_element_type
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

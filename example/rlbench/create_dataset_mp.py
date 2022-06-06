@@ -1,14 +1,14 @@
 import argparse
-import os
-import uuid
-import pickle
 import multiprocessing
-import tqdm
+import os
+import pickle
 import tempfile
+import uuid
 
-from moviepy.editor import ImageSequenceClip
 import numpy as np
 import psutil
+import tqdm
+from moviepy.editor import ImageSequenceClip
 from rlbench.action_modes.action_mode import MoveArmThenGripper
 from rlbench.action_modes.arm_action_modes import JointVelocity
 from rlbench.action_modes.gripper_action_modes import Discrete
@@ -17,9 +17,15 @@ from rlbench.observation_config import ObservationConfig
 from rlbench.tasks import CloseBox
 
 from mohou.file import get_project_dir
-from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage
-from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
-
+from mohou.types import (
+    AngleVector,
+    DepthImage,
+    ElementSequence,
+    EpisodeData,
+    MultiEpisodeChunk,
+    RGBDImage,
+    RGBImage,
+)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

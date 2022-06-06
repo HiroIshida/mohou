@@ -1,10 +1,10 @@
-import pytest
 from typing import Type
 
 import numpy as np
+import pytest
 
-from mohou.model import AutoEncoder, VariationalAutoEncoder, AutoEncoderConfig
-from mohou.types import DepthImage, RGBImage, RGBDImage, PrimitiveImageBase
+from mohou.model import AutoEncoder, AutoEncoderConfig, VariationalAutoEncoder
+from mohou.types import DepthImage, PrimitiveImageBase, RGBDImage, RGBImage
 
 
 @pytest.mark.parametrize("S", [28, 112, 224])

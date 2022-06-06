@@ -1,12 +1,11 @@
-from abc import ABC
 import copy
 import hashlib
 import logging
 import operator
 import pickle
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Any, Dict, Generic, List, TypeVar, Optional
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 import torch
 import torch.nn as nn

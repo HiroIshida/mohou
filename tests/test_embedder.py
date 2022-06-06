@@ -1,9 +1,8 @@
 import numpy as np
-
-from mohou.types import AngleVector, MultiEpisodeChunk
-from mohou.embedder import PCAEmbedder
-
 from test_types import image_av_chunk  # noqa
+
+from mohou.embedder import PCAEmbedder
+from mohou.types import AngleVector, MultiEpisodeChunk
 
 
 def test_pca_embedder(image_av_chunk):  # noqa

@@ -1,10 +1,11 @@
+import dataclasses
+import pathlib
+import uuid
+
+import numpy as np
 import pytest
 
-import pathlib
-import dataclasses
-import uuid
-import numpy as np
-from mohou.file import remove_project, load_object, load_objects, dump_object
+from mohou.file import dump_object, load_object, load_objects, remove_project
 
 
 @dataclasses.dataclass

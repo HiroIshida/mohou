@@ -2,12 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Callable, Generic, List, Optional, Tuple, Type
 
 import numpy as np
-from sklearn.decomposition import PCA
 import torch
+from sklearn.decomposition import PCA
 
-from mohou.types import MultiEpisodeChunk
-from mohou.types import ElementT, ImageT, VectorT
-from mohou.utils import assert_with_message, assert_isinstance_with_message
+from mohou.types import ElementT, ImageT, MultiEpisodeChunk, VectorT
+from mohou.utils import assert_isinstance_with_message, assert_with_message
 
 
 class EmbedderBase(ABC, Generic[ElementT]):

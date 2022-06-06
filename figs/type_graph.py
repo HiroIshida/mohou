@@ -1,8 +1,7 @@
 from graphviz import Digraph
 
-from mohou.utils import get_all_concrete_leaftypes
 from mohou.types import ElementBase
-
+from mohou.utils import get_all_concrete_leaftypes
 
 if __name__ == "__main__":
     dg = Digraph(format="png")

@@ -1,4 +1,5 @@
 import argparse
+
 from mohou.script_utils import visualize_train_histories
 
 if __name__ == "__main__":

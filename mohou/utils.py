@@ -1,5 +1,5 @@
 import queue
-from typing import Any, List, Iterator, TypeVar, Union, Type, Sequence
+from typing import Any, Iterator, List, Sequence, Type, TypeVar, Union
 
 import numpy as np
 import PIL

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Tuple, Type, List
+from typing import Generic, List, Tuple, Type
 
 import numpy as np
 import torch
@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from mohou.embedder import ImageEmbedder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
-from mohou.types import ImageT, ImageBase
+from mohou.types import ImageBase, ImageT
 
 
 @dataclass

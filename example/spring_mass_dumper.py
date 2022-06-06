@@ -1,16 +1,24 @@
 import argparse
 from dataclasses import dataclass
-import numpy as np
+
 import matplotlib.pyplot as plt
-from mohou.script_utils import create_default_logger
-from mohou.types import AngleVector, TerminateFlag, ElementDict
-from mohou.types import ElementSequence, MultiEpisodeChunk, EpisodeData
-from mohou.trainer import TrainConfig, TrainCache, train
+import numpy as np
+
+from mohou.dataset import AutoRegressiveDataset
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
-from mohou.model import LSTMConfig, LSTM
-from mohou.dataset import AutoRegressiveDataset
+from mohou.model import LSTM, LSTMConfig
 from mohou.propagator import Propagator
+from mohou.script_utils import create_default_logger
+from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.types import (
+    AngleVector,
+    ElementDict,
+    ElementSequence,
+    EpisodeData,
+    MultiEpisodeChunk,
+    TerminateFlag,
+)
 
 
 @dataclass

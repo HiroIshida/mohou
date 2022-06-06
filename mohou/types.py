@@ -1,44 +1,47 @@
-from abc import ABC, abstractmethod
 import copy
-from dataclasses import dataclass, asdict
 import functools
 import operator
 import random
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
 from pathlib import Path
-import yaml
 from typing import (
+    ClassVar,
+    Dict,
     Generic,
-    Optional,
+    Iterator,
     List,
+    Optional,
+    Sequence,
     Tuple,
     Type,
     TypeVar,
-    Iterator,
-    Sequence,
-    ClassVar,
-    Dict,
     Union,
 )
 
-import numpy as np
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import PIL.Image
 import torch
 import torchvision
-import cv2
-import PIL.Image
+import yaml
 
-from mohou.setting import setting
-from mohou.constant import N_DATA_INTACT
-from mohou.file import get_project_path, load_object, dump_object
+from mohou.constant import CONTINUE_FLAG_VALUE, N_DATA_INTACT, TERMINATE_FLAG_VALUE
+from mohou.file import dump_object, get_project_path, load_object
 from mohou.image_randomizer import (
-    _f_randomize_rgb_image,
     _f_randomize_depth_image,
     _f_randomize_gray_image,
+    _f_randomize_rgb_image,
 )
-from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
-from mohou.utils import get_all_concrete_leaftypes
-from mohou.utils import split_sequence, canvas_to_ndarray
-from mohou.utils import assert_with_message, assert_isinstance_with_message
+from mohou.setting import setting
+from mohou.utils import (
+    assert_isinstance_with_message,
+    assert_with_message,
+    canvas_to_ndarray,
+    get_all_concrete_leaftypes,
+    split_sequence,
+)
 
 ElementT = TypeVar("ElementT", bound="ElementBase")
 PrimitiveElementT = TypeVar("PrimitiveElementT", bound="PrimitiveElementBase")

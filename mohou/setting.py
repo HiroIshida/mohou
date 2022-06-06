@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from dataclasses import MISSING
-from typing import Optional
+from dataclasses import MISSING, dataclass
 from pathlib import Path
+from typing import Optional
+
 import yaml
 
 
