@@ -1,27 +1,25 @@
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Type
+
 import torch
 import torch.nn as nn
-from typing import Optional, List, Type, Tuple
-from mohou.model.common import LossDict, ModelBase
-from mohou.model.common import ModelConfigBase
-from dataclasses import dataclass
+
+from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
 
 def build_linear_layers(
-        n_input: int,
-        n_output: int,
-        n_hidden: int,
-        n_layer: int,
-        activation: Optional[str]) -> List[nn.Module]:
+    n_input: int, n_output: int, n_hidden: int, n_layer: int, activation: Optional[str]
+) -> List[nn.Module]:
 
     if activation is not None:
-        assert activation in ('relu', 'sigmoid', 'tanh')
+        assert activation in ("relu", "sigmoid", "tanh")
 
     AT: Optional[Type[nn.Module]] = None
-    if activation=='relu':
+    if activation == "relu":
         AT = nn.ReLU
-    elif activation=='sigmoid':
+    elif activation == "sigmoid":
         AT = nn.Sigmoid
-    elif activation=='tanh':
+    elif activation == "tanh":
         AT = nn.Tanh
 
     layers: List[nn.Module] = []
@@ -41,7 +39,6 @@ def build_linear_layers(
     return layers
 
 
-
 @dataclass
 class MarkoveModelConfig(ModelConfigBase):
     n_input: int
@@ -52,7 +49,7 @@ class MarkoveModelConfig(ModelConfigBase):
 
     def __post_init__(self):
         if self.activation is not None:
-            assert self.activation in ('relu', 'sigmoid', 'tanh')
+            assert self.activation in ("relu", "sigmoid", "tanh")
 
 
 class ControlEquationModel(ModelBase):
@@ -65,7 +62,8 @@ class ControlEquationModel(ModelBase):
             n_output=config.n_output,
             n_hidden=config.n_hidden,
             n_layer=config.n_layer,
-            activation = config.activation)
+            activation=config.activation,
+        )
         self.layer = nn.Sequential(*layers)
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
