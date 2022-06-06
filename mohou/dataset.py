@@ -213,3 +213,54 @@ class AutoRegressiveDataset(Dataset):
         assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
 
         return state_seq_list_auged, weight_seq_list_auged
+
+
+@dataclass
+class MarkovControlSystemDataset(Dataset):
+    """o_{t+1} = f(o_{t}, u_t{t})"""
+
+    inp_ctrl_seq: np.ndarray
+    inp_obs_seq: np.ndarray
+    out_obs_seq: np.ndarray
+
+    def __len__(self) -> int:
+        return len(self.inp_ctrl_seq)
+
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        inp_ctrl = torch.from_numpy(self.inp_ctrl_seq[idx]).float()
+        inp_obs = torch.from_numpy(self.inp_obs_seq[idx]).float()
+        out_obs = torch.from_numpy(self.out_obs_seq[idx]).float()
+        return inp_ctrl, inp_obs, out_obs
+
+    @classmethod
+    def from_chunk(
+        cls,
+        chunk: MultiEpisodeChunk,
+        control_encoding_rule: EncodingRule,
+        observation_encoding_rule: EncodingRule,
+        diff_as_control: bool = True,
+    ) -> "MarkovDynamicsDataset":
+
+        ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
+        obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
+
+        assert_two_sequences_same_length(ctrl_seq_list, obs_seq_list)
+
+        inp_ctrl_seq = []
+        inp_obs_seq = []
+        out_obs_seq = []
+        for i in range(len(ctrl_seq_list)):
+            ctrl_seq = ctrl_seq_list[i]
+            obs_seq = obs_seq_list[i]
+            for j in range(len(ctrl_seq) - 1):
+                if diff_as_control:
+                    inp_ctrl_seq.append(ctrl_seq[j + 1] - ctrl_seq[j])
+                else:
+                    inp_ctrl_seq.append(ctrl_seq[j])
+                inp_obs_seq.append(obs_seq[j])
+                out_obs_seq.append(obs_seq[j + 1])
+
+        inp_ctrl_seq = np.stack(inp_ctrl_seq)
+        inp_obs_seq = np.stack(inp_obs_seq)
+        out_obs_seq = np.stack(out_obs_seq)
+        return cls(inp_ctrl_seq, inp_obs_seq, out_obs_seq)
