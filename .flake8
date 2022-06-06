@@ -1,0 +1,5 @@
+[flake8]
+ignore = 
+    I, H # follow isort 
+    E501  # max length should be checked by black
+    A, B, C, CNL, D, Q  # external plugins if installed
