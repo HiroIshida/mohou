@@ -14,10 +14,11 @@ jobs:
     steps:
         - name: Checkout Code
           uses: actions/checkout@v2
-        - name: pip install isort and black
+        - name: pip install formatters
           run: |
               pip3 install black
               pip3 install isort
+              pip3 install flake8
 
         - name: check by black
           run: |
@@ -27,3 +28,7 @@ jobs:
           run: |
               isort --version-number
               isort --check-only --quiet . 
+        - name: check by flake8
+          run: |
+              flake8 --version
+              flake8 .
