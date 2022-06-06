@@ -14,4 +14,7 @@ from mohou.model.common import (
     ModelT,
     average_loss_dict,
 )
+
 from mohou.model.lstm import LSTM, LSTMConfig
+
+from mohou.model.markov import MarkoveModelConfig, ControlEquationModel
