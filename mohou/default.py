@@ -1,16 +1,17 @@
-from typing import Type, Optional
+from typing import Optional, Type
+
+from mohou.encoder import VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
+from mohou.model import LSTM, AutoEncoderBase
+from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
-from mohou.model import AutoEncoderBase, LSTM
 from mohou.types import (
     AngleVector,
     GripperState,
-    TerminateFlag,
     MultiEpisodeChunk,
+    TerminateFlag,
     get_all_concrete_leaftypes,
 )
-from mohou.encoder import VectorIdenticalEncoder
-from mohou.encoding_rule import EncodingRule
-from mohou.propagator import Propagator
 
 
 class DefaultNotFoundError(Exception):

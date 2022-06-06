@@ -1,34 +1,45 @@
-import numpy as np
-import re
-import random
-import pickle
-import time
 import logging
+import pickle
+import random
+import re
+import time
 from logging import Logger
-from typing import Type, Optional, Union, List
+from typing import List, Optional, Type, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 try:
     from moviepy.editor import ImageSequenceClip
 except Exception:
     ImageSequenceClip = None
 
-from mohou.types import ImageBase, AngleVector, TerminateFlag, ElementDict, GripperState
-from mohou.types import MultiEpisodeChunk
-from mohou.model import AutoEncoder
-from mohou.model import AutoEncoderConfig
-from mohou.model import LSTM
-from mohou.model import LSTMConfig
-from mohou.model import AutoEncoderBase
-from mohou.dataset import AutoEncoderDataset
-from mohou.dataset import AutoEncoderDatasetConfig
-from mohou.dataset import AutoRegressiveDataset
-from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.dataset import WeightPolicy
-from mohou.propagator import Propagator
-from mohou.file import get_project_path, get_subproject_path
-from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.dataset import (
+    AutoEncoderDataset,
+    AutoEncoderDatasetConfig,
+    AutoRegressiveDataset,
+    AutoRegressiveDatasetConfig,
+    WeightPolicy,
+)
 from mohou.encoding_rule import EncodingRule
+from mohou.file import get_project_path, get_subproject_path
+from mohou.model import (
+    LSTM,
+    AutoEncoder,
+    AutoEncoderBase,
+    AutoEncoderConfig,
+    LSTMConfig,
+)
+from mohou.propagator import Propagator
+from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.types import (
+    AngleVector,
+    ElementDict,
+    GripperState,
+    ImageBase,
+    MultiEpisodeChunk,
+    TerminateFlag,
+)
 from mohou.utils import canvas_to_ndarray
 
 logger = logging.getLogger(__name__)

@@ -1,10 +1,10 @@
 import argparse
 
-from mohou.model.lstm import LSTMConfig
-from mohou.trainer import TrainConfig
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_encoding_rule
-from mohou.script_utils import train_lstm, create_default_logger
+from mohou.model.lstm import LSTMConfig
+from mohou.script_utils import create_default_logger, train_lstm
+from mohou.trainer import TrainConfig
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

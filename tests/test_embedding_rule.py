@@ -1,15 +1,13 @@
-import pytest
-import numpy as np
-
 from itertools import permutations
+
+import numpy as np
+import pytest
 import torch
+from test_types import image_av_chunk  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import EncodingRule
-from mohou.encoding_rule import ElemCovMatchPostProcessor
-from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
-
-from test_types import image_av_chunk  # noqa
+from mohou.encoding_rule import ElemCovMatchPostProcessor, EncodingRule
+from mohou.types import AngleVector, RGBDImage, RGBImage, TerminateFlag, VectorBase
 
 
 def test_ElemCovMatchPostProcessor():

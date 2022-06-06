@@ -1,9 +1,8 @@
 import numpy as np
-
-from mohou.types import AngleVector, MultiEpisodeChunk
-from mohou.encoder import VectorPCAEncoder
-
 from test_types import image_av_chunk  # noqa
+
+from mohou.encoder import VectorPCAEncoder
+from mohou.types import AngleVector, MultiEpisodeChunk
 
 
 def test_pca_encoder(image_av_chunk):  # noqa

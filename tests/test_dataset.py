@@ -1,14 +1,17 @@
 import torch
+from test_types import image_av_chunk_uneven  # noqa
 from torch.utils.data import DataLoader
 
+from mohou.dataset import (
+    AutoEncoderDataset,
+    AutoEncoderDatasetConfig,
+    AutoRegressiveDataset,
+    AutoRegressiveDatasetConfig,
+)
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
-from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
-from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
 from mohou.utils import assert_two_sequences_same_length
-
-from test_types import image_av_chunk_uneven  # noqa
 
 
 def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
