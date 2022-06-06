@@ -7,7 +7,7 @@ from mohou.types import AngleVector, TerminateFlag, ElementDict
 from mohou.types import ElementSequence, MultiEpisodeChunk, EpisodeData
 from mohou.trainer import TrainConfig, TrainCache, train
 from mohou.embedder import VectorIdenticalEncoder
-from mohou.embedding_rule import EncodeRule
+from mohou.embedding_rule import EncodingRule
 from mohou.model import LSTMConfig, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.propagator import Propagator
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     av_emb = VectorIdenticalEncoder(AngleVector, 3)
     ef_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
-    rule = EncodeRule.from_encoders([av_emb, ef_identical_func])
+    rule = EncodingRule.from_encoders([av_emb, ef_identical_func])
 
     if with_training:
         chunk = smd.create_chunk()

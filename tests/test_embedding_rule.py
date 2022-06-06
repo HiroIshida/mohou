@@ -5,7 +5,7 @@ from itertools import permutations
 import torch
 
 from mohou.embedder import ImageEncoder, VectorIdenticalEncoder
-from mohou.embedding_rule import EncodeRule
+from mohou.embedding_rule import EncodingRule
 from mohou.embedding_rule import ElemCovMatchPostProcessor
 from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
 
@@ -48,7 +48,7 @@ def test_embedding_rule(image_av_chunk):  # noqa
     f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
-    rule = EncodeRule.from_encoders([f1, f2, f3], chunk=chunk)
+    rule = EncodingRule.from_encoders([f1, f2, f3], chunk=chunk)
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
 
@@ -66,7 +66,7 @@ def test_embedding_rule(image_av_chunk):  # noqa
     for pairs_perm in permutations(pairs, 4):
         fs = [p[0] for p in pairs_perm]
         ts = [p[1] for p in pairs_perm]
-        rule = EncodeRule.from_encoders(fs)
+        rule = EncodingRule.from_encoders(fs)
         assert list(rule.keys()) == ts
 
 
@@ -83,7 +83,7 @@ def test_embedding_rule_assertion(image_av_chunk):  # noqa
         n_image_embed,
     )
     f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
-    rule = EncodeRule.from_encoders([f1, f2])
+    rule = EncodingRule.from_encoders([f1, f2])
 
     with pytest.raises(AssertionError):
         rule.apply_to_multi_episode_chunk(chunk)

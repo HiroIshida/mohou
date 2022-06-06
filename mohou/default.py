@@ -9,7 +9,7 @@ from mohou.types import (
     get_all_concrete_leaftypes,
 )
 from mohou.embedder import VectorIdenticalEncoder
-from mohou.embedding_rule import EncodeRule
+from mohou.embedding_rule import EncodingRule
 from mohou.propagator import Propagator
 
 
@@ -42,7 +42,7 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     return t
 
 
-def create_default_embedding_rule(project_name: Optional[str] = None) -> EncodeRule:
+def create_default_embedding_rule(project_name: Optional[str] = None) -> EncodingRule:
 
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_spec = chunk.spec
@@ -70,7 +70,7 @@ def create_default_embedding_rule(project_name: Optional[str] = None) -> EncodeR
     tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
     embedders.append(tf_identical_func)
 
-    embed_rule = EncodeRule.from_encoders(embedders, chunk)
+    embed_rule = EncodingRule.from_encoders(embedders, chunk)
     return embed_rule
 
 

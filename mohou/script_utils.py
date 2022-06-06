@@ -28,7 +28,7 @@ from mohou.dataset import WeightPolicy
 from mohou.propagator import Propagator
 from mohou.file import get_project_path, get_subproject_path
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.embedding_rule import EncodeRule
+from mohou.embedding_rule import EncodingRule
 from mohou.utils import canvas_to_ndarray
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ def train_autoencoder(
 
 def train_lstm(
     project_name: str,
-    embedding_rule: EncodeRule,
+    embedding_rule: EncodingRule,
     model_config: LSTMConfig,
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,

@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from mohou.embedder import ImageEncoder, VectorIdenticalEncoder
-from mohou.embedding_rule import EncodeRule
+from mohou.embedding_rule import EncodingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
 from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
@@ -41,7 +41,7 @@ def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
-    rule = EncodeRule.from_encoders([f1, f2, f3])
+    rule = EncodingRule.from_encoders([f1, f2, f3])
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug)

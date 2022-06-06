@@ -129,7 +129,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
 
-class EncodeRule(Dict[Type[ElementBase], EncoderBase]):
+class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     post_processor: PostProcessor
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
@@ -203,8 +203,8 @@ class EncodeRule(Dict[Type[ElementBase], EncoderBase]):
     @classmethod
     def from_encoders(
         cls, encoder_list: List[EncoderBase], chunk: Optional[MultiEpisodeChunk] = None
-    ) -> "EncodeRule":
-        rule: EncodeRule = cls()
+    ) -> "EncodingRule":
+        rule: EncodingRule = cls()
         for encoder in encoder_list:
             rule[encoder.elem_type] = encoder
         rule.post_processor = IdenticalPostProcessor()
