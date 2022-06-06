@@ -1,10 +1,6 @@
 import argparse
-from typing import Optional
-
-from torch.nn.modules import activation
 
 from mohou.dataset import MarkovControlSystemDataset
-from mohou.default import create_default_encoding_rule
 from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import ControlModel, VariationalAutoEncoder
