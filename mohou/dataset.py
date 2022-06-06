@@ -192,7 +192,7 @@ class AutoRegressiveDataset(Dataset):
         """Augment sequence by adding trajectry noise"""
 
         cov_mat = cls.trajectory_noise_covariance(state_seq_list)
-        cov_mat_scaled = cov_mat * augconfig.cov_scale ** 2
+        cov_mat_scaled = cov_mat * augconfig.cov_scale**2
 
         noised_state_seq_list = []
         for _ in range(augconfig.n_augmentation):
