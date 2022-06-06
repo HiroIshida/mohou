@@ -6,7 +6,7 @@ from mohou.encoder import VectorPCAEncoder
 from test_types import image_av_chunk  # noqa
 
 
-def test_pca_embedder(image_av_chunk):  # noqa
+def test_pca_encoder(image_av_chunk):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk
     pca_emb = VectorPCAEncoder.from_chunk(chunk, AngleVector, 3)
     assert pca_emb.input_shape == (10,)

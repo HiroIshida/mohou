@@ -174,16 +174,16 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         self.check_network_input(input)
         return self.get_decoder_module()(self.get_encoder_module()(input))
 
-    def get_embedder(self) -> ImageEncoder[ImageT]:
+    def get_encoder(self) -> ImageEncoder[ImageT]:
         np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
-        embedder = ImageEncoder[ImageT](
+        encoder = ImageEncoder[ImageT](
             self.image_type,
             lambda image_tensor: self.get_encoder_module()(image_tensor),
             lambda encoding: self.get_decoder_module()(encoding),
             np_image_shape,
             self.config.n_bottleneck,
         )
-        return embedder
+        return encoder
 
     def channel(self) -> int:
         return self.image_type.channel()

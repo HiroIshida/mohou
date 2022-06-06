@@ -29,11 +29,11 @@ def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
     loss = model.compute_reconstruction_loss(img)
     assert loss > 0.0
 
-    # test embedder (This also test ImageEmbedder)
-    embedder = model.get_embedder()
-    feature_vec: np.ndarray = embedder.forward(img)
+    # test encoder (This also test ImageEmbedder)
+    encoder = model.get_encoder()
+    feature_vec: np.ndarray = encoder.forward(img)
     assert list(feature_vec.shape) == [config.n_bottleneck]
-    img2 = embedder.backward(feature_vec)
+    img2 = encoder.backward(feature_vec)
     assert type(img) == type(img2)
     assert img.channel() == img2.channel()
     assert img.shape == img2.shape

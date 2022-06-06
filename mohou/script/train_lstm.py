@@ -1,10 +1,10 @@
 import argparse
 
-from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.default import create_default_embedding_rule
 from mohou.model.lstm import LSTMConfig
-from mohou.script_utils import create_default_logger, train_lstm
 from mohou.trainer import TrainConfig
+from mohou.dataset import AutoRegressiveDatasetConfig
+from mohou.default import create_default_encoding_rule
+from mohou.script_utils import train_lstm, create_default_logger
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -27,13 +27,13 @@ if __name__ == "__main__":
 
     logger = create_default_logger(project_name, "lstm")  # noqa
 
-    embedding_rule = create_default_embedding_rule(project_name)
-    model_config = LSTMConfig(embedding_rule.dimension)
+    encoding_rule = create_default_encoding_rule(project_name)
+    model_config = LSTMConfig(encoding_rule.dimension)
     dataset_config = AutoRegressiveDatasetConfig(n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     train_lstm(
         project_name,
-        embedding_rule,
+        encoding_rule,
         model_config,
         dataset_config,
         train_config,

@@ -10,14 +10,14 @@ from mohou.encoding_rule import EncodingRule
 
 class Propagator:
     lstm: LSTM
-    embed_rule: EncodingRule
+    encoding_rule: EncodingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
 
-    def __init__(self, lstm: LSTM, embed_rule: EncodingRule, n_init_duplicate: int = 0):
+    def __init__(self, lstm: LSTM, encoding_rule: EncodingRule, n_init_duplicate: int = 0):
         self.lstm = lstm
-        self.embed_rule = embed_rule
+        self.encoding_rule = encoding_rule
         self.fed_state_list = []
         self.n_init_duplicate = n_init_duplicate
         self.is_initialized = False
@@ -34,14 +34,14 @@ class Propagator:
     def _feed(self, elem_dict: ElementDict):
         if TerminateFlag not in elem_dict:
             elem_dict[TerminateFlag] = TerminateFlag.from_bool(False)
-        state_with_flag = self.embed_rule.apply(elem_dict)
+        state_with_flag = self.encoding_rule.apply(elem_dict)
         self.fed_state_list.append(state_with_flag)
 
     def predict(self, n_prop: int) -> List[ElementDict]:
         pred_state_list = self._predict(n_prop)
         elem_dict_list = []
         for pred_state in pred_state_list:
-            elem_dict = self.embed_rule.inverse_apply(pred_state)
+            elem_dict = self.encoding_rule.inverse_apply(pred_state)
             elem_dict_list.append(elem_dict)
         return elem_dict_list
 

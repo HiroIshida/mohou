@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     # compute xs_est and terminate flag est
     assert tcache.best_model is not None
-    prop = Propagator(tcache.best_model, embed_rule=rule)
+    prop = Propagator(tcache.best_model, encoding_rule=rule)
     av = AngleVector(state_init)
     elem_dict = ElementDict([av])
     prop.feed(elem_dict)

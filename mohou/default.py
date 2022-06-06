@@ -42,7 +42,7 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     return t
 
 
-def create_default_embedding_rule(project_name: Optional[str] = None) -> EncodingRule:
+def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
 
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_spec = chunk.spec
@@ -56,22 +56,22 @@ def create_default_embedding_rule(project_name: Optional[str] = None) -> Encodin
 
     if tcache_autoencoder.best_model is None:
         raise DefaultNotFoundError("traincache was found but best model is not saved ")
-    image_embed_func = tcache_autoencoder.best_model.get_embedder()
-    av_idendical_func = VectorIdenticalEncoder(AngleVector, av_dim)
+    image_encoder = tcache_autoencoder.best_model.get_encoder()
+    av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
 
-    embedders = [image_embed_func, av_idendical_func]
+    encoders = [image_encoder, av_idendical_encoder]
 
     if GripperState in chunk_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(
             GripperState, chunk_spec.type_shape_table[GripperState][0]
         )
-        embedders.append(gs_identital_func)
+        encoders.append(gs_identital_func)
 
     tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
-    embedders.append(tf_identical_func)
+    encoders.append(tf_identical_func)
 
-    embed_rule = EncodingRule.from_encoders(embedders, chunk)
-    return embed_rule
+    encoding_rule = EncodingRule.from_encoders(encoders, chunk)
+    return encoding_rule
 
 
 def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
@@ -80,7 +80,7 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     except Exception:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
-    embed_rule = create_default_embedding_rule(project_name)
+    encoding_rule = create_default_encoding_rule(project_name)
     assert tcach_lstm.best_model is not None
-    propagator = Propagator(tcach_lstm.best_model, embed_rule)
+    propagator = Propagator(tcach_lstm.best_model, encoding_rule)
     return propagator

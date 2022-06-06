@@ -81,7 +81,7 @@ def train_autoencoder(
 
 def train_lstm(
     project_name: str,
-    embedding_rule: EncodingRule,
+    encoding_rule: EncodingRule,
     model_config: LSTMConfig,
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
@@ -94,7 +94,7 @@ def train_lstm(
         chunk = MultiEpisodeChunk.load(project_name)
 
     dataset = AutoRegressiveDataset.from_chunk(
-        chunk, embedding_rule, augconfig=dataset_config, weighting=weighting
+        chunk, encoding_rule, augconfig=dataset_config, weighting=weighting
     )
 
     if warm_start:
@@ -186,7 +186,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         episode_data = chunk[idx]
 
         image_type = None
-        for key, embedder in propagator.embed_rule.items():
+        for key, encoder in propagator.encoding_rule.items():
             if issubclass(key, ImageBase):
                 image_type = key
         assert image_type is not None
@@ -195,7 +195,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
         fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
 
-        use_gripper = GripperState in propagator.embed_rule
+        use_gripper = GripperState in propagator.encoding_rule
 
         if use_gripper:
             fed_grippers = episode_data.get_sequence_by_type(GripperState)[:n_feed]

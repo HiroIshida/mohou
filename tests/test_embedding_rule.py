@@ -34,25 +34,25 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_embedding_rule(image_av_chunk):  # noqa
+def test_encoding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
-    n_image_embed = 5
-    n_av_embed = 10
+    n_image_encoded = 5
+    n_av_encoded = 10
     f1 = ImageEncoder(
         RGBImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
     rule = EncodingRule.from_encoders([f1, f2, f3], chunk=chunk)
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
 
-    assert vector_seq.shape == (10, n_image_embed + n_av_embed + 1)
+    assert vector_seq.shape == (10, n_image_encoded + n_av_encoded + 1)
 
     class Dummy(VectorBase):
         pass
@@ -70,19 +70,19 @@ def test_embedding_rule(image_av_chunk):  # noqa
         assert list(rule.keys()) == ts
 
 
-def test_embedding_rule_assertion(image_av_chunk):  # noqa
+def test_encoding_rule_assertion(image_av_chunk):  # noqa
 
     chunk = image_av_chunk
-    n_image_embed = 5
-    n_av_embed = 10
+    n_image_encoded = 5
+    n_av_encoded = 10
     f1 = ImageEncoder(
         RGBDImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(4, 100, 100),
         (100, 100, 4),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
     rule = EncodingRule.from_encoders([f1, f2])
 
     with pytest.raises(AssertionError):

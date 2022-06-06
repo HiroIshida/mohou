@@ -29,16 +29,16 @@ def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
-    n_image_embed = 5
-    n_av_embed = 10
+    n_image_encoded = 5
+    n_av_encoded = 10
     f1 = ImageEncoder(
         RGBImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_embed)
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
     rule = EncodingRule.from_encoders([f1, f2, f3])
