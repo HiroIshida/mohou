@@ -1,22 +1,21 @@
-from typing import List
-
 import numpy as np
 import torch
+from typing import List
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.embedding_rule import EmbeddingRule
-from mohou.model import LSTM
 from mohou.types import ElementDict, TerminateFlag
+from mohou.model import LSTM
+from mohou.embedding_rule import EncodeRule
 
 
 class Propagator:
     lstm: LSTM
-    embed_rule: EmbeddingRule
+    embed_rule: EncodeRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
 
-    def __init__(self, lstm: LSTM, embed_rule: EmbeddingRule, n_init_duplicate: int = 0):
+    def __init__(self, lstm: LSTM, embed_rule: EncodeRule, n_init_duplicate: int = 0):
         self.lstm = lstm
         self.embed_rule = embed_rule
         self.fed_state_list = []

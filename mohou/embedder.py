@@ -9,7 +9,7 @@ from mohou.types import ElementT, ImageT, MultiEpisodeChunk, VectorT
 from mohou.utils import assert_isinstance_with_message, assert_with_message
 
 
-class EmbedderBase(ABC, Generic[ElementT]):
+class EncoderBase(ABC, Generic[ElementT]):
     elem_type: Type[ElementT]
     input_shape: Tuple[int, ...]
     output_size: int
@@ -52,7 +52,7 @@ class EmbedderBase(ABC, Generic[ElementT]):
         pass
 
 
-class ImageEmbedder(EmbedderBase[ImageT]):
+class ImageEncoder(EncoderBase[ImageT]):
     input_shape: Tuple[int, int, int]
     func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
     func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
@@ -94,7 +94,7 @@ class ImageEmbedder(EmbedderBase[ImageT]):
         return out
 
 
-class IdenticalEmbedder(EmbedderBase[VectorT]):
+class VectorIdenticalEncoder(EncoderBase[VectorT]):
     input_shape: Tuple[int]
 
     def __init__(self, vector_type: Type[VectorT], dimension: int):
@@ -107,7 +107,7 @@ class IdenticalEmbedder(EmbedderBase[VectorT]):
         return self.elem_type(inp)
 
 
-class PCAEmbedder(EmbedderBase[VectorT]):
+class VectorPCAEncoder(EncoderBase[VectorT]):
     input_shape: Tuple[int]
     pca: PCA
 
@@ -130,7 +130,7 @@ class PCAEmbedder(EmbedderBase[VectorT]):
     @classmethod
     def from_chunk(
         cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int
-    ) -> "PCAEmbedder[VectorT]":
+    ) -> "VectorPCAEncoder[VectorT]":
         elem_list: List[VectorT] = []
         for data in chunk.data_list:
             elem_seq = data.get_sequence_by_type(vector_type)

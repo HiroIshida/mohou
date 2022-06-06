@@ -1,24 +1,16 @@
 import argparse
 from dataclasses import dataclass
-
-import matplotlib.pyplot as plt
 import numpy as np
-
-from mohou.dataset import AutoRegressiveDataset
-from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import EmbeddingRule
-from mohou.model import LSTM, LSTMConfig
-from mohou.propagator import Propagator
+import matplotlib.pyplot as plt
 from mohou.script_utils import create_default_logger
-from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.types import (
-    AngleVector,
-    ElementDict,
-    ElementSequence,
-    EpisodeData,
-    MultiEpisodeChunk,
-    TerminateFlag,
-)
+from mohou.types import AngleVector, TerminateFlag, ElementDict
+from mohou.types import ElementSequence, MultiEpisodeChunk, EpisodeData
+from mohou.trainer import TrainConfig, TrainCache, train
+from mohou.embedder import VectorIdenticalEncoder
+from mohou.embedding_rule import EncodeRule
+from mohou.model import LSTMConfig, LSTM
+from mohou.dataset import AutoRegressiveDataset
+from mohou.propagator import Propagator
 
 
 @dataclass
@@ -76,9 +68,9 @@ if __name__ == "__main__":
     create_default_logger(project_name, "LSTM")
     smd = SpringMassDumper()
 
-    av_emb = IdenticalEmbedder(AngleVector, 3)
-    ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
-    rule = EmbeddingRule.from_embedders([av_emb, ef_identical_func])
+    av_emb = VectorIdenticalEncoder(AngleVector, 3)
+    ef_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
+    rule = EncodeRule.from_encoders([av_emb, ef_identical_func])
 
     if with_training:
         chunk = smd.create_chunk()

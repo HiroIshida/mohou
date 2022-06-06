@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mohou.embedder import ImageEmbedder
+from mohou.embedder import ImageEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT
 
@@ -174,9 +174,9 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         self.check_network_input(input)
         return self.get_decoder()(self.get_encoder()(input))
 
-    def get_embedder(self) -> ImageEmbedder[ImageT]:
+    def get_embedder(self) -> ImageEncoder[ImageT]:
         np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
-        embedder = ImageEmbedder[ImageT](
+        embedder = ImageEncoder[ImageT](
             self.image_type,
             lambda image_tensor: self.get_encoder()(image_tensor),
             lambda encoding: self.get_decoder()(encoding),
