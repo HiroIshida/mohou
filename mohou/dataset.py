@@ -239,7 +239,7 @@ class MarkovControlSystemDataset(Dataset):
         control_encoding_rule: EncodingRule,
         observation_encoding_rule: EncodingRule,
         diff_as_control: bool = True,
-    ) -> "MarkovDynamicsDataset":
+    ) -> "MarkovControlSystemDataset":
 
         ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
         obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
@@ -260,7 +260,4 @@ class MarkovControlSystemDataset(Dataset):
                 inp_obs_seq.append(obs_seq[j])
                 out_obs_seq.append(obs_seq[j + 1])
 
-        inp_ctrl_seq = np.stack(inp_ctrl_seq)
-        inp_obs_seq = np.stack(inp_obs_seq)
-        out_obs_seq = np.stack(out_obs_seq)
-        return cls(inp_ctrl_seq, inp_obs_seq, out_obs_seq)
+        return cls(np.array(inp_ctrl_seq), np.array(inp_obs_seq), np.array(out_obs_seq))
