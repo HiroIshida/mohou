@@ -52,7 +52,7 @@ class MarkoveModelConfig(ModelConfigBase):
             assert self.activation in ("relu", "sigmoid", "tanh")
 
 
-class ControlEquationModel(ModelBase):
+class ControlModel(ModelBase):
     layer: nn.Sequential
 
     def _setup_from_config(self, config: MarkoveModelConfig) -> None:

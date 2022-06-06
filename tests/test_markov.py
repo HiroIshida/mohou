@@ -1,6 +1,6 @@
 import torch
 
-from mohou.model import ControlEquationModel, MarkoveModelConfig
+from mohou.model import ControlModel, MarkoveModelConfig
 
 
 def test_control_equation_model():
@@ -9,7 +9,7 @@ def test_control_equation_model():
     n_batch = 10
     config = MarkoveModelConfig(n_input=n_obs_dim + n_ctrl_dim, n_output=n_obs_dim)
 
-    model: ControlEquationModel = ControlEquationModel(config)
+    model: ControlModel = ControlModel(config)
 
     inp_ctrl_sample = torch.randn(n_batch, n_ctrl_dim)
     inp_obs_sample = torch.randn(n_batch, n_obs_dim)
