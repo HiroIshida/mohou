@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import DataLoader
 
-from mohou.embedder import ImageEncoder, VectorIdenticalEncoder
-from mohou.embedding_rule import EncodingRule
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
 from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig

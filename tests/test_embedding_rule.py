@@ -4,9 +4,9 @@ import numpy as np
 from itertools import permutations
 import torch
 
-from mohou.embedder import ImageEncoder, VectorIdenticalEncoder
-from mohou.embedding_rule import EncodingRule
-from mohou.embedding_rule import ElemCovMatchPostProcessor
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
+from mohou.encoding_rule import ElemCovMatchPostProcessor
 from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
 
 from test_types import image_av_chunk  # noqa

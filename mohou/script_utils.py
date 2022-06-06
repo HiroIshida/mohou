@@ -28,7 +28,7 @@ from mohou.dataset import WeightPolicy
 from mohou.propagator import Propagator
 from mohou.file import get_project_path, get_subproject_path
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.embedding_rule import EncodingRule
+from mohou.encoding_rule import EncodingRule
 from mohou.utils import canvas_to_ndarray
 
 logger = logging.getLogger(__name__)

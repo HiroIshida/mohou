@@ -8,8 +8,8 @@ from mohou.types import (
     MultiEpisodeChunk,
     get_all_concrete_leaftypes,
 )
-from mohou.embedder import VectorIdenticalEncoder
-from mohou.embedding_rule import EncodingRule
+from mohou.encoder import VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.propagator import Propagator
 
 

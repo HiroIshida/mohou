@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from mohou.embedding_rule import EncodingRule
+from mohou.encoding_rule import EncodingRule
 from mohou.types import ImageT, MultiEpisodeChunk, TerminateFlag
 from mohou.utils import assert_two_sequences_same_length
 

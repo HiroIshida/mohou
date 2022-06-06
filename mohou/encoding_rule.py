@@ -13,7 +13,7 @@ from typing import Dict, Generator, List, Optional, Type
 
 import numpy as np
 
-from mohou.embedder import EncoderBase
+from mohou.encoder import EncoderBase
 from mohou.types import (
     CompositeImageBase,
     ElementBase,

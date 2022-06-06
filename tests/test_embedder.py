@@ -1,7 +1,7 @@
 import numpy as np
 
 from mohou.types import AngleVector, MultiEpisodeChunk
-from mohou.embedder import VectorPCAEncoder
+from mohou.encoder import VectorPCAEncoder
 
 from test_types import image_av_chunk  # noqa
 

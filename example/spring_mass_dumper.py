@@ -6,8 +6,8 @@ from mohou.script_utils import create_default_logger
 from mohou.types import AngleVector, TerminateFlag, ElementDict
 from mohou.types import ElementSequence, MultiEpisodeChunk, EpisodeData
 from mohou.trainer import TrainConfig, TrainCache, train
-from mohou.embedder import VectorIdenticalEncoder
-from mohou.embedding_rule import EncodingRule
+from mohou.encoder import VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTMConfig, LSTM
 from mohou.dataset import AutoRegressiveDataset
 from mohou.propagator import Propagator
