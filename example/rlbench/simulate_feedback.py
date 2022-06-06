@@ -1,22 +1,28 @@
 import argparse
 from typing import Type
 
-import tqdm
-from moviepy.editor import ImageSequenceClip
 import numpy as np
 import rlbench.tasks
-from rlbench.backend.task import Task
+import tqdm
+from moviepy.editor import ImageSequenceClip
 from rlbench.action_modes.action_mode import MoveArmThenGripper
 from rlbench.action_modes.arm_action_modes import JointPosition
 from rlbench.action_modes.gripper_action_modes import Discrete
+from rlbench.backend.observation import Observation
+from rlbench.backend.task import Task
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
-from rlbench.backend.observation import Observation
 
-from mohou.file import get_project_path
-from mohou.types import RGBImage, DepthImage, AngleVector, GripperState, ElementDict
-from mohou.types import MultiEpisodeChunk
 from mohou.default import create_default_propagator
+from mohou.file import get_project_path
+from mohou.types import (
+    AngleVector,
+    DepthImage,
+    ElementDict,
+    GripperState,
+    MultiEpisodeChunk,
+    RGBImage,
+)
 
 
 def edict_to_action(edict: ElementDict) -> np.ndarray:

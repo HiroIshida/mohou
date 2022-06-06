@@ -1,31 +1,31 @@
 import argparse
+import multiprocessing
 import os
 import pickle
-import multiprocessing
 import tempfile
 import uuid
 from typing import List
 
-from moviepy.editor import ImageSequenceClip
 import numpy as np
 import psutil
 import pybullet as pb
 import pybullet_data
 import tinyfk
 import tqdm
+from moviepy.editor import ImageSequenceClip
 
+from mohou.default import create_default_propagator
 from mohou.file import get_project_path
+from mohou.propagator import Propagator
 from mohou.types import (
     AngleVector,
+    DepthImage,
     ElementDict,
     ElementSequence,
+    EpisodeData,
     MultiEpisodeChunk,
     RGBImage,
-    DepthImage,
-    EpisodeData,
 )
-from mohou.propagator import Propagator
-from mohou.default import create_default_propagator
 
 
 class BulletManager(object):

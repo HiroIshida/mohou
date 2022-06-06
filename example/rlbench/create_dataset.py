@@ -1,21 +1,28 @@
 import argparse
-import tqdm
 from typing import Type
 
-from moviepy.editor import ImageSequenceClip
 import numpy as np
 import rlbench.tasks
-from rlbench.backend.task import Task
+import tqdm
+from moviepy.editor import ImageSequenceClip
 from rlbench.action_modes.action_mode import MoveArmThenGripper
 from rlbench.action_modes.arm_action_modes import JointVelocity
 from rlbench.action_modes.gripper_action_modes import Discrete
+from rlbench.backend.task import Task
+from rlbench.demo import Demo
 from rlbench.environment import Environment
 from rlbench.observation_config import ObservationConfig
-from rlbench.demo import Demo
 
 from mohou.file import get_subproject_path
-from mohou.types import AngleVector, GripperState, RGBImage, DepthImage
-from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
+from mohou.types import (
+    AngleVector,
+    DepthImage,
+    ElementSequence,
+    EpisodeData,
+    GripperState,
+    MultiEpisodeChunk,
+    RGBImage,
+)
 
 
 def rlbench_demo_to_mohou_episode_data(

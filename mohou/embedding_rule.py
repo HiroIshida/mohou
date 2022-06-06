@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
 import copy
-import logging
-
 import functools  # for cached_property
+import logging
+from abc import ABC, abstractmethod
 
 if hasattr(functools, "cached_property"):
     from functools import cached_property
@@ -10,17 +9,18 @@ else:
     from cached_property import cached_property  # type: ignore
 
 from dataclasses import dataclass
+from typing import Dict, Generator, List, Optional, Type
+
 import numpy as np
-from typing import Type, List, Dict, Generator, Optional
 
 from mohou.embedder import EmbedderBase
 from mohou.types import (
+    CompositeImageBase,
     ElementBase,
+    ElementDict,
     EpisodeData,
     MultiEpisodeChunk,
-    ElementDict,
     PrimitiveElementBase,
-    CompositeImageBase,
 )
 from mohou.utils import assert_with_message
 

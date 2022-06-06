@@ -1,6 +1,7 @@
+from typing import Callable, Optional
+
 import albumentations as al
 import numpy as np
-from typing import Optional, Callable
 
 RandImageFunc = Optional[Callable[[np.ndarray], np.ndarray]]
 _f_randomize_rgb_image: RandImageFunc = None

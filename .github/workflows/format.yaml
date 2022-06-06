@@ -1,0 +1,29 @@
+name: Lint
+
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout Code
+          uses: actions/checkout@v2
+        - name: pip install isort and black
+          run: |
+              pip3 install black
+              pip3 install isort
+
+        - name: check by black
+          run: |
+              black --version
+              black --check .
+        - name: check by isort
+          run: |
+              isort --version-number
+              isort --check-only --quiet . 

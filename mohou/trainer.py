@@ -8,9 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import tqdm
-from torch.utils.data import Dataset
 from torch.optim import Adam
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from mohou.file import dump_object, load_objects
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict

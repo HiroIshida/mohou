@@ -1,31 +1,31 @@
-import os
-import pytest
-from typing import Type
 import copy
-import pickle
+import os
 import pathlib
+import pickle
+from typing import Type
 
 import numpy as np
+import pytest
+from test_file import tmp_project_name  # noqa
 
 from mohou.types import (
-    GrayImage,
-    VectorBase,
     AngleVector,
+    ChunkSpec,
+    DepthImage,
+    ElementDict,
+    ElementSequence,
+    EpisodeData,
+    GrayImage,
+    GripperState,
+    MultiEpisodeChunk,
+    PrimitiveImageBase,
     RGBDImage,
     RGBImage,
-    DepthImage,
-    PrimitiveImageBase,
     TerminateFlag,
-    GripperState,
+    VectorBase,
+    _chunk_cache,
+    extract_contour_by_laplacian,
 )
-from mohou.types import extract_contour_by_laplacian
-from mohou.types import ElementDict
-from mohou.types import ElementSequence
-from mohou.types import EpisodeData
-from mohou.types import ChunkSpec
-from mohou.types import MultiEpisodeChunk, _chunk_cache
-
-from test_file import tmp_project_name  # noqa
 
 
 @pytest.fixture(scope="session")

@@ -1,11 +1,12 @@
-import numpy as np
-import torch
 from typing import List
 
+import numpy as np
+import torch
+
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.types import ElementDict, TerminateFlag
-from mohou.model import LSTM
 from mohou.embedding_rule import EmbeddingRule
+from mohou.model import LSTM
+from mohou.types import ElementDict, TerminateFlag
 
 
 class Propagator:

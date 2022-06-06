@@ -1,4 +1,5 @@
 import argparse
+
 from mohou.default import auto_detect_autoencoder_type
 from mohou.script_utils import visualize_image_reconstruction
 
