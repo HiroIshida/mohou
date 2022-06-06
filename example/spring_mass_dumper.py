@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mohou.dataset import AutoRegressiveDataset
-from mohou.embedder import IdenticalEmbedder
-from mohou.embedding_rule import EmbeddingRule
+from mohou.encoder import VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, LSTMConfig
 from mohou.propagator import Propagator
 from mohou.script_utils import create_default_logger
@@ -76,9 +76,9 @@ if __name__ == "__main__":
     create_default_logger(project_name, "LSTM")
     smd = SpringMassDumper()
 
-    av_emb = IdenticalEmbedder(AngleVector, 3)
-    ef_identical_func = IdenticalEmbedder(TerminateFlag, 1)
-    rule = EmbeddingRule.from_embedders([av_emb, ef_identical_func])
+    av_emb = VectorIdenticalEncoder(AngleVector, 3)
+    ef_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
+    rule = EncodingRule.from_encoders([av_emb, ef_identical_func])
 
     if with_training:
         chunk = smd.create_chunk()
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     # compute xs_est and terminate flag est
     assert tcache.best_model is not None
-    prop = Propagator(tcache.best_model, embed_rule=rule)
+    prop = Propagator(tcache.best_model, encoding_rule=rule)
     av = AngleVector(state_init)
     elem_dict = ElementDict([av])
     prop.feed(elem_dict)

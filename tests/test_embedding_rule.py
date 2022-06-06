@@ -5,8 +5,8 @@ import pytest
 import torch
 from test_types import image_av_chunk  # noqa
 
-from mohou.embedder import IdenticalEmbedder, ImageEmbedder
-from mohou.embedding_rule import ElemCovMatchPostProcessor, EmbeddingRule
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
+from mohou.encoding_rule import ElemCovMatchPostProcessor, EncodingRule
 from mohou.types import AngleVector, RGBDImage, RGBImage, TerminateFlag, VectorBase
 
 
@@ -32,25 +32,25 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_embedding_rule(image_av_chunk):  # noqa
+def test_encoding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
-    n_image_embed = 5
-    n_av_embed = 10
-    f1 = ImageEmbedder(
+    n_image_encoded = 5
+    n_av_encoded = 10
+    f1 = ImageEncoder(
         RGBImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = IdenticalEmbedder(AngleVector, n_av_embed)
-    f3 = IdenticalEmbedder(TerminateFlag, 1)
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
+    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
-    rule = EmbeddingRule.from_embedders([f1, f2, f3], chunk=chunk)
+    rule = EncodingRule.from_encoders([f1, f2, f3], chunk=chunk)
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
 
-    assert vector_seq.shape == (10, n_image_embed + n_av_embed + 1)
+    assert vector_seq.shape == (10, n_image_encoded + n_av_encoded + 1)
 
     class Dummy(VectorBase):
         pass
@@ -58,30 +58,30 @@ def test_embedding_rule(image_av_chunk):  # noqa
     # Check dict insertion oreder is preserved
     # NOTE: from 3.7, order is preserved as lang. spec.
     # NOTE: from 3.6, order is preserved in a cpython implementation
-    f3 = IdenticalEmbedder(TerminateFlag, 1)
-    f4 = IdenticalEmbedder(Dummy, 2)
+    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
+    f4 = VectorIdenticalEncoder(Dummy, 2)
     pairs = [(f1, RGBImage), (f2, AngleVector), (f3, TerminateFlag), (f4, Dummy)]
     for pairs_perm in permutations(pairs, 4):
         fs = [p[0] for p in pairs_perm]
         ts = [p[1] for p in pairs_perm]
-        rule = EmbeddingRule.from_embedders(fs)
+        rule = EncodingRule.from_encoders(fs)
         assert list(rule.keys()) == ts
 
 
-def test_embedding_rule_assertion(image_av_chunk):  # noqa
+def test_encoding_rule_assertion(image_av_chunk):  # noqa
 
     chunk = image_av_chunk
-    n_image_embed = 5
-    n_av_embed = 10
-    f1 = ImageEmbedder(
+    n_image_encoded = 5
+    n_av_encoded = 10
+    f1 = ImageEncoder(
         RGBDImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(4, 100, 100),
         (100, 100, 4),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = IdenticalEmbedder(AngleVector, n_av_embed)
-    rule = EmbeddingRule.from_embedders([f1, f2])
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
+    rule = EncodingRule.from_encoders([f1, f2])
 
     with pytest.raises(AssertionError):
         rule.apply_to_multi_episode_chunk(chunk)

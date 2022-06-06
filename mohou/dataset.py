@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from mohou.embedding_rule import EmbeddingRule
+from mohou.encoding_rule import EncodingRule
 from mohou.types import ImageT, MultiEpisodeChunk, TerminateFlag
 from mohou.utils import assert_two_sequences_same_length
 
@@ -92,7 +92,7 @@ class PWLinearWeightPolicy(WeightPolicy):
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
     weight_seq_list: List[np.ndarray]
-    embed_rule: EmbeddingRule
+    encoding_rule: EncodingRule
 
     def __len__(self) -> int:
         return len(self.state_seq_list)
@@ -106,17 +106,17 @@ class AutoRegressiveDataset(Dataset):
     def from_chunk(
         cls,
         chunk: MultiEpisodeChunk,
-        embed_rule: EmbeddingRule,
+        encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
         weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     ) -> "AutoRegressiveDataset":
 
-        last_key_of_rule = list(embed_rule.keys())[-1]
+        last_key_of_rule = list(encoding_rule.keys())[-1]
         assert last_key_of_rule == TerminateFlag
         if augconfig is None:
             augconfig = AutoRegressiveDatasetConfig()
 
-        state_seq_list = embed_rule.apply_to_multi_episode_chunk(chunk)
+        state_seq_list = encoding_rule.apply_to_multi_episode_chunk(chunk)
 
         if weighting is None:
             weighting = ConstantWeightPolicy()
@@ -137,7 +137,7 @@ class AutoRegressiveDataset(Dataset):
         state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
             state_seq_list_auged, weight_seq_list_auged, augconfig
         )
-        return cls(state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted, embed_rule)
+        return cls(state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted, encoding_rule)
 
     @staticmethod
     def make_same_length(

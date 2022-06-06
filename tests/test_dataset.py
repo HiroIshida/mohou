@@ -8,8 +8,8 @@ from mohou.dataset import (
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
 )
-from mohou.embedder import IdenticalEmbedder, ImageEmbedder
-from mohou.embedding_rule import EmbeddingRule
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, RGBImage, TerminateFlag
 from mohou.utils import assert_two_sequences_same_length
 
@@ -32,19 +32,19 @@ def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
-    n_image_embed = 5
-    n_av_embed = 10
-    f1 = ImageEmbedder(
+    n_image_encoded = 5
+    n_av_encoded = 10
+    f1 = ImageEncoder(
         RGBImage,
-        lambda img: torch.zeros(n_image_embed),
+        lambda img: torch.zeros(n_image_encoded),
         lambda vec: torch.zeros(3, 100, 100),
         (100, 100, 3),
-        n_image_embed,
+        n_image_encoded,
     )
-    f2 = IdenticalEmbedder(AngleVector, n_av_embed)
-    f3 = IdenticalEmbedder(TerminateFlag, 1)
+    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
+    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
 
-    rule = EmbeddingRule.from_embedders([f1, f2, f3])
+    rule = EncodingRule.from_encoders([f1, f2, f3])
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug)

@@ -13,7 +13,7 @@ from typing import Dict, Generator, List, Optional, Type
 
 import numpy as np
 
-from mohou.embedder import EmbedderBase
+from mohou.encoder import EncoderBase
 from mohou.types import (
     CompositeImageBase,
     ElementBase,
@@ -129,13 +129,13 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
 
-class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
+class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     post_processor: PostProcessor
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
-        for elem_type, embedder in self.items():
-            vector = embedder.forward(elem_dict[elem_type])
+        for elem_type, encoder in self.items():
+            vector = encoder.forward(elem_dict[elem_type])
             vector_list.append(vector)
         return self.post_processor.apply(np.hstack(vector_list))
 
@@ -150,18 +150,18 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
             return vector_list
 
         vector = self.post_processor.inverse_apply(vector_processed)
-        size_list = [embedder.output_size for elem_type, embedder in self.items()]
+        size_list = [encoder.output_size for elem_type, encoder in self.items()]
         vector_list = split_vector(vector, size_list)
 
         elem_dict = ElementDict([])
-        for vec, (elem_type, embedder) in zip(vector_list, self.items()):
-            elem_dict[elem_type] = embedder.backward(vec)
+        for vec, (elem_type, encoder) in zip(vector_list, self.items()):
+            elem_dict[elem_type] = encoder.backward(vec)
         return elem_dict
 
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
-        def encode_and_postprocess(elem_type, embedder) -> np.ndarray:
+        def encode_and_postprocess(elem_type, encoder) -> np.ndarray:
             sequence = episode_data.get_sequence_by_type(elem_type)
-            vectors = [embedder.forward(e) for e in sequence]
+            vectors = [encoder.forward(e) for e in sequence]
             return np.stack(vectors)
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
@@ -192,28 +192,28 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
 
     @property
     def dimension(self) -> int:
-        return sum(embedder.output_size for embedder in self.values())
+        return sum(encoder.output_size for encoder in self.values())
 
     def __str__(self) -> str:
         string = "total dim: {}".format(self.dimension)
-        for elem_type, embedder in self.items():
-            string += "\n{0}: {1}".format(elem_type.__name__, embedder.output_size)
+        for elem_type, encoder in self.items():
+            string += "\n{0}: {1}".format(elem_type.__name__, encoder.output_size)
         return string
 
     @classmethod
-    def from_embedders(
-        cls, embedder_list: List[EmbedderBase], chunk: Optional[MultiEpisodeChunk] = None
-    ) -> "EmbeddingRule":
-        rule: EmbeddingRule = cls()
-        for embedder in embedder_list:
-            rule[embedder.elem_type] = embedder
+    def from_encoders(
+        cls, encoder_list: List[EncoderBase], chunk: Optional[MultiEpisodeChunk] = None
+    ) -> "EncodingRule":
+        rule: EncodingRule = cls()
+        for encoder in encoder_list:
+            rule[encoder.elem_type] = encoder
         rule.post_processor = IdenticalPostProcessor()
 
         if chunk is not None:
-            # compute normalizer and set to embedder
+            # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
-            dims = [emb.output_size for emb in embedder_list]
+            dims = [emb.output_size for emb in encoder_list]
             normalizer = ElemCovMatchPostProcessor.from_feature_seqs(vector_seq_concated, dims)
             rule.post_processor = normalizer
         return rule
