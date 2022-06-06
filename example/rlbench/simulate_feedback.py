@@ -35,12 +35,12 @@ def obs_to_edict(obs: Observation) -> ElementDict:
     return ElementDict([av, gs, rgb, depth])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
-    parser.add_argument('-tn', type=str, default='CloseDrawer', help='task name')
-    parser.add_argument('-n', type=int, default=250, help='step num')
-    parser.add_argument('-m', type=int, default=3, help='simulation num')
+    parser.add_argument("-pn", type=str, default="rlbench_close_box", help="project name")
+    parser.add_argument("-tn", type=str, default="CloseDrawer", help="task name")
+    parser.add_argument("-n", type=int, default=250, help="step num")
+    parser.add_argument("-m", type=int, default=3, help="simulation num")
     args = parser.parse_args()
     project_name = args.pn
     task_name = args.tn
@@ -52,9 +52,11 @@ if __name__ == '__main__':
 
     env = Environment(
         action_mode=MoveArmThenGripper(
-            arm_action_mode=JointPosition(), gripper_action_mode=Discrete()),
+            arm_action_mode=JointPosition(), gripper_action_mode=Discrete()
+        ),
         obs_config=ObservationConfig(),
-        headless=True)
+        headless=True,
+    )
     env.launch()
 
     chunk = MultiEpisodeChunk.load(project_name)

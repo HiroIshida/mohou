@@ -11,7 +11,7 @@ class Setting:
     primary_project_name: Optional[str] = None
 
     @classmethod
-    def construct(cls) -> 'Setting':
+    def construct(cls) -> "Setting":
 
         default_attributes = {}
         for key, val in cls.__dataclass_fields__.items():  # type: ignore # mypy's bug

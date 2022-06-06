@@ -9,7 +9,7 @@ from mohou.embedding_rule import EmbeddingRule
 from mohou.embedding_rule import ElemCovMatchPostProcessor
 from mohou.types import AngleVector, RGBImage, RGBDImage, TerminateFlag, VectorBase
 
-from test_types import image_av_chunk # noqa
+from test_types import image_av_chunk  # noqa
 
 
 def test_ElemCovMatchPostProcessor():
@@ -34,7 +34,7 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_embedding_rule(image_av_chunk): # noqa
+def test_embedding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
     n_image_embed = 5
     n_av_embed = 10
@@ -42,7 +42,9 @@ def test_embedding_rule(image_av_chunk): # noqa
         RGBImage,
         lambda img: torch.zeros(n_image_embed),
         lambda vec: torch.zeros(3, 100, 100),
-        (100, 100, 3), n_image_embed)
+        (100, 100, 3),
+        n_image_embed,
+    )
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
     f3 = IdenticalEmbedder(TerminateFlag, 1)
 
@@ -68,7 +70,7 @@ def test_embedding_rule(image_av_chunk): # noqa
         assert list(rule.keys()) == ts
 
 
-def test_embedding_rule_assertion(image_av_chunk): # noqa
+def test_embedding_rule_assertion(image_av_chunk):  # noqa
 
     chunk = image_av_chunk
     n_image_embed = 5
@@ -77,7 +79,9 @@ def test_embedding_rule_assertion(image_av_chunk): # noqa
         RGBDImage,
         lambda img: torch.zeros(n_image_embed),
         lambda vec: torch.zeros(4, 100, 100),
-        (100, 100, 4), n_image_embed)
+        (100, 100, 4),
+        n_image_embed,
+    )
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
     rule = EmbeddingRule.from_embedders([f1, f2])
 

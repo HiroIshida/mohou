@@ -1,7 +1,13 @@
 from typing import Type, Optional
 from mohou.trainer import TrainCache
 from mohou.model import AutoEncoderBase, LSTM
-from mohou.types import AngleVector, GripperState, TerminateFlag, MultiEpisodeChunk, get_all_concrete_leaftypes
+from mohou.types import (
+    AngleVector,
+    GripperState,
+    TerminateFlag,
+    MultiEpisodeChunk,
+    get_all_concrete_leaftypes,
+)
 from mohou.embedder import IdenticalEmbedder
 from mohou.embedding_rule import EmbeddingRule
 from mohou.propagator import Propagator
@@ -56,7 +62,9 @@ def create_default_embedding_rule(project_name: Optional[str] = None) -> Embeddi
     embedders = [image_embed_func, av_idendical_func]
 
     if GripperState in chunk_spec.type_shape_table:
-        gs_identital_func = IdenticalEmbedder(GripperState, chunk_spec.type_shape_table[GripperState][0])
+        gs_identital_func = IdenticalEmbedder(
+            GripperState, chunk_spec.type_shape_table[GripperState][0]
+        )
         embedders.append(gs_identital_func)
 
     tf_identical_func = IdenticalEmbedder(TerminateFlag, 1)

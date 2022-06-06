@@ -27,7 +27,7 @@ class TrainConfig:
     n_epoch: int = 1000
 
 
-TrainCacheT = TypeVar('TrainCacheT', bound='TrainCache')
+TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 
 
 class TrainCache(Generic[ModelT]):
@@ -50,32 +50,32 @@ class TrainCache(Generic[ModelT]):
         self.best_model = None
 
     def on_startof_epoch(self, epoch: int, dataset: Dataset):
-        logger.info('new epoch: {}'.format(epoch))
+        logger.info("new epoch: {}".format(epoch))
         self.epoch = epoch
 
     def on_train_loss(self, loss_dict: LossDict, epoch: int):
         self.train_loss_dict_seq.append(loss_dict)
-        logger.info('train loss => {}'.format(loss_dict))
+        logger.info("train loss => {}".format(loss_dict))
 
     def on_validate_loss(self, loss_dict: LossDict, epoch: int):
         self.validate_loss_dict_seq.append(loss_dict)
-        logger.info('validate loss => {}'.format(loss_dict))
+        logger.info("validate loss => {}".format(loss_dict))
 
     def on_endof_epoch(self, model: ModelT, epoch: int):
         model = copy.deepcopy(model)
-        model.to(torch.device('cpu'))
+        model.to(torch.device("cpu"))
         self.latest_model = model
 
         totals = [dic.total().item() for dic in self.validate_loss_dict_seq]
         min_loss_sofar = min(totals)
 
-        update_model = (totals[-1] == min_loss_sofar)
+        update_model = totals[-1] == min_loss_sofar
         if update_model:
             self.min_validate_loss = min_loss_sofar
             self.best_model = model
-            logger.info('model is updated')
+            logger.info("model is updated")
 
-        postfix = self.best_model.__class__.__name__ + '-' + self.file_uuid
+        postfix = self.best_model.__class__.__name__ + "-" + self.file_uuid
 
         if update_model or self.dump_always:
             dump_object(self, self.project_name, postfix)
@@ -87,22 +87,23 @@ class TrainCache(Generic[ModelT]):
         valid_loss_seq = [dic.total() for dic in self.validate_loss_dict_seq]
         ax.plot(train_loss_seq)
         ax.plot(valid_loss_seq)
-        ax.set_yscale('log')
-        ax.legend(['train', 'valid'])
+        ax.set_yscale("log")
+        ax.legend(["train", "valid"])
 
     @classmethod
-    def load(cls, project_name: Optional[str], model_type: Type[ModelT]) -> 'TrainCache[ModelT]':
+    def load(cls, project_name: Optional[str], model_type: Type[ModelT]) -> "TrainCache[ModelT]":
         postfix = model_type.__name__
         tcache_list = load_objects(TrainCache, project_name, postfix)
-        assert len(tcache_list) > 0, 'No train cache found for {}'.format(model_type.__name__)
+        assert len(tcache_list) > 0, "No train cache found for {}".format(model_type.__name__)
         min_validate_loss_list = []
 
         for tcache in tcache_list:
-            if hasattr(tcache, 'min_validate_loss'):
+            if hasattr(tcache, "min_validate_loss"):
                 min_validate_loss_list.append(tcache.min_validate_loss)
             else:
                 from warnings import warn
-                warn('for backward compatibility. will be removed', DeprecationWarning)
+
+                warn("for backward compatibility. will be removed", DeprecationWarning)
                 totals = [dic.total().item() for dic in tcache.validate_loss_dict_seq]
                 min_validate_loss_list.append(min(totals))
 
@@ -135,12 +136,13 @@ class TrainCache(Generic[ModelT]):
 
 
 def train(
-        tcache: TrainCache,
-        dataset: Dataset,
-        model: Optional[ModelBase] = None,
-        config: TrainConfig = TrainConfig()) -> None:
+    tcache: TrainCache,
+    dataset: Dataset,
+    model: Optional[ModelBase] = None,
+    config: TrainConfig = TrainConfig(),
+) -> None:
 
-    logger.info('train start with config: {}'.format(config))
+    logger.info("train start with config: {}".format(config))
 
     if model is None:
         assert tcache.best_model is not None
@@ -156,10 +158,10 @@ def train(
 
     dataset_train, dataset_validate = split_with_ratio(dataset, config.valid_data_ratio)
 
-    train_loader = DataLoader(
-        dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
+    train_loader = DataLoader(dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
     validate_loader = DataLoader(
-        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True)
+        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True
+    )
     optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
     model.put_on_device()

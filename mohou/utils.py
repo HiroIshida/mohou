@@ -29,7 +29,7 @@ def splitting_slices(n_elem_list: List[int]) -> Iterator[slice]:
         head = tail
 
 
-SequenceT = TypeVar('SequenceT')  # TODO(HiroIshida) bound?
+SequenceT = TypeVar("SequenceT")  # TODO(HiroIshida) bound?
 
 
 def split_sequence(seq: SequenceT, n_elem_list: List[int]) -> Iterator[SequenceT]:
@@ -38,7 +38,7 @@ def split_sequence(seq: SequenceT, n_elem_list: List[int]) -> Iterator[SequenceT
 
 
 def detect_device() -> torch.device:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return device
 
 
@@ -51,11 +51,11 @@ def split_with_ratio(dataset: Dataset, valid_ratio: float = 0.1):
     return ds_train, ds_validate
 
 
-AnyT = TypeVar('AnyT', bound=Any)
+AnyT = TypeVar("AnyT", bound=Any)
 
 
 def assert_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name: str):
-    message = '{0}: given {1}, exepcted {2}'.format(elem_name, given, expected)
+    message = "{0}: given {1}, exepcted {2}".format(elem_name, given, expected)
     if isinstance(expected, list):
         assert given in expected, message
     else:
@@ -63,20 +63,22 @@ def assert_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name
 
 
 def assert_isinstance_with_message(given: Any, expected: Type):
-    message = '{0}: given {1}, exepcted {2}'.format('not isinstance', given, expected)
+    message = "{0}: given {1}, exepcted {2}".format("not isinstance", given, expected)
     assert isinstance(given, expected), message
 
 
-def assert_two_sequences_same_length(seq_list1: Sequence[np.ndarray], seq_list2: Sequence[np.ndarray]):
+def assert_two_sequences_same_length(
+    seq_list1: Sequence[np.ndarray], seq_list2: Sequence[np.ndarray]
+):
     if __debug__:
-        assert_with_message(len(seq_list1), len(seq_list2), 'seq_list length of lhs')
+        assert_with_message(len(seq_list1), len(seq_list2), "seq_list length of lhs")
         for seq1, seq2 in zip(seq_list1, seq_list2):
-            assert_with_message(len(seq1), len(seq2), 'seq length of lhs')
+            assert_with_message(len(seq1), len(seq2), "seq length of lhs")
 
 
 def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
     fig.canvas.draw()
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep="")
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     if resize_pixel is None:
         return data

@@ -24,23 +24,23 @@ class EmbedderBase(ABC, Generic[ElementT]):
         assert_isinstance_with_message(inp, self.elem_type)
 
         if check_size:
-            assert_with_message(inp.shape, self.input_shape, 'input shape')
+            assert_with_message(inp.shape, self.input_shape, "input shape")
 
         out = self._forward_impl(inp)
 
         if check_size:
-            assert_with_message(out.shape, (self.output_size,), 'output shape')
+            assert_with_message(out.shape, (self.output_size,), "output shape")
 
         return out
 
     def backward(self, inp: np.ndarray, check_size: bool = True) -> ElementT:
         if check_size:
-            assert_with_message(inp.shape, (self.output_size,), 'input shape')
+            assert_with_message(inp.shape, (self.output_size,), "input shape")
 
         out = self._backward_impl(inp)
 
         if check_size:
-            assert_with_message(out.shape, self.input_shape, 'input shape')
+            assert_with_message(out.shape, self.input_shape, "input shape")
 
         return out
 
@@ -60,13 +60,13 @@ class ImageEmbedder(EmbedderBase[ImageT]):
     # https://stackoverflow.com/questions/51811024/mypy-type-checking-on-callable-thinks-that-member-variable-is-a-method
 
     def __init__(
-            self,
-            image_type: Type[ImageT],
-            func_forward: Callable[[torch.Tensor], torch.Tensor],
-            func_backward: Callable[[torch.Tensor], torch.Tensor],
-            input_shape: Tuple[int, int, int],
-            output_size: int,
-            check_callables: bool = True
+        self,
+        image_type: Type[ImageT],
+        func_forward: Callable[[torch.Tensor], torch.Tensor],
+        func_backward: Callable[[torch.Tensor], torch.Tensor],
+        input_shape: Tuple[int, int, int],
+        output_size: int,
+        check_callables: bool = True,
     ):
         super().__init__(image_type, input_shape, output_size)
         self.func_forward = func_forward
@@ -75,7 +75,7 @@ class ImageEmbedder(EmbedderBase[ImageT]):
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
             out_dummy = self._forward_impl(inp_dummy)
-            assert_with_message(out_dummy.shape, (output_size,), 'shape')
+            assert_with_message(out_dummy.shape, (output_size,), "shape")
 
             inp_reconstucted = self._backward_impl(out_dummy)
             assert_isinstance_with_message(inp_reconstucted, self.elem_type)
@@ -129,7 +129,9 @@ class PCAEmbedder(EmbedderBase[VectorT]):
         return self.elem_type(out.flatten())
 
     @classmethod
-    def from_chunk(cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int) -> 'PCAEmbedder[VectorT]':
+    def from_chunk(
+        cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int
+    ) -> "PCAEmbedder[VectorT]":
         elem_list: List[VectorT] = []
         for data in chunk.data_list:
             elem_seq = data.get_sequence_by_type(vector_type)

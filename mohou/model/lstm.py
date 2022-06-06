@@ -35,7 +35,7 @@ class LSTM(ModelBase[LSTMConfig]):
 
         weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
         loss_value = torch.mean(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
-        return LossDict({'prediction': loss_value})
+        return LossDict({"prediction": loss_value})
 
     def forward(self, state_sample: torch.Tensor) -> torch.Tensor:
         tmp, _ = self.lstm_layer(state_sample)

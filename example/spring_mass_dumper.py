@@ -23,7 +23,7 @@ class SpringMassDumper:
         x, v, a = state
         x_new = x + v * self.dt
         v_new = v + a * self.dt
-        a_new = - self.k * x - self.c * v
+        a_new = -self.k * x - self.c * v
         return np.array([x_new, v_new, a_new])
 
     def sample_random_init_state(self) -> np.ndarray:
@@ -58,14 +58,14 @@ class SpringMassDumper:
         return chunk
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train', action='store_true', help='train instead of using cache')
+    parser.add_argument("--train", action="store_true", help="train instead of using cache")
     args = parser.parse_args()
     with_training = args.train
 
-    project_name = 'spring_mass_dumper'
-    create_default_logger(project_name, 'LSTM')
+    project_name = "spring_mass_dumper"
+    create_default_logger(project_name, "LSTM")
     smd = SpringMassDumper()
 
     av_emb = IdenticalEmbedder(AngleVector, 3)
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     xs_est = np.array([elem_dict[AngleVector].numpy()[0] for elem_dict in elem_dict_list])
     flags_est = np.array([elem_dict[TerminateFlag].numpy()[0] for elem_dict in elem_dict_list])
 
-    plt.plot(xs_est, c='red', label='x_est')
-    plt.plot(xs_real, c='blue', label='x_real')
-    plt.plot(flags_est, c='green', label='prob. terminate')
+    plt.plot(xs_est, c="red", label="x_est")
+    plt.plot(xs_real, c="blue", label="x_real")
+    plt.plot(flags_est, c="green", label="prob. terminate")
     plt.legend()
     plt.show()

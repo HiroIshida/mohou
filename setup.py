@@ -18,17 +18,17 @@ install_requires = [
     'cached_property;python_version<"3.8"',
     "moviepy",
     "PyYAML>=5.1",
-    "types-PyYAML"
+    "types-PyYAML",
 ]
 
 setup(
-    name='mohou',
-    version='0.1.1',
-    description='Visuomotor imitation learning framework',
-    author='Hirokazu Ishida',
-    author_email='h-ishida@jsk.imi.i.u-tokyo.ac.jp',
-    license='MIT',
+    name="mohou",
+    version="0.1.1",
+    description="Visuomotor imitation learning framework",
+    author="Hirokazu Ishida",
+    author_email="h-ishida@jsk.imi.i.u-tokyo.ac.jp",
+    license="MIT",
     install_requires=install_requires,
-    packages=find_packages(exclude=('tests', 'docs')),
-    package_data={'mohou': ['py.typed']}
+    packages=find_packages(exclude=("tests", "docs")),
+    package_data={"mohou": ["py.typed"]},
 )
