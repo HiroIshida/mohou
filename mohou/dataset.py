@@ -216,6 +216,16 @@ class AutoRegressiveDataset(Dataset):
 
 
 @dataclass
+class MarkovControlSystemDatasetConfig:
+    n_augmentation: int = 20
+    cov_scale: float = 0.1
+
+    def __post_init__(self):
+        assert self.n_augmentation >= 0
+        logger.info("ar dataset config: {}".format(self))
+
+
+@dataclass
 class MarkovControlSystemDataset(Dataset):
     """o_{t+1} = f(o_{t}, u_t{t})"""
 
@@ -238,6 +248,7 @@ class MarkovControlSystemDataset(Dataset):
         chunk: MultiEpisodeChunk,
         control_encoding_rule: EncodingRule,
         observation_encoding_rule: EncodingRule,
+        config: Optional[MarkovControlSystemDatasetConfig] = None,
         diff_as_control: bool = True,
     ) -> "MarkovControlSystemDataset":
 
