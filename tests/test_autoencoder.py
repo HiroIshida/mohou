@@ -7,9 +7,9 @@ from mohou.model import AutoEncoder, VariationalAutoEncoder, AutoEncoderConfig
 from mohou.types import DepthImage, RGBImage, RGBDImage, PrimitiveImageBase
 
 
-@pytest.mark.parametrize('S', [28, 112, 224])
-@pytest.mark.parametrize('T', [RGBImage, RGBDImage, DepthImage])
-@pytest.mark.parametrize('M', [AutoEncoder, VariationalAutoEncoder])
+@pytest.mark.parametrize("S", [28, 112, 224])
+@pytest.mark.parametrize("T", [RGBImage, RGBDImage, DepthImage])
+@pytest.mark.parametrize("M", [AutoEncoder, VariationalAutoEncoder])
 def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
     config = AutoEncoderConfig(T, n_pixel=S)
     model: AutoEncoder = M(config)  # TODO(HiroIShida) fix this
@@ -40,9 +40,9 @@ def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
 
     loss_dict = model.loss(sample)
     if M == AutoEncoder:
-        assert 'reconstruction' in loss_dict
-        loss_dict.total() == loss_dict['reconstruction']
+        assert "reconstruction" in loss_dict
+        loss_dict.total() == loss_dict["reconstruction"]
     elif M == VariationalAutoEncoder:
-        assert 'reconstruction' in loss_dict
-        assert 'kld' in loss_dict
-        loss_dict.total() == loss_dict['reconstruction'] + loss_dict['kld']
+        assert "reconstruction" in loss_dict
+        assert "kld" in loss_dict
+        loss_dict.total() == loss_dict["reconstruction"] + loss_dict["kld"]

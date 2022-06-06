@@ -12,9 +12,9 @@ class SampleClass:
     data: np.ndarray
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def tmp_project_name():
-    return 'pytest-' + str(uuid.uuid4())
+    return "pytest-" + str(uuid.uuid4())
 
 
 def test_dump_and_load_object(tmp_project_name):
@@ -29,7 +29,7 @@ def test_dump_and_load_object(tmp_project_name):
 def test_dump_and_load_object_subdir(tmp_project_name):
     a = SampleClass(np.random.randn(10, 10))
 
-    subpath_list = [pathlib.Path('hoge/hoge'), "fuga/fuga"]
+    subpath_list = [pathlib.Path("hoge/hoge"), "fuga/fuga"]
     for subpath in subpath_list:
         dump_object(a, tmp_project_name, subpath=subpath)
         b = load_object(SampleClass, tmp_project_name, subpath=subpath)
@@ -51,7 +51,7 @@ def test_load_objects(tmp_project_name):
 
 
 def test_load_objects_subdir(tmp_project_name):
-    subpath_list = [pathlib.Path('hoge/hoge'), "fuga/fuga"]
+    subpath_list = [pathlib.Path("hoge/hoge"), "fuga/fuga"]
     for subpath in subpath_list:
         a = SampleClass(np.random.randn(10, 10))
         b = SampleClass(np.random.randn(10, 10))
@@ -65,7 +65,7 @@ def test_load_objects_subdir(tmp_project_name):
 
 
 def test_load_objects_with_postfix(tmp_project_name):
-    postfix = 'hogehoge'
+    postfix = "hogehoge"
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
     dump_object(a, tmp_project_name, postfix + str(uuid.uuid4()))

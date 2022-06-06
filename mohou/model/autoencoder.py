@@ -23,7 +23,6 @@ class AutoEncoderConfig(ModelConfigBase):
 
 
 class Reshape(nn.Module):
-
     def __init__(self, *args):
         super(Reshape, self).__init__()
         self.shape = args
@@ -32,7 +31,9 @@ class Reshape(nn.Module):
         return x.view(self.shape)
 
 
-def create_encoder_decoder_layers(n_channel: int, n_pixel: int, n_bottleneck: int) -> Tuple[List[nn.Module], List[nn.Module]]:
+def create_encoder_decoder_layers(
+    n_channel: int, n_pixel: int, n_bottleneck: int
+) -> Tuple[List[nn.Module], List[nn.Module]]:
     assert n_pixel in [28, 112, 224]
 
     if n_pixel == 224:
@@ -151,23 +152,23 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
 
     @abstractmethod
     def get_encoder(self) -> nn.Module:
-        """Must be deterministic """
+        """Must be deterministic"""
         pass
 
     @abstractmethod
     def get_decoder(self) -> nn.Module:
-        """Must be deterministic """
+        """Must be deterministic"""
         pass
 
     @abstractmethod
     def compute_reconstruction_loss(self, img: ImageT) -> float:
-        """Must be deterministic """
+        """Must be deterministic"""
         pass
 
     def check_network_input(self, inp: torch.Tensor):
         assert inp.ndim == 4
         assert list(inp.shape[2:]) == [self.n_pixel, self.n_pixel]
-        assert self.image_type.channel() == inp.shape[1], 'channel mismatch'
+        assert self.image_type.channel() == inp.shape[1], "channel mismatch"
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         self.check_network_input(input)
@@ -180,7 +181,8 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
             lambda image_tensor: self.get_encoder()(image_tensor),
             lambda encoding: self.get_decoder()(encoding),
             np_image_shape,
-            self.config.n_bottleneck)
+            self.config.n_bottleneck,
+        )
         return embedder
 
     def channel(self) -> int:
@@ -188,13 +190,12 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
 
 
 class AutoEncoder(AutoEncoderBase[ImageT]):
-
     def loss(self, sample: torch.Tensor) -> LossDict:
         self.check_network_input(sample)
         f_loss = nn.MSELoss()
         reconstructed = self.forward(sample)
         loss_value = f_loss(sample, reconstructed)
-        return LossDict({'reconstruction': loss_value})
+        return LossDict({"reconstruction": loss_value})
 
     def get_encoder(self) -> nn.Module:
         return self.encoder_module
@@ -212,7 +213,9 @@ class AutoEncoder(AutoEncoderBase[ImageT]):
         self.image_type = config.image_type  # type: ignore
         n_pixel = config.n_pixel
         self.n_pixel = n_pixel
-        encoder_layers, decoder_layers = create_encoder_decoder_layers(self.channel(), config.n_pixel, config.n_bottleneck)
+        encoder_layers, decoder_layers = create_encoder_decoder_layers(
+            self.channel(), config.n_pixel, config.n_bottleneck
+        )
         self.encoder_module = nn.Sequential(*encoder_layers)
         self.decoder_module = nn.Sequential(*decoder_layers)
 
@@ -231,9 +234,11 @@ class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
         reconstructed = self.decoder_module(z)
 
         weight = 1e-1 * self.config.n_bottleneck / np.prod(sample.shape)
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0) * weight
+        kld_loss = (
+            torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim=1), dim=0) * weight
+        )
         loss_value = nn.MSELoss()(sample, reconstructed)
-        return LossDict({'reconstruction': loss_value, 'kld': kld_loss})
+        return LossDict({"reconstruction": loss_value, "kld": kld_loss})
 
     def get_encoder(self) -> nn.Module:
         return nn.Sequential(self.encoder_module, self.dense_mean)
@@ -243,7 +248,9 @@ class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
 
     def compute_reconstruction_loss(self, img: ImageT) -> float:
         tens = img.to_tensor().unsqueeze(dim=0)
-        tens_reconst = nn.Sequential(self.encoder_module, self.dense_mean, self.decoder_module)(tens)
+        tens_reconst = nn.Sequential(self.encoder_module, self.dense_mean, self.decoder_module)(
+            tens
+        )
         loss = nn.MSELoss()(tens_reconst, tens)
         return loss.item()
 
@@ -255,7 +262,9 @@ class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
     def _setup_from_config(self, config: AutoEncoderConfig):
         self.image_type = config.image_type  # type: ignore
         n_pixel = config.n_pixel
-        encoder_layers, decoder_layers = create_encoder_decoder_layers(self.channel(), config.n_pixel, config.n_bottleneck)
+        encoder_layers, decoder_layers = create_encoder_decoder_layers(
+            self.channel(), config.n_pixel, config.n_bottleneck
+        )
         encoder_layers.pop()  # remove relu
         encoder_layers.pop()  # remove dense
 

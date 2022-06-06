@@ -3,7 +3,8 @@ import copy
 import logging
 
 import functools  # for cached_property
-if hasattr(functools, 'cached_property'):
+
+if hasattr(functools, "cached_property"):
     from functools import cached_property
 else:
     from cached_property import cached_property  # type: ignore
@@ -13,14 +14,20 @@ import numpy as np
 from typing import Type, List, Dict, Generator, Optional
 
 from mohou.embedder import EmbedderBase
-from mohou.types import ElementBase, EpisodeData, MultiEpisodeChunk, ElementDict, PrimitiveElementBase, CompositeImageBase
+from mohou.types import (
+    ElementBase,
+    EpisodeData,
+    MultiEpisodeChunk,
+    ElementDict,
+    PrimitiveElementBase,
+    CompositeImageBase,
+)
 from mohou.utils import assert_with_message
 
 logger = logging.getLogger(__name__)
 
 
 class PostProcessor(ABC):
-
     @abstractmethod
     def apply(self, vec: np.ndarray) -> np.ndarray:
         pass
@@ -31,7 +38,6 @@ class PostProcessor(ABC):
 
 
 class IdenticalPostProcessor(PostProcessor):
-
     def apply(self, vec: np.ndarray) -> np.ndarray:
         return vec
 
@@ -47,8 +53,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     def __post_init__(self):
         for i, dim in enumerate(self.dims):
-            assert_with_message(self.means[i].shape, (dim,), 'mean shape of {}'.format(i))
-            assert_with_message(self.covs[i].shape, (dim, dim), 'cov shape of {}'.format(i))
+            assert_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
+            assert_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
 
     @staticmethod
     def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
@@ -59,14 +65,13 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     @cached_property
     def characteristic_stds(self) -> np.ndarray:
-
         def get_max_std(cov) -> float:
             eig_values, _ = np.linalg.eig(cov)
             max_eig_cov = max(eig_values)
             return np.sqrt(max_eig_cov)
 
         char_stds = np.array(list(map(get_max_std, self.covs)))
-        logger.info('char stds: {}'.format(char_stds))
+        logger.info("char stds: {}".format(char_stds))
         return char_stds
 
     @cached_property
@@ -80,7 +85,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
-        assert_with_message(feature_seq.ndim, 2, 'feature_seq.ndim')
+        assert_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         means = []
         covs = []
         for rang in cls.get_ranges(dims):
@@ -88,7 +93,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
             dim = feature_seq_partial.shape[1]
             if cls.is_binary_sequence(feature_seq_partial):
                 # because it's strange to compute covariance for binary sequence
-                assert dim == 1, 'this restriction maybe removed'
+                assert dim == 1, "this restriction maybe removed"
                 minn = np.min(feature_seq_partial)
                 maxx = np.max(feature_seq_partial)
                 cov = np.diag(np.ones(dim))
@@ -104,8 +109,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return cls(dims, means, covs)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_with_message(vec.ndim, 1, 'vector dim')
-        assert_with_message(len(vec), sum(self.dims), 'vector total dim')
+        assert_with_message(vec.ndim, 1, "vector dim")
+        assert_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -114,8 +119,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_with_message(vec.ndim, 1, 'vector dim')
-        assert_with_message(len(vec), sum(self.dims), 'vector total dim')
+        assert_with_message(vec.ndim, 1, "vector dim")
+        assert_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -135,7 +140,6 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         return self.post_processor.apply(np.hstack(vector_list))
 
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
-
         def split_vector(vector: np.ndarray, size_list: List[int]):
             head = 0
             vector_list = []
@@ -155,7 +159,6 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         return elem_dict
 
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
-
         def encode_and_postprocess(elem_type, embedder) -> np.ndarray:
             sequence = episode_data.get_sequence_by_type(elem_type)
             vectors = [embedder.forward(e) for e in sequence]
@@ -163,7 +166,7 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
         vector_seq_processed = np.array([self.post_processor.apply(e) for e in vector_seq])
-        assert_with_message(vector_seq_processed.ndim, 2, 'vector_seq dim')
+        assert_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
@@ -192,13 +195,15 @@ class EmbeddingRule(Dict[Type[ElementBase], EmbedderBase]):
         return sum(embedder.output_size for embedder in self.values())
 
     def __str__(self) -> str:
-        string = 'total dim: {}'.format(self.dimension)
+        string = "total dim: {}".format(self.dimension)
         for elem_type, embedder in self.items():
-            string += '\n{0}: {1}'.format(elem_type.__name__, embedder.output_size)
+            string += "\n{0}: {1}".format(elem_type.__name__, embedder.output_size)
         return string
 
     @classmethod
-    def from_embedders(cls, embedder_list: List[EmbedderBase], chunk: Optional[MultiEpisodeChunk] = None) -> 'EmbeddingRule':
+    def from_embedders(
+        cls, embedder_list: List[EmbedderBase], chunk: Optional[MultiEpisodeChunk] = None
+    ) -> "EmbeddingRule":
         rule: EmbeddingRule = cls()
         for embedder in embedder_list:
             rule[embedder.elem_type] = embedder

@@ -21,7 +21,7 @@ class AutoEncoderDatasetConfig:
 
     def __post_init__(self):
         assert self.batch_augment_factor >= 0
-        logger.info('autoencoder dataset config: {}'.format(self))
+        logger.info("autoencoder dataset config: {}".format(self))
 
 
 @dataclass
@@ -37,10 +37,11 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
 
     @classmethod
     def from_chunk(
-            cls,
-            chunk: MultiEpisodeChunk,
-            image_type: Type[ImageT],
-            augconfig: Optional[AutoEncoderDatasetConfig] = None) -> 'AutoEncoderDataset':
+        cls,
+        chunk: MultiEpisodeChunk,
+        image_type: Type[ImageT],
+        augconfig: Optional[AutoEncoderDatasetConfig] = None,
+    ) -> "AutoEncoderDataset":
 
         if augconfig is None:
             augconfig = AutoEncoderDatasetConfig()
@@ -64,18 +65,16 @@ class AutoRegressiveDatasetConfig:
 
     def __post_init__(self):
         assert self.n_augmentation >= 0
-        logger.info('ar dataset config: {}'.format(self))
+        logger.info("ar dataset config: {}".format(self))
 
 
 class WeightPolicy(ABC):
-
     @abstractmethod
     def __call__(self, n_seq_lne: int) -> np.ndarray:
         pass
 
 
 class ConstantWeightPolicy(WeightPolicy):
-
     def __call__(self, n_seq_lne: int) -> np.ndarray:
         return np.ones(n_seq_lne)
 
@@ -105,11 +104,12 @@ class AutoRegressiveDataset(Dataset):
 
     @classmethod
     def from_chunk(
-            cls,
-            chunk: MultiEpisodeChunk,
-            embed_rule: EmbeddingRule,
-            augconfig: Optional[AutoRegressiveDatasetConfig] = None,
-            weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None) -> 'AutoRegressiveDataset':
+        cls,
+        chunk: MultiEpisodeChunk,
+        embed_rule: EmbeddingRule,
+        augconfig: Optional[AutoRegressiveDatasetConfig] = None,
+        weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
+    ) -> "AutoRegressiveDataset":
 
         last_key_of_rule = list(embed_rule.keys())[-1]
         assert last_key_of_rule == TerminateFlag
@@ -130,17 +130,21 @@ class AutoRegressiveDataset(Dataset):
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
-        state_seq_list_auged, weight_seq_list_auged = cls.augment_data(state_seq_list, weight_seq_list, augconfig)
+        state_seq_list_auged, weight_seq_list_auged = cls.augment_data(
+            state_seq_list, weight_seq_list, augconfig
+        )
 
-        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = \
-            cls.make_same_length(state_seq_list_auged, weight_seq_list_auged, augconfig)
+        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
+            state_seq_list_auged, weight_seq_list_auged, augconfig
+        )
         return cls(state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted, embed_rule)
 
     @staticmethod
     def make_same_length(
-            state_seq_list: List[np.ndarray],
-            weight_seq_list: List[np.ndarray],
-            augconfig: AutoRegressiveDatasetConfig) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        state_seq_list: List[np.ndarray],
+        weight_seq_list: List[np.ndarray],
+        augconfig: AutoRegressiveDatasetConfig,
+    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Makes all sequences have the same length"""
 
         n_max_in_dataset_raw = max([len(seq) for seq in state_seq_list])
@@ -180,14 +184,15 @@ class AutoRegressiveDataset(Dataset):
 
     @classmethod
     def augment_data(
-            cls,
-            state_seq_list: List[np.ndarray],
-            weight_seq_list: List[np.ndarray],
-            augconfig: AutoRegressiveDatasetConfig) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        cls,
+        state_seq_list: List[np.ndarray],
+        weight_seq_list: List[np.ndarray],
+        augconfig: AutoRegressiveDatasetConfig,
+    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Augment sequence by adding trajectry noise"""
 
         cov_mat = cls.trajectory_noise_covariance(state_seq_list)
-        cov_mat_scaled = cov_mat * augconfig.cov_scale ** 2
+        cov_mat_scaled = cov_mat * augconfig.cov_scale**2
 
         noised_state_seq_list = []
         for _ in range(augconfig.n_augmentation):

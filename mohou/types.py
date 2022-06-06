@@ -6,7 +6,19 @@ import operator
 import random
 from pathlib import Path
 import yaml
-from typing import Generic, Optional, List, Tuple, Type, TypeVar, Iterator, Sequence, ClassVar, Dict, Union
+from typing import (
+    Generic,
+    Optional,
+    List,
+    Tuple,
+    Type,
+    TypeVar,
+    Iterator,
+    Sequence,
+    ClassVar,
+    Dict,
+    Union,
+)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,26 +30,29 @@ import PIL.Image
 from mohou.setting import setting
 from mohou.constant import N_DATA_INTACT
 from mohou.file import get_project_path, load_object, dump_object
-from mohou.image_randomizer import _f_randomize_rgb_image, _f_randomize_depth_image, _f_randomize_gray_image
+from mohou.image_randomizer import (
+    _f_randomize_rgb_image,
+    _f_randomize_depth_image,
+    _f_randomize_gray_image,
+)
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.utils import get_all_concrete_leaftypes
 from mohou.utils import split_sequence, canvas_to_ndarray
 from mohou.utils import assert_with_message, assert_isinstance_with_message
 
-ElementT = TypeVar('ElementT', bound='ElementBase')
-PrimitiveElementT = TypeVar('PrimitiveElementT', bound='PrimitiveElementBase')
-PrimitiveImageT = TypeVar('PrimitiveImageT', bound='PrimitiveImageBase')
-ColorImageT = TypeVar('ColorImageT', bound='ColorImageBase')
-CompositeImageT = TypeVar('CompositeImageT', bound='CompositeImageBase')
-ImageT = TypeVar('ImageT', bound='ImageBase')
-VectorT = TypeVar('VectorT', bound='VectorBase')
+ElementT = TypeVar("ElementT", bound="ElementBase")
+PrimitiveElementT = TypeVar("PrimitiveElementT", bound="PrimitiveElementBase")
+PrimitiveImageT = TypeVar("PrimitiveImageT", bound="PrimitiveImageBase")
+ColorImageT = TypeVar("ColorImageT", bound="ColorImageBase")
+CompositeImageT = TypeVar("CompositeImageT", bound="CompositeImageBase")
+ImageT = TypeVar("ImageT", bound="ImageBase")
+VectorT = TypeVar("VectorT", bound="VectorBase")
 
 
-CompositeListElementT = TypeVar('CompositeListElementT')
+CompositeListElementT = TypeVar("CompositeListElementT")
 
 
 class HasAList(Sequence, Generic[CompositeListElementT]):
-
     @abstractmethod
     def _get_has_a_list(self) -> List[CompositeListElementT]:
         pass
@@ -53,12 +68,12 @@ class HasAList(Sequence, Generic[CompositeListElementT]):
 
 
 class ElementBase(ABC):
-
     def __new__(cls, *args, **kwargs):
         # instantiationg blocking hack. Different but similar to
         # https://stackoverflow.com/a/7990308/7624196
-        assert cls.is_concrete_type(),\
-            '{} is an abstract class and thus cannot instantiate'.format(cls.__name__)
+        assert cls.is_concrete_type(), "{} is an abstract class and thus cannot instantiate".format(
+            cls.__name__
+        )
         # https://stackoverflow.com/questions/59217884/
         return super(ElementBase, cls).__new__(cls)
 
@@ -105,7 +120,6 @@ class PrimitiveElementBase(ElementBase):
 
 
 class VectorBase(PrimitiveElementBase):
-
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
         assert self._data.ndim == 1
@@ -131,9 +145,8 @@ class GripperState(VectorBase):
 
 
 class TerminateFlag(VectorBase):
-
     @classmethod
-    def from_bool(cls, flag: bool) -> 'TerminateFlag':
+    def from_bool(cls, flag: bool) -> "TerminateFlag":
         assert isinstance(flag, bool)
         val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
         data = np.array([val], dtype=np.float64)
@@ -141,7 +154,6 @@ class TerminateFlag(VectorBase):
 
 
 class ImageBase(ElementBase):
-
     @classmethod
     @abstractmethod
     def channel(cls) -> int:
@@ -157,7 +169,7 @@ class ImageBase(ElementBase):
         pass
 
     @abstractmethod
-    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+    def to_rgb(self, *args, **kwargs) -> "RGBImage":
         pass
 
     @abstractmethod
@@ -170,8 +182,8 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(self._data.ndim, 3, 'image_dim')
-        assert_with_message(data.shape[2], self.channel(), 'channel')
+        assert_with_message(self._data.ndim, 3, "image_dim")
+        assert_with_message(data.shape[2], self.channel(), "channel")
 
     @classmethod
     def channel(cls) -> int:
@@ -179,10 +191,9 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
 
 class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
-
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(self._data.dtype.type, np.uint8, 'numpy type')
+        assert_with_message(self._data.dtype.type, np.uint8, "numpy type")
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self._data).float()
@@ -194,44 +205,44 @@ class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
         return cls(dummy_array)
 
 
-class RGBImage(ColorImageBase['RGBImage']):
+class RGBImage(ColorImageBase["RGBImage"]):
     _channel: ClassVar[int] = 3
 
     @classmethod
-    def from_file(cls, filename: str) -> 'RGBImage':
-        pil_img = PIL.Image.open(filename).convert('RGB')
+    def from_file(cls, filename: str) -> "RGBImage":
+        pil_img = PIL.Image.open(filename).convert("RGB")
         arr = np.array(pil_img)
         return cls(arr)
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'RGBImage':
+    def from_tensor(cls, tensor: torch.Tensor) -> "RGBImage":
         tf = torchvision.transforms.ToPILImage()
         pil_iamge = tf(tensor)
         return cls(np.array(pil_iamge))
 
-    def randomize(self) -> 'RGBImage':
+    def randomize(self) -> "RGBImage":
         assert _f_randomize_rgb_image is not None
         rand_image_arr = _f_randomize_rgb_image(self._data)
         return RGBImage(rand_image_arr)
 
-    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+    def to_rgb(self, *args, **kwargs) -> "RGBImage":
         return self
 
     def resize(self, shape2d_new: Tuple[int, int]) -> None:
         self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
 
 
-class GrayImage(ColorImageBase['GrayImage']):
+class GrayImage(ColorImageBase["GrayImage"]):
     _channel: ClassVar[int] = 1
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'GrayImage':
+    def from_tensor(cls, tensor: torch.Tensor) -> "GrayImage":
         tensor2d = tensor.squeeze(dim=0)
         tf = torchvision.transforms.ToPILImage()
         pil_iamge = tf(tensor2d)
         return cls(np.expand_dims(np.array(pil_iamge), axis=2))
 
-    def randomize(self) -> 'GrayImage':
+    def randomize(self) -> "GrayImage":
         assert _f_randomize_gray_image is not None
         rand_image_arr = _f_randomize_gray_image(self._data)
         return GrayImage(rand_image_arr)
@@ -246,9 +257,8 @@ class GrayImage(ColorImageBase['GrayImage']):
 
 
 def extract_contour_by_laplacian(
-        rgb: RGBImage,
-        laplace_kernel_size: int = 3,
-        blur_kernel_size: Optional[Tuple[int, int]] = None) -> GrayImage:
+    rgb: RGBImage, laplace_kernel_size: int = 3, blur_kernel_size: Optional[Tuple[int, int]] = None
+) -> GrayImage:
 
     if blur_kernel_size is None:
         blur_kernel_size = (int(rgb.shape[0] * 0.02), int(rgb.shape[1] * 0.02))
@@ -266,7 +276,9 @@ class DepthImage(PrimitiveImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(self._data.dtype.type, [np.float16, np.float32, np.float64], 'numpy type')
+        assert_with_message(
+            self._data.dtype.type, [np.float16, np.float32, np.float64], "numpy type"
+        )
 
     def to_tensor(self) -> torch.Tensor:
         data_cutoff = np.maximum(np.minimum(self._data, self._max_value), self._min_value)
@@ -274,23 +286,23 @@ class DepthImage(PrimitiveImageBase):
         return torch.from_numpy(data_normalized.transpose((2, 0, 1))).contiguous().float()
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> 'DepthImage':
+    def from_tensor(cls, tensor: torch.Tensor) -> "DepthImage":
         data = tensor.detach().clone().numpy().transpose((1, 2, 0))
         data_denormalized = data * (cls._max_value - cls._min_value) + cls._min_value
         return cls(data_denormalized)
 
-    def randomize(self) -> 'DepthImage':
+    def randomize(self) -> "DepthImage":
         assert _f_randomize_depth_image is not None
         rand_depth_arr = _f_randomize_depth_image(self._data)
         return DepthImage(rand_depth_arr)
 
     @classmethod
-    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> 'DepthImage':
+    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> "DepthImage":
         shape = (shape2d[0], shape2d[1], cls.channel())
         dummy_array = np.random.rand(*shape)
         return cls(dummy_array)
 
-    def to_rgb(self, *args, **kwargs) -> 'RGBImage':
+    def to_rgb(self, *args, **kwargs) -> "RGBImage":
         fig = plt.figure()
         ax = plt.subplot(1, 1, 1)
         ax.imshow(self._data[:, :, 0])
@@ -314,7 +326,7 @@ class CompositeImageBase(ImageBase):
 
         if check_size:
             for image in images:
-                assert_with_message(image.shape[:2], image_shape, 'image w-h')
+                assert_with_message(image.shape[:2], image_shape, "image w-h")
 
         for image, image_type in zip(images, self.image_types):
             assert_isinstance_with_message(image, image_type)
@@ -375,11 +387,10 @@ class RGBDImage(CompositeImageBase):
 
 
 class ElementDict(Dict[Type[ElementBase], ElementBase]):
-
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
             self[elem.__class__] = elem
-        assert_with_message(len(set(self.keys())), len(elems), 'num of element')
+        assert_with_message(len(set(self.keys())), len(elems), "num of element")
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
@@ -404,7 +415,7 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     for t in get_all_concrete_leaftypes(ElementBase):
         if type_name == t.__name__:
             return t
-    assert False, 'type {} not found'.format(type_name)
+    assert False, "type {} not found".format(type_name)
 
 
 class ElementSequence(HasAList[ElementT], Generic[ElementT]):
@@ -434,14 +445,15 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
         assert elem.shape == self.elem_shape
         self.elem_list.append(elem)
 
-    def get_partial(self, indices: List[int]) -> 'ElementSequence[ElementT]':
+    def get_partial(self, indices: List[int]) -> "ElementSequence[ElementT]":
         elems = [self.elem_list[idx] for idx in indices]
         return ElementSequence(elems)
 
 
 def create_composite_image_sequence(
-        composite_image_type: Type[CompositeImageT],
-        elem_seqs: List[ElementSequence[PrimitiveImageBase]]) -> ElementSequence[CompositeImageT]:
+    composite_image_type: Type[CompositeImageT],
+    elem_seqs: List[ElementSequence[PrimitiveImageBase]],
+) -> ElementSequence[CompositeImageT]:
 
     n_len_seq = len(elem_seqs[0])
     composite_image_seq = ElementSequence[CompositeImageT]([])
@@ -452,7 +464,6 @@ def create_composite_image_sequence(
 
 
 class TypeShapeTableMixin:
-
     def types(self) -> List[Type[ElementBase]]:
         return list(self.type_shape_table.keys())  # type: ignore
 
@@ -511,17 +522,16 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
 
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
-        assert all_different_type, 'all sequences must have different type'
+        assert all_different_type, "all sequences must have different type"
         return cls(sequence_list, type_shape_table)
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
-
         def get_sequence_by_primitive_type(elem_type):
             for seq in self.sequence_list:
                 if isinstance(seq[0], elem_type):
                     # thanks to all_different_type
                     return seq
-            assert False, 'element with type {} not found'.format(elem_type)
+            assert False, "element with type {} not found".format(elem_type)
 
         if issubclass(elem_type, PrimitiveElementBase):
             return get_sequence_by_primitive_type(elem_type)  # type: ignore
@@ -529,7 +539,7 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
             seqs = [get_sequence_by_primitive_type(t) for t in elem_type.image_types]
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
-            assert False, 'element with type {} not found'.format(elem_type)
+            assert False, "element with type {} not found".format(elem_type)
 
     def save_debug_gif(self, filename: str, fps: int = 20):
         t: Type[ImageBase]
@@ -538,10 +548,11 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
         elif RGBImage in self.types():
             t = RGBImage
         else:
-            assert False, 'Currently only RGB or RBGD is supported'
+            assert False, "Currently only RGB or RBGD is supported"
 
         seq = self.get_sequence_by_type(t)
         from moviepy.editor import ImageSequenceClip
+
         clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
         clip.write_gif(filename, fps=fps)
 
@@ -559,20 +570,20 @@ class ChunkSpec(TypeShapeTableMixin):
 
     def to_dict(self) -> Dict:
         d = asdict(self)
-        d['type_shape_table'] = {
-            k.__name__: list(v)
-            for k, v in d['type_shape_table'].items()}
+        d["type_shape_table"] = {k.__name__: list(v) for k, v in d["type_shape_table"].items()}
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict) -> 'ChunkSpec':
-        d['type_shape_table'] = {
-            get_element_type(k): tuple(v)
-            for k, v in d['type_shape_table'].items()}
+    def from_dict(cls, d: Dict) -> "ChunkSpec":
+        d["type_shape_table"] = {
+            get_element_type(k): tuple(v) for k, v in d["type_shape_table"].items()
+        }
         return cls(**d)
 
 
-_chunk_cache: Dict[Tuple[str, Optional[str]], 'MultiEpisodeChunk'] = {}  # used MultiEpisodeChunk.load
+_chunk_cache: Dict[
+    Tuple[str, Optional[str]], "MultiEpisodeChunk"
+] = {}  # used MultiEpisodeChunk.load
 
 
 @dataclass
@@ -587,19 +598,19 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return self.data_list
 
     @classmethod
-    def from_data_list(cls,
-                       data_list: List[EpisodeData],
-                       extra_info: ExtraInfoType = None,
-                       shuffle: bool = True,
-                       with_intact_data: bool = True) -> 'MultiEpisodeChunk':
+    def from_data_list(
+        cls,
+        data_list: List[EpisodeData],
+        extra_info: ExtraInfoType = None,
+        shuffle: bool = True,
+        with_intact_data: bool = True,
+    ) -> "MultiEpisodeChunk":
 
-        set_types = set(functools.reduce(
-            operator.add,
-            [list(data.types()) for data in data_list]))
+        set_types = set(functools.reduce(operator.add, [list(data.types()) for data in data_list]))
 
         n_type_appeared = len(set_types)
         n_type_expected = len(data_list[0].types())
-        assert_with_message(n_type_appeared, n_type_expected, 'num of element in chunk')
+        assert_with_message(n_type_appeared, n_type_expected, "num of element in chunk")
 
         data_list_intact = []
         if with_intact_data:
@@ -617,7 +628,9 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         # chunk spec
         n_average = int(sum([len(data[0]) for data in data_list]) / len(data_list))
-        spec = ChunkSpec(len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info)
+        spec = ChunkSpec(
+            len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
+        )
         return cls(data_list, data_list_intact, type_shape_table, spec)
 
     def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
@@ -625,9 +638,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
     @classmethod
     def load(
-            cls,
-            project_name: Optional[str] = None,
-            postfix: Optional[str] = None) -> 'MultiEpisodeChunk':
+        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
+    ) -> "MultiEpisodeChunk":
 
         if project_name is None:
             project_name = setting.primary_project_name
@@ -640,25 +652,22 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         return chunk
 
     @staticmethod
-    def spec_file_path(
-            project_name: Optional[str] = None,
-            postfix: Optional[str] = None) -> Path:
+    def spec_file_path(project_name: Optional[str] = None, postfix: Optional[str] = None) -> Path:
 
         project_path = get_project_path(project_name)
         if postfix is None:
-            yaml_file_path = project_path / 'chunk_spec.yaml'
+            yaml_file_path = project_path / "chunk_spec.yaml"
         else:
-            yaml_file_path = project_path / 'chunk_spec-{}.yaml'.format(postfix)
+            yaml_file_path = project_path / "chunk_spec-{}.yaml".format(postfix)
         return yaml_file_path
 
     @classmethod
     def load_spec(
-            cls,
-            project_name: Optional[str] = None,
-            postfix: Optional[str] = None) -> ChunkSpec:
+        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
+    ) -> ChunkSpec:
 
         yaml_file_path = cls.spec_file_path(project_name, postfix)
-        with yaml_file_path.open(mode='r') as f:
+        with yaml_file_path.open(mode="r") as f:
             d = yaml.safe_load(f)
             spec = ChunkSpec.from_dict(d)
         return spec
@@ -667,19 +676,21 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self._postfix = postfix
         dump_object(self, project_name, postfix)
         yaml_file_path = self.spec_file_path(project_name, postfix)
-        with yaml_file_path.open(mode='w') as f:
+        with yaml_file_path.open(mode="w") as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
-    def get_intact_chunk(self) -> 'MultiEpisodeChunk':
+    def get_intact_chunk(self) -> "MultiEpisodeChunk":
         return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table, self.spec)
 
-    def get_not_intact_chunk(self) -> 'MultiEpisodeChunk':
+    def get_not_intact_chunk(self) -> "MultiEpisodeChunk":
         return MultiEpisodeChunk(self.data_list, [], self.type_shape_table, self.spec)
 
-    def merge(self, other: 'MultiEpisodeChunk') -> None:
+    def merge(self, other: "MultiEpisodeChunk") -> None:
         keys_self = set(self.types())
         keys_other = set(other.types())
-        assert keys_other.issubset(keys_self)  # TODO(HiroIshida) current limitation, and easily remove this assertion
+        assert keys_other.issubset(
+            keys_self
+        )  # TODO(HiroIshida) current limitation, and easily remove this assertion
         keys_common = keys_self.intersection(keys_other)
 
         def filter_episode_data_list(episode_data_list: List[EpisodeData]):
@@ -701,9 +712,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.type_shape_table = other.type_shape_table
 
     def plot_vector_histories(
-            self,
-            elem_type: Type[VectorBase],
-            project_name: Optional[str] = None) -> None:
+        self, elem_type: Type[VectorBase], project_name: Optional[str] = None
+    ) -> None:
 
         n_vec_dim = self.spec.type_shape_table[elem_type][0]
 
@@ -715,12 +725,12 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             for data in self.data_list:
                 seq = data.get_sequence_by_type(AngleVector)
                 single_seq = np.array([e.numpy()[i_dim] for e in seq])
-                axs[i_dim].plot(single_seq, color='red', lw=0.5)
+                axs[i_dim].plot(single_seq, color="red", lw=0.5)
 
         for ax in axs:
             ax.grid()
         project_path = get_project_path(project_name)
-        file_path = project_path / 'seq-{}.png'.format(elem_type.__name__)
+        file_path = project_path / "seq-{}.png".format(elem_type.__name__)
         file_name = str(file_path)
-        fig.savefig(file_name, format='png', dpi=300)
-        print('saved to {}'.format(file_name))
+        fig.savefig(file_name, format="png", dpi=300)
+        print("saved to {}".format(file_name))

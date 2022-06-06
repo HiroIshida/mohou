@@ -21,11 +21,11 @@ from mohou.types import AngleVector, RGBDImage, RGBImage, DepthImage
 from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-pn', type=str, default='rlbench_close_box', help='project name')
-    parser.add_argument('-n', type=int, default=55, help='epoch num')
-    parser.add_argument('-m', type=int, default=-1, help='multi process num')
+    parser.add_argument("-pn", type=str, default="rlbench_close_box", help="project name")
+    parser.add_argument("-n", type=int, default=55, help="epoch num")
+    parser.add_argument("-m", type=int, default=-1, help="multi process num")
     args = parser.parse_args()
     n_episode = args.n
     n_process = args.m
@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
         def create_demos(arg):
             cpu_idx, n_data_gen = arg
-            disable_tqdm = (cpu_idx != 0)
+            disable_tqdm = cpu_idx != 0
 
             # Data generation by rlbench
             obs_config = ObservationConfig()
@@ -43,21 +43,23 @@ if __name__ == '__main__':
 
             env = Environment(
                 action_mode=MoveArmThenGripper(
-                    arm_action_mode=JointVelocity(), gripper_action_mode=Discrete()),
+                    arm_action_mode=JointVelocity(), gripper_action_mode=Discrete()
+                ),
                 obs_config=ObservationConfig(),
-                headless=True)
+                headless=True,
+            )
             env.launch()
 
             task = env.get_task(CloseBox)
             for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
                 demo = task.get_demos(amount=1, live_demos=True)[0]
 
-                with open(os.path.join(td, str(uuid.uuid4()) + '.pkl'), 'wb') as f:
+                with open(os.path.join(td, str(uuid.uuid4()) + ".pkl"), "wb") as f:
                     pickle.dump(demo, f)
 
         if n_process == -1:
             n_cpu = psutil.cpu_count(logical=False)
-            print('{} physical cpus are detected'.format(n_cpu))
+            print("{} physical cpus are detected".format(n_cpu))
             n_process = n_cpu
 
         pool = multiprocessing.Pool(n_process)
@@ -66,7 +68,7 @@ if __name__ == '__main__':
 
         demos = []
         for filename in os.listdir(td):
-            with open(os.path.join(td, filename), 'rb') as f:
+            with open(os.path.join(td, filename), "rb") as f:
                 demos.append(pickle.load(f))
 
         # data conversion from rlbench demos to mohou chunk

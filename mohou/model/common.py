@@ -36,7 +36,7 @@ class LossDict(Dict[str, torch.Tensor]):
     def __str__(self) -> str:
         string = "total: {}".format(self.total().item())
         for k, v in self.items():
-            string += ', {}: {}'.format(k, v.item())
+            string += ", {}: {}".format(k, v.item())
         return string
 
 
@@ -48,7 +48,6 @@ def average_loss_dict(dicts: List[LossDict]):
 
 
 class ModelConfigBase:
-
     @property
     def hash_value(self) -> str:
         data_pickle = pickle.dumps(self)
@@ -56,7 +55,7 @@ class ModelConfigBase:
         return data_md5[:7]
 
 
-ModelConfigT = TypeVar('ModelConfigT', bound=ModelConfigBase)
+ModelConfigT = TypeVar("ModelConfigT", bound=ModelConfigBase)
 
 
 class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
@@ -72,9 +71,9 @@ class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
 
         self.device = device
         self.config = config
-        logger.info('model name: {}'.format(self.__class__.__name__))
-        logger.info('model config: {}'.format(config))
-        logger.info('model is initialized')
+        logger.info("model name: {}".format(self.__class__.__name__))
+        logger.info("model config: {}".format(config))
+        logger.info("model is initialized")
 
     def put_on_device(self):
         self.to(self.device)
@@ -92,4 +91,4 @@ class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
         pass
 
 
-ModelT = TypeVar('ModelT', bound=ModelBase)
+ModelT = TypeVar("ModelT", bound=ModelBase)

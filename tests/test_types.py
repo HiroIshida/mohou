@@ -7,7 +7,17 @@ import pathlib
 
 import numpy as np
 
-from mohou.types import GrayImage, VectorBase, AngleVector, RGBDImage, RGBImage, DepthImage, PrimitiveImageBase, TerminateFlag, GripperState
+from mohou.types import (
+    GrayImage,
+    VectorBase,
+    AngleVector,
+    RGBDImage,
+    RGBImage,
+    DepthImage,
+    PrimitiveImageBase,
+    TerminateFlag,
+    GripperState,
+)
 from mohou.types import extract_contour_by_laplacian
 from mohou.types import ElementDict
 from mohou.types import ElementSequence
@@ -18,9 +28,9 @@ from mohou.types import MultiEpisodeChunk, _chunk_cache
 from test_file import tmp_project_name  # noqa
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def sample_image_path():
-    return os.path.join(pathlib.Path(__file__).resolve().parent, 'data', 'sample.png')
+    return os.path.join(pathlib.Path(__file__).resolve().parent, "data", "sample.png")
 
 
 def test_elements():
@@ -73,7 +83,7 @@ def test_depth_image_creation():
     DepthImage(np.random.randn(100, 100, 1))
 
 
-@pytest.mark.parametrize('T', [RGBImage, GrayImage, DepthImage])
+@pytest.mark.parametrize("T", [RGBImage, GrayImage, DepthImage])
 def test_primitive_images(T: Type[PrimitiveImageBase]):
     img = T.dummy_from_shape((100, 100))
     img2 = T.from_tensor(img.to_tensor())
@@ -182,36 +192,45 @@ def test_episode_data_assertion_type_inconsitency():
         EpisodeData.from_seq_list([image_seq, image_seq])
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def image_chunk():
     def create_edata(n_length):
-        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        image_seq = ElementSequence(
+            [RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)]
+        )
         data = EpisodeData.from_seq_list([image_seq])
         return data
+
     lst = [create_edata(10) for _ in range(20)]
     chunk = MultiEpisodeChunk.from_data_list(lst)
     return chunk
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def image_av_chunk():
     def create_edata(n_length):
-        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        image_seq = ElementSequence(
+            [RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)]
+        )
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
         data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
+
     lst = [create_edata(10) for _ in range(20)]
     chunk = MultiEpisodeChunk.from_data_list(lst)
     return chunk
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def image_av_chunk_uneven():
     def create_edata(n_length):
-        image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)])
+        image_seq = ElementSequence(
+            [RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)]
+        )
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
         data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
+
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
     chunk = MultiEpisodeChunk.from_data_list(lst, shuffle=False, with_intact_data=False)
@@ -220,7 +239,7 @@ def image_av_chunk_uneven():
 
 def test_chunk_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
-    extra_info = {'hz': 20, 'author': 'HiroIshida'}
+    extra_info = {"hz": 20, "author": "HiroIshida"}
     spec = ChunkSpec(10, 5, 10, types, extra_info=extra_info)
     spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
@@ -240,7 +259,7 @@ def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # 
     assert pickle.dumps(chunk.spec) == pickle.dumps(chunk_spec_loaded)
 
     # test having multiple chunk in one project
-    postfix = 'extra'
+    postfix = "extra"
     extra_chunk: MultiEpisodeChunk = image_chunk
     extra_chunk.dump(tmp_project_name, postfix)
     extra_chunk_loaded = MultiEpisodeChunk.load(tmp_project_name, postfix)

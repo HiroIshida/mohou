@@ -8,10 +8,10 @@ from mohou.dataset import AutoEncoderDataset, AutoEncoderDatasetConfig
 from mohou.dataset import AutoRegressiveDataset, AutoRegressiveDatasetConfig
 from mohou.utils import assert_two_sequences_same_length
 
-from test_types import image_av_chunk_uneven # noqa
+from test_types import image_av_chunk_uneven  # noqa
 
 
-def test_autoencoder_dataset(image_av_chunk_uneven): # noqa
+def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
 
     n_image_original = 0
     for episode_data in image_av_chunk_uneven:
@@ -27,7 +27,7 @@ def test_autoencoder_dataset(image_av_chunk_uneven): # noqa
     assert n_sample_total == n_image_original * (config.batch_augment_factor + 1)
 
 
-def test_auto_regressive_dataset(image_av_chunk_uneven): # noqa
+def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
     n_image_embed = 5
     n_av_embed = 10
@@ -35,7 +35,9 @@ def test_auto_regressive_dataset(image_av_chunk_uneven): # noqa
         RGBImage,
         lambda img: torch.zeros(n_image_embed),
         lambda vec: torch.zeros(3, 100, 100),
-        (100, 100, 3), n_image_embed)
+        (100, 100, 3),
+        n_image_embed,
+    )
     f2 = IdenticalEmbedder(AngleVector, n_av_embed)
     f3 = IdenticalEmbedder(TerminateFlag, 1)
 

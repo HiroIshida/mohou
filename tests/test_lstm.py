@@ -20,5 +20,5 @@ def test_lstm():
     # test loss
     sample = (state_sample, torch.rand(n_sample, n_seq_len))
     loss_dict = model.loss(sample)
-    assert 'prediction' in loss_dict
-    assert loss_dict.total() == loss_dict['prediction']
+    assert "prediction" in loss_dict
+    assert loss_dict.total() == loss_dict["prediction"]
