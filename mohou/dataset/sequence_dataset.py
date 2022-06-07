@@ -16,14 +16,59 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AutoRegressiveDatasetConfig:
-    n_augmentation: int = 20
-    n_dummy_after_termination: int = 20
+class SequenceDatasetConfig:
+    n_aug: int = 20
     cov_scale: float = 0.1
 
+    def __new__(cls, *args, **kwargs):
+        assert len(args) == 0, "please instantiate config only using kwargs"
+        return super(SequenceDatasetConfig, cls).__new__(cls)
+
     def __post_init__(self):
-        assert self.n_augmentation >= 0
-        logger.info("ar dataset config: {}".format(self))
+        assert self.n_aug >= 0
+        assert self.cov_scale < 1.0
+        logger.info("sequence dataset config: {}".format(self))
+
+
+def augment_data(
+    state_seq_list: List[np.ndarray],
+    weight_seq_list: List[np.ndarray],
+    config: SequenceDatasetConfig,
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """Augment sequence by adding trajectry noise"""
+
+    def trajectory_noise_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
+
+        state_diff_list = []
+        for state_seq in state_seq_list:
+            diff = state_seq[1:, :] - state_seq[:-1, :]
+            state_diff_list.append(diff)
+        state_diffs = np.vstack(state_diff_list)
+        cov_mat = np.cov(state_diffs.T)
+        return cov_mat
+
+    cov_mat = trajectory_noise_covariance(state_seq_list)
+    cov_mat_scaled = cov_mat * config.cov_scale**2
+
+    noised_state_seq_list = []
+    for _ in range(config.n_aug):
+        for state_seq in state_seq_list:
+            n_seq, n_dim = state_seq.shape
+            mean = np.zeros(n_dim)
+            noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
+            noised_state_seq_list.append(state_seq + noise_seq)
+
+    state_seq_list_auged = copy.deepcopy(state_seq_list)
+    state_seq_list_auged.extend(noised_state_seq_list)
+
+    weight_seq_list_auged = copy.deepcopy(weight_seq_list)
+    for _ in range(config.n_aug):
+        for weight_seq in weight_seq_list:
+            weight_seq_list_auged.append(copy.deepcopy(weight_seq))
+
+    assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
+
+    return state_seq_list_auged, weight_seq_list_auged
 
 
 class WeightPolicy(ABC):
@@ -44,6 +89,11 @@ class PWLinearWeightPolicy(WeightPolicy):
 
     def __call__(self, n_seq_len: int) -> np.ndarray:
         return np.linspace(self.w_left, self.w_right, n_seq_len)
+
+
+@dataclass
+class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
+    n_dummy_after_termination: int = 20
 
 
 @dataclass
@@ -88,7 +138,7 @@ class AutoRegressiveDataset(Dataset):
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
-        state_seq_list_auged, weight_seq_list_auged = cls.augment_data(
+        state_seq_list_auged, weight_seq_list_auged = augment_data(
             state_seq_list, weight_seq_list, augconfig
         )
 
@@ -129,59 +179,6 @@ class AutoRegressiveDataset(Dataset):
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
         return state_seq_list, weight_seq_list
 
-    @staticmethod
-    def trajectory_noise_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
-
-        state_diff_list = []
-        for state_seq in state_seq_list:
-            diff = state_seq[1:, :] - state_seq[:-1, :]
-            state_diff_list.append(diff)
-        state_diffs = np.vstack(state_diff_list)
-        cov_mat = np.cov(state_diffs.T)
-        return cov_mat
-
-    @classmethod
-    def augment_data(
-        cls,
-        state_seq_list: List[np.ndarray],
-        weight_seq_list: List[np.ndarray],
-        augconfig: AutoRegressiveDatasetConfig,
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        """Augment sequence by adding trajectry noise"""
-
-        cov_mat = cls.trajectory_noise_covariance(state_seq_list)
-        cov_mat_scaled = cov_mat * augconfig.cov_scale**2
-
-        noised_state_seq_list = []
-        for _ in range(augconfig.n_augmentation):
-            for state_seq in state_seq_list:
-                n_seq, n_dim = state_seq.shape
-                mean = np.zeros(n_dim)
-                noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
-                noised_state_seq_list.append(state_seq + noise_seq)
-
-        state_seq_list_auged = copy.deepcopy(state_seq_list)
-        state_seq_list_auged.extend(noised_state_seq_list)
-
-        weight_seq_list_auged = copy.deepcopy(weight_seq_list)
-        for _ in range(augconfig.n_augmentation):
-            for weight_seq in weight_seq_list:
-                weight_seq_list_auged.append(copy.deepcopy(weight_seq))
-
-        assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
-
-        return state_seq_list_auged, weight_seq_list_auged
-
-
-@dataclass
-class MarkovControlSystemDatasetConfig:
-    n_augmentation: int = 20
-    cov_scale: float = 0.1
-
-    def __post_init__(self):
-        assert self.n_augmentation >= 0
-        logger.info("ar dataset config: {}".format(self))
-
 
 @dataclass
 class MarkovControlSystemDataset(Dataset):
@@ -206,7 +203,7 @@ class MarkovControlSystemDataset(Dataset):
         chunk: MultiEpisodeChunk,
         control_encoding_rule: EncodingRule,
         observation_encoding_rule: EncodingRule,
-        config: Optional[MarkovControlSystemDatasetConfig] = None,
+        config: Optional[SequenceDatasetConfig] = None,
         diff_as_control: bool = True,
     ) -> "MarkovControlSystemDataset":
 
