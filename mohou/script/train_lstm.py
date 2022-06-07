@@ -4,11 +4,12 @@ from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_encoding_rule
 from mohou.model.lstm import LSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
+from mohou.setting import setting
 from mohou.trainer import TrainConfig
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
+    parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-cov-scale", type=float, default=0.1, help="covariance scale in aug")
