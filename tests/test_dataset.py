@@ -9,6 +9,7 @@ from mohou.dataset import (
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
     MarkovControlSystemDataset,
+    SequenceDatasetConfig,
 )
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
@@ -75,19 +76,25 @@ def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
     control_encode_rule = EncodingRule.from_encoders([f2])
     observation_encode_rule = EncodingRule.from_encoders([f1, f2])
 
+    n_aug = 20
+    config = SequenceDatasetConfig(n_aug=n_aug, cov_scale=0.0)  # 0.0 to remove noise
     for diff_as_control in [True, False]:
         dataset = MarkovControlSystemDataset.from_chunk(
-            chunk, control_encode_rule, observation_encode_rule, diff_as_control=diff_as_control
+            chunk,
+            control_encode_rule,
+            observation_encode_rule,
+            diff_as_control=diff_as_control,
+            config=config,
         )
 
         controls_seq = control_encode_rule.apply_to_multi_episode_chunk(chunk)
         observations_seq = observation_encode_rule.apply_to_multi_episode_chunk(chunk)
 
         # test __len__
-        n_len_ground_truth = sum([len(seq) - 1 for seq in controls_seq])
+        n_len_ground_truth = sum([len(seq) - 1 for seq in controls_seq]) * (n_aug + 1)
         assert len(dataset) == n_len_ground_truth
 
-        # test the first content
+        # test the first content (because cov = 0.0 ..)
         inp_ctrl, inp_obs, out_obs = dataset[0]
 
         if diff_as_control:
@@ -97,7 +104,7 @@ def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
         np.testing.assert_almost_equal(inp_obs, observations_seq[0][0])
         np.testing.assert_almost_equal(out_obs, observations_seq[0][1])
 
-        # test the last content
+        # test the last content (because cov = 0.0 ...)
         inp_ctrl, inp_obs, out_obs = dataset[-1]
         if diff_as_control:
             np.testing.assert_almost_equal(inp_ctrl, controls_seq[-1][1] - controls_seq[-1][0])

@@ -9,5 +9,6 @@ from mohou.dataset.sequence_dataset import (
     ConstantWeightPolicy,
     MarkovControlSystemDataset,
     PWLinearWeightPolicy,
+    SequenceDatasetConfig,
     WeightPolicy,
 )
