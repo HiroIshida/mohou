@@ -5,12 +5,13 @@ from mohou.dataset import AutoEncoderDatasetConfig
 from mohou.model import AutoEncoder, AutoEncoderBase, VariationalAutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.script_utils import create_default_logger, train_autoencoder
+from mohou.setting import setting
 from mohou.trainer import TrainConfig
 from mohou.types import ImageBase, MultiEpisodeChunk, RGBImage, get_element_type
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
+    parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-latent", type=int, default=16, help="latent space dim")
