@@ -483,6 +483,10 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
     def _get_has_a_list(self) -> List[ElementSequence]:
         return self.sequence_list
 
+    def get_elem_dict(self, idx) -> ElementDict:
+        elems = [seq[idx] for seq in self.sequence_list]
+        return ElementDict(elems)
+
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
         flag_lst = [TerminateFlag.from_bool(False) for _ in range(n_length - 1)]
