@@ -233,7 +233,7 @@ class MarkovControlSystemDataset(Dataset):
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
 
         ctrl_seq_list_auged, _ = ctrl_augmentor(ctrl_seq_list)
-        obs_seq_list_auged, _ = ctrl_augmentor(obs_seq_list)
+        obs_seq_list_auged, _ = obs_augmentor(obs_seq_list)
 
         inp_ctrl_seq = []
         inp_obs_seq = []
