@@ -7,8 +7,8 @@ from mohou.dataset.sequence_dataset import (
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
     ConstantWeightPolicy,
-    SequenceDatasetConfig,
     MarkovControlSystemDataset,
     PWLinearWeightPolicy,
+    SequenceDatasetConfig,
     WeightPolicy,
 )
