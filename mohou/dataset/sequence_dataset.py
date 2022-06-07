@@ -30,14 +30,19 @@ class SequenceDatasetConfig:
         logger.info("sequence dataset config: {}".format(self))
 
 
-def augment_data(
-    state_seq_list: List[np.ndarray],
-    weight_seq_list: List[np.ndarray],
-    config: SequenceDatasetConfig,
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-    """Augment sequence by adding trajectry noise"""
+@dataclass
+class SequenceDataAugmentor:  # functor
+    config: SequenceDatasetConfig
+    take_diff: bool = True
 
-    def trajectory_noise_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
+    @staticmethod
+    def compute_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
+        state_diffs = np.vstack(state_seq_list)
+        cov_mat = np.cov(state_diffs.T)
+        return cov_mat
+
+    @staticmethod
+    def compute_diff_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
 
         state_diff_list = []
         for state_seq in state_seq_list:
@@ -47,28 +52,37 @@ def augment_data(
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    cov_mat = trajectory_noise_covariance(state_seq_list)
-    cov_mat_scaled = cov_mat * config.cov_scale**2
+    def __call__(
+        self, state_seq_list: List[np.ndarray], weight_seq_list: Optional[List[np.ndarray]] = None
+    ) -> Tuple[List[np.ndarray], Optional[List[np.ndarray]]]:
+        if self.take_diff:
+            cov_mat = self.compute_diff_covariance(state_seq_list)
+        else:
+            cov_mat = self.compute_covariance(state_seq_list)
+        cov_mat_scaled = cov_mat * self.config.cov_scale**2
 
-    noised_state_seq_list = []
-    for _ in range(config.n_aug):
-        for state_seq in state_seq_list:
-            n_seq, n_dim = state_seq.shape
-            mean = np.zeros(n_dim)
-            noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
-            noised_state_seq_list.append(state_seq + noise_seq)
+        noised_state_seq_list = []
+        for _ in range(self.config.n_aug):
+            for state_seq in state_seq_list:
+                n_seq, n_dim = state_seq.shape
+                mean = np.zeros(n_dim)
+                noise_seq = np.random.multivariate_normal(mean, cov_mat_scaled, n_seq)
+                noised_state_seq_list.append(state_seq + noise_seq)
 
-    state_seq_list_auged = copy.deepcopy(state_seq_list)
-    state_seq_list_auged.extend(noised_state_seq_list)
+        state_seq_list_auged = copy.deepcopy(state_seq_list)
+        state_seq_list_auged.extend(noised_state_seq_list)
 
-    weight_seq_list_auged = copy.deepcopy(weight_seq_list)
-    for _ in range(config.n_aug):
-        for weight_seq in weight_seq_list:
-            weight_seq_list_auged.append(copy.deepcopy(weight_seq))
+        if weight_seq_list is None:
+            weight_seq_list_auged = None
+        else:
+            weight_seq_list_auged = copy.deepcopy(weight_seq_list)
+            for _ in range(self.config.n_aug):
+                for weight_seq in weight_seq_list:
+                    weight_seq_list_auged.append(copy.deepcopy(weight_seq))
 
-    assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
+            assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
 
-    return state_seq_list_auged, weight_seq_list_auged
+        return state_seq_list_auged, weight_seq_list_auged
 
 
 class WeightPolicy(ABC):
@@ -138,9 +152,11 @@ class AutoRegressiveDataset(Dataset):
 
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
-        state_seq_list_auged, weight_seq_list_auged = augment_data(
-            state_seq_list, weight_seq_list, augconfig
+        augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
+        state_seq_list_auged, weight_seq_list_auged = augmentor(
+            state_seq_list, weight_seq_list=weight_seq_list
         )
+        assert weight_seq_list_auged is not None  # for mypy
 
         state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
             state_seq_list_auged, weight_seq_list_auged, augconfig
@@ -206,18 +222,25 @@ class MarkovControlSystemDataset(Dataset):
         config: Optional[SequenceDatasetConfig] = None,
         diff_as_control: bool = True,
     ) -> "MarkovControlSystemDataset":
+        if config is None:
+            config = SequenceDatasetConfig()
 
         ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
         obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
-
         assert_two_sequences_same_length(ctrl_seq_list, obs_seq_list)
+
+        ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
+        obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
+
+        ctrl_seq_list_auged, _ = ctrl_augmentor(ctrl_seq_list)
+        obs_seq_list_auged, _ = ctrl_augmentor(obs_seq_list)
 
         inp_ctrl_seq = []
         inp_obs_seq = []
         out_obs_seq = []
-        for i in range(len(ctrl_seq_list)):
-            ctrl_seq = ctrl_seq_list[i]
-            obs_seq = obs_seq_list[i]
+        for i in range(len(ctrl_seq_list_auged)):
+            ctrl_seq = ctrl_seq_list_auged[i]
+            obs_seq = obs_seq_list_auged[i]
             for j in range(len(ctrl_seq) - 1):
                 if diff_as_control:
                     inp_ctrl_seq.append(ctrl_seq[j + 1] - ctrl_seq[j])
