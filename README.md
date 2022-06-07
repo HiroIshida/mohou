@@ -89,10 +89,19 @@ among the `pipeline/demo.sh`.
 
 ### Data collection
 Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` are stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) such as `AngleVector` plus `RGBImage` or `AngleVector` plut `DepthImage` can be used. You can also define custom type see [this](https://github.com/HiroIshida/mohou#define-custom-element-type).
+
 ```python
 import numpy as np
-from mohou.types import RGBImage, DepthImage, AngleVector
-from mohou.types import ElementSequence, EpisodeData, MultiEpisodeChunk
+
+from mohou.types import (
+    AngleVector,
+    DepthImage,
+    ElementSequence,
+    EpisodeData,
+    MultiEpisodeChunk,
+    RGBImage,
+)
+
 
 def create_episode_data():
     n_step = 100
@@ -100,28 +109,33 @@ def create_episode_data():
     depth_seq = ElementSequence()
     av_seq = ElementSequence()
     for _ in range(n_step):
-        rgb = RGBImage(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))  # replace this by actual data
+        rgb = RGBImage(
+            np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+        )  # replace this by actual data
         depth = DepthImage(np.random.randn(224, 224, 1))  # replace this by actual data
         av = AngleVector(np.random.randn(7))  # replace this by actual data
 
         rgb_seq.append(rgb)
         depth_seq.append(depth)
         av_seq.append(av)
-    return EpisodeData([rgb_seq, depth_seq, av_seq])
+    return EpisodeData.from_seq_list([rgb_seq, depth_seq, av_seq])
+
 
 n_episode = 20
-chunk = MultiEpisodeChunk([create_episode_data() for _ in range(n_episode)])
-chunk.dump('dummy_project')  # dumps to ~/.mohou/dummy_project/MultiEpisodeChunk.pkl
+data_list = [create_episode_data() for _ in range(n_episode)]
+chunk = MultiEpisodeChunk.from_data_list(data_list)
+chunk.dump("dummy_project")  # dumps to ~/.mohou/dummy_project/MultiEpisodeChunk.pkl
 ```
 
 ### Execution
 Typical code for execution using learned propgatos is as follows. Note that type-hinting here is just for explanation and not necessarily required.
 ```python
-from mohou.types import ElementDict, RGBImage, AngleVector
-from mohou.propagator import Propagator, create_default_propagator
+from mohou.default import create_default_propagator
+from mohou.propagator import Propagator
+from mohou.types import AngleVector, ElementDict, RGBImage
 
-# Please change project_name and n_angle_vector 
-propagator: Propagator = create_default_propagator('your_project_name', n_angle_vector=7)
+# Please change project_name and n_angle_vector
+propagator: Propagator = create_default_propagator("your_project_name")
 
 while True:
     # Observation using real/simulated robot
