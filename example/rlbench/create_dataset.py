@@ -14,7 +14,7 @@ from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.backend.task import Task
 from rlbench.demo import Demo
 from rlbench.environment import Environment
-from rlbench.observation_config import ObservationConfig
+from rlbench.observation_config import CameraConfig, ObservationConfig
 
 from mohou.file import dump_object, get_subproject_path, load_objects
 from mohou.types import (
@@ -58,6 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("-tn", type=str, default="CloseDrawer", help="task name")
     parser.add_argument("-cn", type=str, default="overhead", help="camera name")
     parser.add_argument("-n", type=int, default=55, help="epoch num")
+    parser.add_argument("-p", type=int, default=0, help="number of processes")
     parser.add_argument("-resol", type=int, default=112, help="epoch num")
     args = parser.parse_args()
     n_episode = args.n
@@ -65,8 +66,12 @@ if __name__ == "__main__":
     task_name = args.tn
     camera_name = args.cn
     resolution = args.resol
+    n_process = args.p
+    assert n_process > -1
 
-    assert camera_name in ["left_shoulder", "right_shoulder", "overhead", "wrist", "front"]
+    camera_names = {"left_shoulder", "right_shoulder", "overhead", "wrist", "front"}
+
+    assert camera_name in camera_names
     assert resolution in [112, 224]
 
     def generate_demo(n_episode: int):
@@ -74,11 +79,22 @@ if __name__ == "__main__":
         obs_config = ObservationConfig()
         obs_config.set_all(True)
 
+        kwargs = {}
+        ignore_camera_names = camera_names.difference(camera_name)
+        for ignore_name in ignore_camera_names:
+            kwargs[ignore_name + "_camera"] = CameraConfig(
+                rgb=False, depth=False, point_cloud=False, mask=False
+            )
+
+        kwargs[camera_name + "_camera"] = CameraConfig(
+            image_size=(resolution, resolution), point_cloud=False, mask=False
+        )
+
         env = Environment(
             action_mode=MoveArmThenGripper(
                 arm_action_mode=JointVelocity(), gripper_action_mode=Discrete()
             ),
-            obs_config=ObservationConfig(),
+            obs_config=ObservationConfig(**kwargs),
             headless=True,
         )
         env.launch()
@@ -93,9 +109,10 @@ if __name__ == "__main__":
             dump_object(demo, project_name, str(uuid.uuid4()), subpath="temp")
 
     # First store demos in temporary files
-    n_cpu = os.cpu_count()
-    assert n_cpu is not None
-    n_process = int(n_cpu * 0.5 - 1)
+    if n_process == 0:
+        n_cpu = os.cpu_count()
+        assert n_cpu is not None
+        n_process = int(n_cpu * 0.5 - 1)
     n_process_list_assign = [len(lst) for lst in np.array_split(range(n_episode), n_process)]
     p = Pool(n_process)
     print("n_episode assigned to each process: {}".format(n_process_list_assign))
