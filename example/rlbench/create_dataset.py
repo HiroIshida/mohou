@@ -105,7 +105,6 @@ if __name__ == "__main__":
 
         for i in tqdm.tqdm(range(n_episode)):
             demo = task.get_demos(amount=1, live_demos=True)[0]
-            uuid_str = str(uuid.uuid4())
             dump_object(demo, project_name, str(uuid.uuid4()), subpath="temp")
 
     # First store demos in temporary files
