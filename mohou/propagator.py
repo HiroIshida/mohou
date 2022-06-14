@@ -24,17 +24,17 @@ class Propagator:
         self.n_init_duplicate = n_init_duplicate
         self.is_initialized = False
 
-        require_time_invaliant_input = lstm.config.n_bias > 0
+        require_time_invaliant_input = lstm.config.n_time_invariant_input > 0
 
         if not require_time_invaliant_input:  # auto set
             self.time_invariant_input = np.empty((0,))
 
     def set_time_invariant_input(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert self.lstm.config.n_bias == len(value)
+        assert self.lstm.config.n_time_invariant_input == len(value)
         self.time_invariant_input = value
 
-    def feed(self, elem_dict: ElementDict, bias: Optional[np.ndarray] = None):
+    def feed(self, elem_dict: ElementDict):
         self._feed(elem_dict)
         if not self.is_initialized:
             for _ in range(self.n_init_duplicate):
