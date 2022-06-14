@@ -52,9 +52,15 @@ class SequenceDataAugmentor:  # functor
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    def __call__(
-        self, state_seq_list: List[np.ndarray], weight_seq_list: Optional[List[np.ndarray]] = None
-    ) -> Tuple[List[np.ndarray], Optional[List[np.ndarray]]]:
+    def apply(
+        self, state_seq_list: List[np.ndarray], other_seq_list_list: List[List[np.ndarray]]
+    ) -> Tuple[List[np.ndarray], List[List[np.ndarray]]]:
+        """apply augmentation
+        state_seq_list will be randomized.
+        each seq_list in other_seq_list_list will not be randomized. But just augmented so that they are
+        compatible with augmented state_seq_list.
+        """
+
         if self.take_diff:
             cov_mat = self.compute_diff_covariance(state_seq_list)
         else:
@@ -72,17 +78,17 @@ class SequenceDataAugmentor:  # functor
         state_seq_list_auged = copy.deepcopy(state_seq_list)
         state_seq_list_auged.extend(noised_state_seq_list)
 
-        if weight_seq_list is None:
-            weight_seq_list_auged = None
-        else:
-            weight_seq_list_auged = copy.deepcopy(weight_seq_list)
+        # Just increase the number keeping its order matches with state_seq_list_auged
+        other_seq_list_auged_list = []
+        for other_seq_list in other_seq_list_list:
+            other_seq_list_auged = copy.deepcopy(other_seq_list)
             for _ in range(self.config.n_aug):
-                for weight_seq in weight_seq_list:
-                    weight_seq_list_auged.append(copy.deepcopy(weight_seq))
+                for weight_seq in other_seq_list:
+                    other_seq_list_auged.append(copy.deepcopy(weight_seq))
+            other_seq_list_auged_list.append(other_seq_list_auged)
+            assert_two_sequences_same_length(state_seq_list_auged, other_seq_list_auged)
 
-            assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
-
-        return state_seq_list_auged, weight_seq_list_auged
+        return state_seq_list_auged, other_seq_list_auged_list
 
 
 class WeightPolicy(ABC):
@@ -153,8 +159,8 @@ class AutoRegressiveDataset(Dataset):
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
         augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
-        state_seq_list_auged, weight_seq_list_auged = augmentor(
-            state_seq_list, weight_seq_list=weight_seq_list
+        state_seq_list_auged, [weight_seq_list_auged] = augmentor.apply(
+            state_seq_list, [weight_seq_list]
         )
         assert weight_seq_list_auged is not None  # for mypy
 
@@ -232,8 +238,8 @@ class MarkovControlSystemDataset(Dataset):
         ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
 
-        ctrl_seq_list_auged, _ = ctrl_augmentor(ctrl_seq_list)
-        obs_seq_list_auged, _ = obs_augmentor(obs_seq_list)
+        ctrl_seq_list_auged, _ = ctrl_augmentor.apply(ctrl_seq_list, [])
+        obs_seq_list_auged, _ = obs_augmentor.apply(obs_seq_list, [])
 
         inp_ctrl_seq = []
         inp_obs_seq = []
