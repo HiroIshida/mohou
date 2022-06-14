@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import uuid
 from multiprocessing import Pool
 from typing import Type
@@ -107,12 +108,18 @@ if __name__ == "__main__":
             demo = task.get_demos(amount=1, live_demos=True)[0]
             dump_object(demo, project_name, str(uuid.uuid4()), subpath="temp")
 
-    # First store demos in temporary files
+    # delete temp files
+    temp_path = get_subproject_path(project_name, subpath="temp")
+    shutil.rmtree(str(temp_path))
+
+    # First store demos in temp files
+    # Unlike python's tempfile, we do not clear these temp files after this function for the easy of debugging
     if n_process == 0:
         n_cpu = os.cpu_count()
         assert n_cpu is not None
         n_process = int(n_cpu * 0.5 - 1)
     n_process_list_assign = [len(lst) for lst in np.array_split(range(n_episode), n_process)]
+
     p = Pool(n_process)
     print("n_episode assigned to each process: {}".format(n_process_list_assign))
     p.map(generate_demo, n_process_list_assign)
