@@ -125,10 +125,11 @@ class AutoRegressiveDataset(Dataset):
     def __len__(self) -> int:
         return len(self.state_seq_list)
 
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         state = torch.from_numpy(self.state_seq_list[idx]).float()
+        bias = torch.from_numpy(self.bias_list[idx]).float()
         weight = torch.tensor(self.weight_seq_list[idx]).float()
-        return state, weight
+        return state, bias, weight
 
     def __post_init__(self):  # validation
         assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
