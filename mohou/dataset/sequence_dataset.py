@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
-from mohou.utils import assert_two_sequences_same_length
+from mohou.utils import assert_equal_with_message, assert_two_sequences_same_length
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,15 @@ class SequenceDataAugmentor:  # functor
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    def __call__(
-        self, state_seq_list: List[np.ndarray], weight_seq_list: Optional[List[np.ndarray]] = None
-    ) -> Tuple[List[np.ndarray], Optional[List[np.ndarray]]]:
+    def apply(
+        self, state_seq_list: List[np.ndarray], other_seq_list_list: List[List[np.ndarray]]
+    ) -> Tuple[List[np.ndarray], List[List[np.ndarray]]]:
+        """apply augmentation
+        state_seq_list will be randomized.
+        each seq_list in other_seq_list_list will not be randomized. But just augmented so that they are
+        compatible with augmented state_seq_list.
+        """
+
         if self.take_diff:
             cov_mat = self.compute_diff_covariance(state_seq_list)
         else:
@@ -72,17 +78,16 @@ class SequenceDataAugmentor:  # functor
         state_seq_list_auged = copy.deepcopy(state_seq_list)
         state_seq_list_auged.extend(noised_state_seq_list)
 
-        if weight_seq_list is None:
-            weight_seq_list_auged = None
-        else:
-            weight_seq_list_auged = copy.deepcopy(weight_seq_list)
+        # Just increase the number keeping its order matches with state_seq_list_auged
+        other_seq_list_auged_list = []
+        for other_seq_list in other_seq_list_list:
+            other_seq_list_auged = copy.deepcopy(other_seq_list)
             for _ in range(self.config.n_aug):
-                for weight_seq in weight_seq_list:
-                    weight_seq_list_auged.append(copy.deepcopy(weight_seq))
+                for weight_seq in other_seq_list:
+                    other_seq_list_auged.append(copy.deepcopy(weight_seq))
+            other_seq_list_auged_list.append(other_seq_list_auged)
 
-            assert_two_sequences_same_length(state_seq_list_auged, weight_seq_list_auged)
-
-        return state_seq_list_auged, weight_seq_list_auged
+        return state_seq_list_auged, other_seq_list_auged_list
 
 
 class WeightPolicy(ABC):
@@ -113,16 +118,24 @@ class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
 @dataclass
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
+    time_invariant_input_list: List[np.ndarray]
     weight_seq_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
     def __len__(self) -> int:
         return len(self.state_seq_list)
 
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         state = torch.from_numpy(self.state_seq_list[idx]).float()
+        ti_input = torch.from_numpy(self.time_invariant_input_list[idx]).float()
         weight = torch.tensor(self.weight_seq_list[idx]).float()
-        return state, weight
+        return state, ti_input, weight
+
+    def __post_init__(self):  # validation
+        assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
+        assert_equal_with_message(
+            len(self.time_invariant_input_list), len(self.state_seq_list), "length of sequence"
+        )
 
     @classmethod
     def from_chunk(
@@ -130,6 +143,7 @@ class AutoRegressiveDataset(Dataset):
         chunk: MultiEpisodeChunk,
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
+        ti_input_list: Optional[List[np.ndarray]] = None,
         weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     ) -> "AutoRegressiveDataset":
 
@@ -140,28 +154,39 @@ class AutoRegressiveDataset(Dataset):
 
         state_seq_list = encoding_rule.apply_to_multi_episode_chunk(chunk)
 
+        # setting up weighting
         if weighting is None:
             weighting = ConstantWeightPolicy()
-
         if isinstance(weighting, list):
             weight_seq_list: List[np.ndarray] = weighting
             logger.info("use user-provided numpy weighting")
         else:
             logger.info("use weight policy: {}".format(weighting))
             weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
-
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
+        # setting up biases
+        if ti_input_list is None:  # create sequence of 0-dim vector
+            ti_input_list = [np.zeros((0)) for _ in range(len(state_seq_list))]
+        assert_equal_with_message(len(ti_input_list), len(state_seq_list), "length of sequence")
+
+        # augmentation
         augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
-        state_seq_list_auged, weight_seq_list_auged = augmentor(
-            state_seq_list, weight_seq_list=weight_seq_list
+        state_seq_list_auged, [weight_seq_list_auged, ti_input_list_auged] = augmentor.apply(
+            state_seq_list, [weight_seq_list, ti_input_list]
         )
         assert weight_seq_list_auged is not None  # for mypy
 
+        # make all sequence to the same length due to torch batch computation requirement
         state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
             state_seq_list_auged, weight_seq_list_auged, augconfig
         )
-        return cls(state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted, encoding_rule)
+        return cls(
+            state_seq_list_auged_adjusted,
+            ti_input_list_auged,
+            weight_seq_list_auged_adjusted,
+            encoding_rule,
+        )
 
     @staticmethod
     def make_same_length(
@@ -232,8 +257,8 @@ class MarkovControlSystemDataset(Dataset):
         ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
 
-        ctrl_seq_list_auged, _ = ctrl_augmentor(ctrl_seq_list)
-        obs_seq_list_auged, _ = obs_augmentor(obs_seq_list)
+        ctrl_seq_list_auged, _ = ctrl_augmentor.apply(ctrl_seq_list, [])
+        obs_seq_list_auged, _ = obs_augmentor.apply(obs_seq_list, [])
 
         inp_ctrl_seq = []
         inp_obs_seq = []
