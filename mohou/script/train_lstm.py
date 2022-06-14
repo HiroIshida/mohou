@@ -24,8 +24,8 @@ if __name__ == "__main__":
     project_name = args.pn
     n_epoch = args.n
     n_aug = args.aug
-    n_hidden = args.lstm_hidden
-    n_layer = args.lstm_layer
+    n_hidden = args.hidden
+    n_layer = args.layer
     cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
     warm_start = args.warm
