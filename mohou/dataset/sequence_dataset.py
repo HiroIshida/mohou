@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
-from mohou.utils import assert_two_sequences_same_length
+from mohou.utils import assert_equal_with_message, assert_two_sequences_same_length
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,6 @@ class SequenceDataAugmentor:  # functor
                 for weight_seq in other_seq_list:
                     other_seq_list_auged.append(copy.deepcopy(weight_seq))
             other_seq_list_auged_list.append(other_seq_list_auged)
-            assert_two_sequences_same_length(state_seq_list_auged, other_seq_list_auged)
 
         return state_seq_list_auged, other_seq_list_auged_list
 
@@ -119,6 +118,7 @@ class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
 @dataclass
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
+    bias_list: List[np.ndarray]
     weight_seq_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
@@ -130,12 +130,19 @@ class AutoRegressiveDataset(Dataset):
         weight = torch.tensor(self.weight_seq_list[idx]).float()
         return state, weight
 
+    def __post_init__(self):  # validation
+        assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
+        assert_equal_with_message(
+            len(self.bias_list), len(self.state_seq_list), "length of sequence"
+        )
+
     @classmethod
     def from_chunk(
         cls,
         chunk: MultiEpisodeChunk,
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
+        bias_list: Optional[List[np.ndarray]] = None,
         weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     ) -> "AutoRegressiveDataset":
 
@@ -146,28 +153,39 @@ class AutoRegressiveDataset(Dataset):
 
         state_seq_list = encoding_rule.apply_to_multi_episode_chunk(chunk)
 
+        # setting up weighting
         if weighting is None:
             weighting = ConstantWeightPolicy()
-
         if isinstance(weighting, list):
             weight_seq_list: List[np.ndarray] = weighting
             logger.info("use user-provided numpy weighting")
         else:
             logger.info("use weight policy: {}".format(weighting))
             weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
-
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
+        # setting up biases
+        if bias_list is None:  # create sequence of 0-dim vector
+            bias_list = [np.zeros((0)) for _ in range(len(state_seq_list))]
+        assert_equal_with_message(len(bias_list), len(state_seq_list), "length of sequence")
+
+        # augmentation
         augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
-        state_seq_list_auged, [weight_seq_list_auged] = augmentor.apply(
-            state_seq_list, [weight_seq_list]
+        state_seq_list_auged, [weight_seq_list_auged, bias_list_auged] = augmentor.apply(
+            state_seq_list, [weight_seq_list, bias_list]
         )
         assert weight_seq_list_auged is not None  # for mypy
 
+        # make all sequence to the same length due to torch batch computation requirement
         state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
             state_seq_list_auged, weight_seq_list_auged, augconfig
         )
-        return cls(state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted, encoding_rule)
+        return cls(
+            state_seq_list_auged_adjusted,
+            bias_list_auged,
+            weight_seq_list_auged_adjusted,
+            encoding_rule,
+        )
 
     @staticmethod
     def make_same_length(
