@@ -58,7 +58,9 @@ class LSTM(ModelBase[LSTMConfig]):
         loss_value = torch.mean(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
         return LossDict({"prediction": loss_value})
 
-    def forward(self, state_sample: torch.Tensor, time_invariant_inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, state_sample: torch.Tensor, time_invariant_inputs: torch.Tensor
+    ) -> torch.Tensor:
         # arrange bais_sample and create concat state_sample
         _, n_seq_len, _ = state_sample.shape
         ti_input_unsqueezed = time_invariant_inputs.unsqueeze(dim=1)
