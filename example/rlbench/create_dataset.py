@@ -15,7 +15,7 @@ from rlbench.action_modes.gripper_action_modes import Discrete
 from rlbench.backend.task import Task
 from rlbench.demo import Demo
 from rlbench.environment import Environment
-from rlbench.observation_config import CameraConfig, ObservationConfig
+from utils import setup_observation_config
 
 from mohou.file import dump_object, get_subproject_path, load_objects
 from mohou.types import (
@@ -77,25 +77,11 @@ if __name__ == "__main__":
 
     def generate_demo(n_episode: int):
         # Data generation by rlbench
-        obs_config = ObservationConfig()
-        obs_config.set_all(True)
-
-        kwargs = {}
-        ignore_camera_names = camera_names.difference(camera_name)
-        for ignore_name in ignore_camera_names:
-            kwargs[ignore_name + "_camera"] = CameraConfig(
-                rgb=False, depth=False, point_cloud=False, mask=False
-            )
-
-        kwargs[camera_name + "_camera"] = CameraConfig(
-            image_size=(resolution, resolution), point_cloud=False, mask=False
-        )
-
         env = Environment(
             action_mode=MoveArmThenGripper(
                 arm_action_mode=JointVelocity(), gripper_action_mode=Discrete()
             ),
-            obs_config=ObservationConfig(**kwargs),
+            obs_config=setup_observation_config(camera_name, resolution),
             headless=True,
         )
         env.launch()
