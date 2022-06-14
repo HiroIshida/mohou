@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -15,6 +15,7 @@ class Propagator:
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
+    time_invariant_input: Optional[np.ndarray] = None
 
     def __init__(self, lstm: LSTM, encoding_rule: EncodingRule, n_init_duplicate: int = 0):
         self.lstm = lstm
@@ -23,7 +24,17 @@ class Propagator:
         self.n_init_duplicate = n_init_duplicate
         self.is_initialized = False
 
-    def feed(self, elem_dict: ElementDict):
+        require_time_invaliant_input = lstm.config.n_bias > 0
+
+        if not require_time_invaliant_input:  # auto set
+            self.time_invariant_input = np.empty((0,))
+
+    def set_time_invariant_input(self, value: np.ndarray) -> None:
+        assert value.ndim == 1
+        assert self.lstm.config.n_bias == len(value)
+        self.time_invariant_input = value
+
+    def feed(self, elem_dict: ElementDict, bias: Optional[np.ndarray] = None):
         self._feed(elem_dict)
         if not self.is_initialized:
             for _ in range(self.n_init_duplicate):
@@ -49,10 +60,13 @@ class Propagator:
     def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
+        assert self.time_invariant_input is not None, "forgot setting time_invariant_input ??"
+        ti_input_torch = torch.from_numpy(self.time_invariant_input).float().unsqueeze(dim=0)
+
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
             states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-            state_pred_torch: torch.Tensor = self.lstm(states_torch)[:, -1]
+            state_pred_torch: torch.Tensor = self.lstm(states_torch, ti_input_torch)[:, -1]
             state_pred = state_pred_torch.squeeze().detach().numpy()
 
             if force_continue:
