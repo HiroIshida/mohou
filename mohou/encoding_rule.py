@@ -22,7 +22,7 @@ from mohou.types import (
     MultiEpisodeChunk,
     PrimitiveElementBase,
 )
-from mohou.utils import assert_with_message
+from mohou.utils import assert_equal_with_message
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     def __post_init__(self):
         for i, dim in enumerate(self.dims):
-            assert_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
-            assert_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
+            assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
+            assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
 
     @staticmethod
     def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
@@ -85,7 +85,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
     @classmethod
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
-        assert_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
+        assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         means = []
         covs = []
         for rang in cls.get_ranges(dims):
@@ -109,8 +109,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return cls(dims, means, covs)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_with_message(vec.ndim, 1, "vector dim")
-        assert_with_message(len(vec), sum(self.dims), "vector total dim")
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -119,8 +119,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_with_message(vec.ndim, 1, "vector dim")
-        assert_with_message(len(vec), sum(self.dims), "vector total dim")
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -166,7 +166,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
         vector_seq_processed = np.array([self.post_processor.apply(e) for e in vector_seq])
-        assert_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
+        assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
     def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:

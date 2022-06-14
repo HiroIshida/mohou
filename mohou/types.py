@@ -36,8 +36,8 @@ from mohou.image_randomizer import (
 )
 from mohou.setting import setting
 from mohou.utils import (
+    assert_equal_with_message,
     assert_isinstance_with_message,
-    assert_with_message,
     canvas_to_ndarray,
     get_all_concrete_leaftypes,
     split_sequence,
@@ -185,8 +185,8 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(self._data.ndim, 3, "image_dim")
-        assert_with_message(data.shape[2], self.channel(), "channel")
+        assert_equal_with_message(self._data.ndim, 3, "image_dim")
+        assert_equal_with_message(data.shape[2], self.channel(), "channel")
 
     @classmethod
     def channel(cls) -> int:
@@ -196,7 +196,7 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(self._data.dtype.type, np.uint8, "numpy type")
+        assert_equal_with_message(self._data.dtype.type, np.uint8, "numpy type")
 
     def to_tensor(self) -> torch.Tensor:
         return torchvision.transforms.ToTensor()(self._data).float()
@@ -279,7 +279,7 @@ class DepthImage(PrimitiveImageBase):
 
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
-        assert_with_message(
+        assert_equal_with_message(
             self._data.dtype.type, [np.float16, np.float32, np.float64], "numpy type"
         )
 
@@ -329,7 +329,7 @@ class CompositeImageBase(ImageBase):
 
         if check_size:
             for image in images:
-                assert_with_message(image.shape[:2], image_shape, "image w-h")
+                assert_equal_with_message(image.shape[:2], image_shape, "image w-h")
 
         for image, image_type in zip(images, self.image_types):
             assert_isinstance_with_message(image, image_type)
@@ -393,7 +393,7 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
             self[elem.__class__] = elem
-        assert_with_message(len(set(self.keys())), len(elems), "num of element")
+        assert_equal_with_message(len(set(self.keys())), len(elems), "num of element")
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
@@ -617,7 +617,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         n_type_appeared = len(set_types)
         n_type_expected = len(data_list[0].types())
-        assert_with_message(n_type_appeared, n_type_expected, "num of element in chunk")
+        assert_equal_with_message(n_type_appeared, n_type_expected, "num of element in chunk")
 
         data_list_intact = []
         if with_intact_data:

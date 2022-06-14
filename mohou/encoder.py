@@ -6,7 +6,7 @@ import torch
 from sklearn.decomposition import PCA
 
 from mohou.types import ElementT, ImageT, MultiEpisodeChunk, VectorT
-from mohou.utils import assert_isinstance_with_message, assert_with_message
+from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
 
 class EncoderBase(ABC, Generic[ElementT]):
@@ -23,23 +23,23 @@ class EncoderBase(ABC, Generic[ElementT]):
         assert_isinstance_with_message(inp, self.elem_type)
 
         if check_size:
-            assert_with_message(inp.shape, self.input_shape, "input shape")
+            assert_equal_with_message(inp.shape, self.input_shape, "input shape")
 
         out = self._forward_impl(inp)
 
         if check_size:
-            assert_with_message(out.shape, (self.output_size,), "output shape")
+            assert_equal_with_message(out.shape, (self.output_size,), "output shape")
 
         return out
 
     def backward(self, inp: np.ndarray, check_size: bool = True) -> ElementT:
         if check_size:
-            assert_with_message(inp.shape, (self.output_size,), "input shape")
+            assert_equal_with_message(inp.shape, (self.output_size,), "input shape")
 
         out = self._backward_impl(inp)
 
         if check_size:
-            assert_with_message(out.shape, self.input_shape, "input shape")
+            assert_equal_with_message(out.shape, self.input_shape, "input shape")
 
         return out
 
@@ -74,7 +74,7 @@ class ImageEncoder(EncoderBase[ImageT]):
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
             out_dummy = self._forward_impl(inp_dummy)
-            assert_with_message(out_dummy.shape, (output_size,), "shape")
+            assert_equal_with_message(out_dummy.shape, (output_size,), "shape")
 
             inp_reconstucted = self._backward_impl(out_dummy)
             assert_isinstance_with_message(inp_reconstucted, self.elem_type)
