@@ -31,13 +31,13 @@ def edict_to_action(edict: ElementDict) -> np.ndarray:
     return np.hstack([av_next.numpy(), gs_next.numpy()])
 
 
-def obs_to_edict(obs: Observation) -> ElementDict:
+def obs_to_edict(obs: Observation, resolution: int) -> ElementDict:
     av = AngleVector(obs.joint_positions)
     gs = GripperState(np.array([obs.gripper_open]))
     rgb = RGBImage(obs.overhead_rgb)
-    rgb.resize((112, 112))
+    rgb.resize((resolution, resolution))
     depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
-    depth.resize((112, 112))
+    depth.resize((resolution, resolution))
     return ElementDict([av, gs, rgb, depth])
 
 
@@ -66,6 +66,7 @@ if __name__ == "__main__":
     env.launch()
 
     chunk = MultiEpisodeChunk.load(project_name)
+    resolution = chunk.spec.type_shape_table[RGBImage][0]
     av_init = chunk.data_list_intact[0].get_sequence_by_type(AngleVector)[0]
     gs_init = chunk.data_list_intact[0].get_sequence_by_type(GripperState)[0]
     edict_init = ElementDict([av_init, gs_init])
@@ -82,12 +83,12 @@ if __name__ == "__main__":
         rgb_seq_gif = []
 
         obs, _, _ = task.step(edict_to_action(edict_init))
-        edict = obs_to_edict(obs)
+        edict = obs_to_edict(obs, resolution)
         prop.feed(edict)
         for _ in tqdm.tqdm(range(n_step)):
             edict_next = prop.predict(n_prop=1)[0]
             obs, _, _ = task.step(edict_to_action(edict_next))
-            edict = obs_to_edict(obs)
+            edict = obs_to_edict(obs, resolution)
             prop.feed(edict)
 
             rgb_seq_gif.append(RGBImage(obs.overhead_rgb))
