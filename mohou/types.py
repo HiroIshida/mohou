@@ -715,7 +715,10 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.type_shape_table = other.type_shape_table
 
     def plot_vector_histories(
-            self, elem_type: Type[VectorBase], project_name: Optional[str] = None, hz: Optional[float] = None,
+        self,
+        elem_type: Type[VectorBase],
+        project_name: Optional[str] = None,
+        hz: Optional[float] = None,
     ) -> None:
 
         n_vec_dim = self.spec.type_shape_table[elem_type][0]
