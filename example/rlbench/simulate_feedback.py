@@ -17,11 +17,11 @@ from mohou.default import create_default_propagator
 from mohou.file import get_project_path
 from mohou.types import (
     AngleVector,
+    DepthImage,
     ElementDict,
     GripperState,
     MultiEpisodeChunk,
     RGBImage,
-    DepthImage,
 )
 
 
