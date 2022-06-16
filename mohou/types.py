@@ -448,10 +448,6 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
         assert elem.shape == self.elem_shape
         self.elem_list.append(elem)
 
-    def get_partial(self, indices: List[int]) -> "ElementSequence[ElementT]":
-        elems = [self.elem_list[idx] for idx in indices]
-        return ElementSequence(elems)
-
 
 def create_composite_image_sequence(
     composite_image_type: Type[CompositeImageT],
