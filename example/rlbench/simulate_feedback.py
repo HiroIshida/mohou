@@ -21,6 +21,7 @@ from mohou.types import (
     GripperState,
     MultiEpisodeChunk,
     RGBImage,
+    DepthImage,
 )
 
 
@@ -33,12 +34,13 @@ def edict_to_action(edict: ElementDict) -> np.ndarray:
 def obs_to_edict(obs: Observation, resolution: int, camera_name: str) -> ElementDict:
     av = AngleVector(obs.joint_positions)
     gs = GripperState(np.array([obs.gripper_open]))
-    rgb = RGBImage(obs.__dict__[camera_name + "_rgb"])
-    rgb.resize((resolution, resolution))
-    # TODO(HiroIshida) include depth
-    # depth = DepthImage(np.expand_dims(obs.overhead_depth, axis=2))
-    # depth.resize((resolution, resolution))
-    return ElementDict([av, gs, rgb])
+
+    arr_rgb = obs.__dict__[camera_name + "_rgb"]
+    arr_depth = np.expand_dims(obs.__dict__[camera_name + "_depth"], axis=2)
+
+    rgb = RGBImage(arr_rgb)
+    depth = DepthImage(arr_depth)
+    return ElementDict([av, gs, rgb, depth])
 
 
 if __name__ == "__main__":
