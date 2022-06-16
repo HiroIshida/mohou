@@ -727,18 +727,24 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         fig, axs = plt.subplots(n_vec_dim)
 
         for i_dim, ax in enumerate(axs):
+
+            y_min, y_max = +np.inf, -np.inf  # will be updated in the following loop
+
             for data in self.data_list:
                 seq = data.get_sequence_by_type(AngleVector)
                 single_seq = np.array([e.numpy()[i_dim] for e in seq])
-                y_min, y_max = np.min(single_seq), np.max(single_seq)
-                diff = y_max - y_min
-                margin = 0.5
-                axs[i_dim].set_ylim([y_min - diff * margin, y_max + diff * margin])
+                y_min = min(y_min, np.min(single_seq))
+                y_max = max(y_max, np.max(single_seq))
+
                 if hz is None:
                     axs[i_dim].plot(single_seq, color="red", lw=0.5)
                 else:
                     time_seq = [i / hz for i in range(len(single_seq))]
                     axs[i_dim].plot(time_seq, single_seq, color="red", lw=0.5)
+
+            margin = 0.2
+            diff = y_max - y_min
+            axs[i_dim].set_ylim([y_min - diff * margin, y_max + diff * margin])
 
         for ax in axs:
             ax.grid()
