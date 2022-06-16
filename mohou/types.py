@@ -732,7 +732,8 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
                 single_seq = np.array([e.numpy()[i_dim] for e in seq])
                 y_min, y_max = np.min(single_seq), np.max(single_seq)
                 diff = y_max - y_min
-                axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
+                margin = 0.5
+                axs[i_dim].set_ylim([y_min - diff * margin, y_max + diff * margin])
                 if hz is None:
                     axs[i_dim].plot(single_seq, color="red", lw=0.5)
                 else:
