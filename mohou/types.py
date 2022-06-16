@@ -715,23 +715,35 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         self.type_shape_table = other.type_shape_table
 
     def plot_vector_histories(
-        self, elem_type: Type[VectorBase], project_name: Optional[str] = None
+            self, elem_type: Type[VectorBase], project_name: Optional[str] = None, hz: Optional[float] = None,
     ) -> None:
 
         n_vec_dim = self.spec.type_shape_table[elem_type][0]
 
         fig = plt.figure()
-        gs = fig.add_gridspec(n_vec_dim, hspace=0)
-        axs = gs.subplots(sharex=True, sharey=True)
+        fig, axs = plt.subplots(n_vec_dim)
 
         for i_dim, ax in enumerate(axs):
             for data in self.data_list:
                 seq = data.get_sequence_by_type(AngleVector)
                 single_seq = np.array([e.numpy()[i_dim] for e in seq])
-                axs[i_dim].plot(single_seq, color="red", lw=0.5)
+                y_min, y_max = np.min(single_seq), np.max(single_seq)
+                diff = y_max - y_min
+                axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
+                if hz is None:
+                    axs[i_dim].plot(single_seq, color="red", lw=0.5)
+                else:
+                    time_seq = [i / hz for i in range(len(single_seq))]
+                    axs[i_dim].plot(time_seq, single_seq, color="red", lw=0.5)
 
         for ax in axs:
             ax.grid()
+
+        if hz is None:
+            fig.supxlabel("data point number [-]")
+        else:
+            fig.supxlabel("time [s]")
+
         project_path = get_project_path(project_name)
         file_path = project_path / "seq-{}.png".format(elem_type.__name__)
         file_name = str(file_path)
