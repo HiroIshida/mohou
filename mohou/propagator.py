@@ -24,10 +24,14 @@ class Propagator:
         self.n_init_duplicate = n_init_duplicate
         self.is_initialized = False
 
-        require_time_invaliant_input = lstm.config.n_static_context > 0
+        require_static_context = lstm.config.n_static_context > 0
 
-        if not require_time_invaliant_input:  # auto set
+        if not require_static_context:  # auto set
             self.static_context = np.empty((0,))
+
+    @property
+    def require_static_context(self) -> bool:
+        return self.lstm.config.n_static_context > 0
 
     def set_static_context(self, value: np.ndarray) -> None:
         assert value.ndim == 1
