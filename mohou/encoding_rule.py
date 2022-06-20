@@ -99,7 +99,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 cov = np.diag(np.ones(dim))
                 mean = np.array([0.5 * (minn + maxx)])
             else:
-                mean = np.mean(feature_seq_partial, axis=0)
+                mean: np.ndarray = np.mean(feature_seq_partial, axis=0)  # type: ignore
                 cov = np.cov(feature_seq_partial.T)
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)

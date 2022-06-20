@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup_requires = []
 
 install_requires = [
-    "numpy",
+    "numpy >= 1.20.0",
     "psutil",
     "sklearn",
     "torch",
