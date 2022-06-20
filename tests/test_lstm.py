@@ -7,13 +7,13 @@ def test_lstm():
     n_sample = 10
     n_seq_len = 100
     n_dim_with_flag = 7
-    n_dim_ti_input = 4
+    n_dim_static_context = 4
 
-    config = LSTMConfig(n_dim_with_flag, n_time_invariant_input=n_dim_ti_input)
+    config = LSTMConfig(n_dim_with_flag, n_static_context=n_dim_static_context)
     model: LSTM = LSTM(config)
 
     state_sample = torch.randn(n_sample, n_seq_len, n_dim_with_flag).float()
-    ti_inputs = torch.randn(n_sample, n_dim_ti_input).float()
+    ti_inputs = torch.randn(n_sample, n_dim_static_context).float()
 
     # test forward
     state_prop = model.forward(state_sample, ti_inputs)
