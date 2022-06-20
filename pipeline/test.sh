@@ -1,4 +1,6 @@
 #/bin/bash
+set -e
+
 base_path=$(dirname "$(realpath $0)")
 example_path=$base_path/../example
 

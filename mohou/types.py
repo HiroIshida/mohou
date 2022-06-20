@@ -750,9 +750,9 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             ax.grid()
 
         if hz is None:
-            fig.supxlabel("data point number [-]")
+            axs[-1].set_xlabel("data point number [-]")
         else:
-            fig.supxlabel("time [s]")
+            axs[-1].set_xlabel("time [s]")
 
         project_path = get_project_path(project_name)
         file_path = project_path / "seq-{}.png".format(elem_type.__name__)
