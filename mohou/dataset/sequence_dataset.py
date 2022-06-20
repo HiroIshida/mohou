@@ -127,9 +127,9 @@ class AutoRegressiveDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         state = torch.from_numpy(self.state_seq_list[idx]).float()
-        ti_input = torch.from_numpy(self.static_context_list[idx]).float()
+        context = torch.from_numpy(self.static_context_list[idx]).float()
         weight = torch.tensor(self.weight_seq_list[idx]).float()
-        return state, ti_input, weight
+        return state, context, weight
 
     def __post_init__(self):  # validation
         assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
@@ -143,7 +143,7 @@ class AutoRegressiveDataset(Dataset):
         chunk: MultiEpisodeChunk,
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
-        ti_input_list: Optional[List[np.ndarray]] = None,
+        static_context_list: Optional[List[np.ndarray]] = None,
         weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     ) -> "AutoRegressiveDataset":
 
@@ -166,14 +166,16 @@ class AutoRegressiveDataset(Dataset):
         assert_two_sequences_same_length(state_seq_list, weight_seq_list)
 
         # setting up biases
-        if ti_input_list is None:  # create sequence of 0-dim vector
-            ti_input_list = [np.zeros((0)) for _ in range(len(state_seq_list))]
-        assert_equal_with_message(len(ti_input_list), len(state_seq_list), "length of sequence")
+        if static_context_list is None:  # create sequence of 0-dim vector
+            static_context_list = [np.zeros((0)) for _ in range(len(state_seq_list))]
+        assert_equal_with_message(
+            len(static_context_list), len(state_seq_list), "length of sequence"
+        )
 
         # augmentation
         augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
-        state_seq_list_auged, [weight_seq_list_auged, ti_input_list_auged] = augmentor.apply(
-            state_seq_list, [weight_seq_list, ti_input_list]
+        state_seq_list_auged, [weight_seq_list_auged, static_context_list_auged] = augmentor.apply(
+            state_seq_list, [weight_seq_list, static_context_list]
         )
         assert weight_seq_list_auged is not None  # for mypy
 
@@ -183,7 +185,7 @@ class AutoRegressiveDataset(Dataset):
         )
         return cls(
             state_seq_list_auged_adjusted,
-            ti_input_list_auged,
+            static_context_list_auged,
             weight_seq_list_auged_adjusted,
             encoding_rule,
         )

@@ -61,12 +61,12 @@ class Propagator:
         pred_state_list: List[np.ndarray] = []
 
         assert self.static_context is not None, "forgot setting static_context ??"
-        ti_input_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
+        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
 
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
             states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-            state_pred_torch: torch.Tensor = self.lstm(states_torch, ti_input_torch)[:, -1]
+            state_pred_torch: torch.Tensor = self.lstm(states_torch, context_torch)[:, -1]
             state_pred = state_pred_torch.squeeze().detach().numpy()
 
             if force_continue:
