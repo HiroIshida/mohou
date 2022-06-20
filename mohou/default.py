@@ -92,8 +92,11 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     return propagator
 
 
-def create_default_image_context_list(project_name: Optional[str] = None) -> List[np.ndarray]:
-    chunk = MultiEpisodeChunk.load(project_name)
+def create_default_image_context_list(
+    project_name: Optional[str] = None, chunk: Optional[MultiEpisodeChunk] = None
+) -> List[np.ndarray]:
+    if chunk is None:
+        chunk = MultiEpisodeChunk.load(project_name)
     image_encoder = load_default_image_encoder(project_name)
 
     context_list = []
