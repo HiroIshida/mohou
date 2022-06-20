@@ -99,13 +99,24 @@ def train_lstm(
     weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     chunk: Optional[MultiEpisodeChunk] = None,
     warm_start: bool = False,
+    context_list: Optional[List[np.ndarray]] = None,
 ):
 
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)
 
+    if context_list is None:
+        assert model_config.n_static_context == 0
+    else:
+        for context in context_list:
+            assert len(context) == model_config.n_static_context
+
     dataset = AutoRegressiveDataset.from_chunk(
-        chunk, encoding_rule, augconfig=dataset_config, weighting=weighting
+        chunk,
+        encoding_rule,
+        augconfig=dataset_config,
+        weighting=weighting,
+        static_context_list=context_list,
     )
 
     if warm_start:

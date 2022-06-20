@@ -1,7 +1,10 @@
 import argparse
 
 from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.default import create_default_encoding_rule
+from mohou.default import (
+    create_default_encoding_rule,
+    create_default_image_context_list,
+)
 from mohou.model.lstm import LSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
 from mohou.setting import setting
@@ -19,6 +22,9 @@ if __name__ == "__main__":
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
     parser.add_argument("--warm", action="store_true", help="warm start")
+    parser.add_argument(
+        "--use_image_context", action="store_true", help="initial image as context input"
+    )
     args = parser.parse_args()
 
     project_name = args.pn
@@ -29,6 +35,7 @@ if __name__ == "__main__":
     cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
     warm_start = args.warm
+    use_image_context = args.use_image_context
 
     logger = create_default_logger(project_name, "lstm")  # noqa
 
@@ -36,6 +43,12 @@ if __name__ == "__main__":
     model_config = LSTMConfig(encoding_rule.dimension, n_hidden=n_hidden, n_layer=n_layer)
     dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
+
+    context_list = None
+    if use_image_context:
+        context_list = create_default_image_context_list(project_name)
+        model_config.n_static_context = len(context_list[0])
+
     train_lstm(
         project_name,
         encoding_rule,
@@ -43,4 +56,5 @@ if __name__ == "__main__":
         dataset_config,
         train_config,
         warm_start=warm_start,
+        context_list=context_list,
     )
