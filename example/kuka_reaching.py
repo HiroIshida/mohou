@@ -14,7 +14,7 @@ import tinyfk
 import tqdm
 from moviepy.editor import ImageSequenceClip
 
-from mohou.default import create_default_propagator
+from mohou.default import create_default_propagator, load_default_image_encoder
 from mohou.file import get_project_path
 from mohou.propagator import Propagator
 from mohou.types import (
@@ -173,7 +173,6 @@ class BulletManager(object):
         return rgbimg_seq, dimg_seq, angles_seq
 
     def simulate_feedback(self, propagator: Propagator, n_pixel=112) -> List[RGBImage]:
-
         rgb_list = []
         for i in range(200):
             rgb, depth = self.take_photo(n_pixel)
@@ -213,7 +212,14 @@ if __name__ == "__main__":
         target_pos, _ = bm.get_reachable_target_pos_and_av()
         bm.set_box(target_pos)
 
+        # prepare propagator
         propagator = create_default_propagator(project_name)
+        if propagator.require_static_context:
+            image_encoder = load_default_image_encoder(project_name)
+            rgb, _ = bm.take_photo(n_pixel)
+            context = image_encoder.forward(rgb)
+            propagator.set_static_context(context)
+
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 
         file_path = get_project_path(project_name) / "feedback_simulation.gif"
