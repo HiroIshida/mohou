@@ -118,7 +118,7 @@ class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
 @dataclass
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
-    time_invariant_input_list: List[np.ndarray]
+    static_context_list: List[np.ndarray]
     weight_seq_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
@@ -127,14 +127,14 @@ class AutoRegressiveDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         state = torch.from_numpy(self.state_seq_list[idx]).float()
-        ti_input = torch.from_numpy(self.time_invariant_input_list[idx]).float()
+        ti_input = torch.from_numpy(self.static_context_list[idx]).float()
         weight = torch.tensor(self.weight_seq_list[idx]).float()
         return state, ti_input, weight
 
     def __post_init__(self):  # validation
         assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
         assert_equal_with_message(
-            len(self.time_invariant_input_list), len(self.state_seq_list), "length of sequence"
+            len(self.static_context_list), len(self.state_seq_list), "length of sequence"
         )
 
     @classmethod

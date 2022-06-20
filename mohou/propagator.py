@@ -15,7 +15,7 @@ class Propagator:
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
-    time_invariant_input: Optional[np.ndarray] = None
+    static_context: Optional[np.ndarray] = None
 
     def __init__(self, lstm: LSTM, encoding_rule: EncodingRule, n_init_duplicate: int = 0):
         self.lstm = lstm
@@ -24,15 +24,15 @@ class Propagator:
         self.n_init_duplicate = n_init_duplicate
         self.is_initialized = False
 
-        require_time_invaliant_input = lstm.config.n_time_invariant_input > 0
+        require_time_invaliant_input = lstm.config.n_static_context > 0
 
         if not require_time_invaliant_input:  # auto set
-            self.time_invariant_input = np.empty((0,))
+            self.static_context = np.empty((0,))
 
-    def set_time_invariant_input(self, value: np.ndarray) -> None:
+    def set_static_context(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert self.lstm.config.n_time_invariant_input == len(value)
-        self.time_invariant_input = value
+        assert self.lstm.config.n_static_context == len(value)
+        self.static_context = value
 
     def feed(self, elem_dict: ElementDict):
         self._feed(elem_dict)
@@ -60,8 +60,8 @@ class Propagator:
     def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
-        assert self.time_invariant_input is not None, "forgot setting time_invariant_input ??"
-        ti_input_torch = torch.from_numpy(self.time_invariant_input).float().unsqueeze(dim=0)
+        assert self.static_context is not None, "forgot setting static_context ??"
+        ti_input_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
 
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
