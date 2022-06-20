@@ -62,7 +62,7 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
     chunk = MultiEpisodeChunk.load(project_name)
     chunk_spec = chunk.spec
     av_dim = chunk_spec.type_shape_table[AngleVector][0]
-    image_encoder = load_default_image_encoder()
+    image_encoder = load_default_image_encoder(project_name)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
 
     encoders = [image_encoder, av_idendical_encoder]
@@ -94,7 +94,7 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
 
 def create_default_image_context_list(project_name: Optional[str] = None) -> List[np.ndarray]:
     chunk = MultiEpisodeChunk.load(project_name)
-    image_encoder = load_default_image_encoder()
+    image_encoder = load_default_image_encoder(project_name)
 
     context_list = []
     for episode in chunk:
