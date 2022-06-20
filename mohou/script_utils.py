@@ -21,6 +21,7 @@ from mohou.dataset import (
     AutoRegressiveDatasetConfig,
     WeightPolicy,
 )
+from mohou.default import load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path, get_subproject_path
 from mohou.model import (
@@ -99,13 +100,24 @@ def train_lstm(
     weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     chunk: Optional[MultiEpisodeChunk] = None,
     warm_start: bool = False,
+    context_list: Optional[List[np.ndarray]] = None,
 ):
 
     if chunk is None:
         chunk = MultiEpisodeChunk.load(project_name)
 
+    if context_list is None:
+        assert model_config.n_static_context == 0
+    else:
+        for context in context_list:
+            assert len(context) == model_config.n_static_context
+
     dataset = AutoRegressiveDataset.from_chunk(
-        chunk, encoding_rule, augconfig=dataset_config, weighting=weighting
+        chunk,
+        encoding_rule,
+        augconfig=dataset_config,
+        weighting=weighting,
+        static_context_list=context_list,
     )
 
     if warm_start:
@@ -192,6 +204,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
 
     chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
     save_dir_path = get_subproject_path(project_name, "lstm_result")
+    image_encoder = load_default_image_encoder(project_name)
 
     for idx, edata in enumerate(chunk):
         episode_data = chunk[idx]
@@ -203,8 +216,13 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         assert image_type is not None
 
         n_feed = 20
-        fed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
-        fed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
+        feed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
+        feed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
+
+        # set context if necessary
+        if propagator.require_static_context:
+            context = image_encoder.forward(feed_images[0])
+            propagator.set_static_context(context)
 
         use_gripper = GripperState in propagator.encoding_rule
 
@@ -213,7 +231,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
 
         print("start lstm propagation")
         for i in range(n_feed):
-            elem_dict = ElementDict([fed_avs[i], fed_images[i]])
+            elem_dict = ElementDict([feed_avs[i], feed_images[i]])
             if use_gripper:
                 elem_dict[GripperState] = fed_grippers[i]
             propagator.feed(elem_dict)
@@ -276,7 +294,7 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         # save gif image
         print("adding text to images...")
         fed_images_with_text = [
-            add_text_to_image(image, "fed (original) image)", "blue") for image in fed_images
+            add_text_to_image(image, "fed (original) image)", "blue") for image in feed_images
         ]
         clamp = lambda x: max(min(x, 1.0), 0.0)  # noqa
         pred_images_with_text = [

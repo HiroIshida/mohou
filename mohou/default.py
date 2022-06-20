@@ -1,6 +1,8 @@
-from typing import Optional, Type
+from typing import List, Optional, Type
 
-from mohou.encoder import VectorIdenticalEncoder
+import numpy as np
+
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, AutoEncoderBase
 from mohou.propagator import Propagator
@@ -43,13 +45,8 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     return t
 
 
-def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
-
-    chunk = MultiEpisodeChunk.load(project_name)
-    chunk_spec = chunk.spec
-    av_dim = chunk_spec.type_shape_table[AngleVector][0]
+def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncoder:
     ae_type = auto_detect_autoencoder_type(project_name)
-
     try:
         tcache_autoencoder = TrainCache.load(project_name, ae_type)
     except Exception:
@@ -57,7 +54,15 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
 
     if tcache_autoencoder.best_model is None:
         raise DefaultNotFoundError("traincache was found but best model is not saved ")
-    image_encoder = tcache_autoencoder.best_model.get_encoder()
+    return tcache_autoencoder.best_model.get_encoder()
+
+
+def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
+
+    chunk = MultiEpisodeChunk.load(project_name)
+    chunk_spec = chunk.spec
+    av_dim = chunk_spec.type_shape_table[AngleVector][0]
+    image_encoder = load_default_image_encoder(project_name)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
 
     encoders = [image_encoder, av_idendical_encoder]
@@ -85,3 +90,16 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, encoding_rule)
     return propagator
+
+
+def create_default_image_context_list(project_name: Optional[str] = None) -> List[np.ndarray]:
+    chunk = MultiEpisodeChunk.load(project_name)
+    image_encoder = load_default_image_encoder(project_name)
+
+    context_list = []
+    for episode in chunk:
+        seq = episode.get_sequence_by_type(image_encoder.elem_type)
+        context = image_encoder.forward(seq[0])
+        context_list.append(context)
+
+    return context_list
