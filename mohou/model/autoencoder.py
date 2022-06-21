@@ -276,3 +276,16 @@ class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
         self.dense_mean = nn.Linear(out_dim, config.n_bottleneck)
         self.dense_var = nn.Linear(out_dim, config.n_bottleneck)
         self.n_pixel = n_pixel
+
+    def get_latent_axis_images(
+        self, axis: int, b_min: float = -2.0, b_max: float = 2.0, n_sample: int = 20
+    ) -> List[ImageT]:
+        # create samples from latent space walking through an axis
+        samples = torch.zeros(n_sample, self.config.n_bottleneck)
+        for i, val in enumerate(np.linspace(b_min, b_max, n_sample)):
+            samples[i, axis] = val
+
+        # create images
+        tensor_images = self.decoder_module(samples)
+        images = [self.image_type.from_tensor(tensor_image) for tensor_image in tensor_images]
+        return images

@@ -9,6 +9,8 @@ from typing import List, Optional, Type, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mohou.model.autoencoder import VariationalAutoEncoder
+
 try:
     from moviepy.editor import ImageSequenceClip
 except Exception:
@@ -186,6 +188,21 @@ def visualize_image_reconstruction(
             save_dir_path = get_subproject_path(project_name, "autoencoder_result")
             file_path = save_dir_path / "result-{}-{}.png".format(postfix, i)
             plt.savefig(str(file_path))
+
+
+def visualize_variational_autoencoder(project_name: Optional[str] = None):
+    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
+    vae = tcache.best_model
+    assert vae is not None
+
+    save_dir_path = get_subproject_path(project_name, "autoencoder_result")
+
+    for axis in range(vae.config.n_bottleneck):
+        images = vae.get_latent_axis_images(axis)
+        assert ImageSequenceClip is not None, "check if your moviepy is properly installed"
+        clip = ImageSequenceClip([im.numpy() for im in images], fps=20)
+        file_path = save_dir_path / "vae-axis{}.gif".format(axis)
+        clip.write_gif(str(file_path), fps=20)
 
 
 def add_text_to_image(image: ImageBase, text: str, color: str):

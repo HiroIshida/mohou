@@ -1,7 +1,11 @@
 import argparse
 
 from mohou.default import auto_detect_autoencoder_type
-from mohou.script_utils import visualize_image_reconstruction
+from mohou.model.autoencoder import VariationalAutoEncoder
+from mohou.script_utils import (
+    visualize_image_reconstruction,
+    visualize_variational_autoencoder,
+)
 from mohou.setting import setting
 
 if __name__ == "__main__":
@@ -13,3 +17,6 @@ if __name__ == "__main__":
     n_vis = args.n
     ae_type = auto_detect_autoencoder_type(project_name)
     visualize_image_reconstruction(project_name, n_vis, ae_type=ae_type)
+
+    if ae_type == VariationalAutoEncoder:
+        visualize_variational_autoencoder(project_name)
