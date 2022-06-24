@@ -1,8 +1,6 @@
 import copy
-import hashlib
 import logging
 import operator
-import pickle
 from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Any, Dict, Generic, List, Optional, TypeVar
@@ -10,6 +8,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 import torch
 import torch.nn as nn
 
+from mohou.types import HashableMixin
 from mohou.utils import detect_device
 
 logger = logging.getLogger(__name__)
@@ -46,12 +45,8 @@ def average_loss_dict(dicts: List[LossDict]):
     return dict_new
 
 
-class ModelConfigBase:
-    @property
-    def hash_value(self) -> str:
-        data_pickle = pickle.dumps(self)
-        data_md5 = hashlib.md5(data_pickle).hexdigest()
-        return data_md5[:7]
+class ModelConfigBase(HashableMixin):
+    pass
 
 
 ModelConfigT = TypeVar("ModelConfigT", bound=ModelConfigBase)

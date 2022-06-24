@@ -1,6 +1,8 @@
 import copy
 import functools
+import hashlib
 import operator
+import pickle
 import random
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
@@ -51,10 +53,21 @@ ColorImageT = TypeVar("ColorImageT", bound="ColorImageBase")
 CompositeImageT = TypeVar("CompositeImageT", bound="CompositeImageBase")
 ImageT = TypeVar("ImageT", bound="ImageBase")
 VectorT = TypeVar("VectorT", bound="VectorBase")
-MetaData = Optional[Dict[str, Union[str, int, float]]]
 
 
 CompositeListElementT = TypeVar("CompositeListElementT")
+
+
+class HashableMixin:
+    @property
+    def hash_value(self) -> str:
+        data_pickle = pickle.dumps(self)
+        data_md5 = hashlib.md5(data_pickle).hexdigest()
+        return data_md5[:8]
+
+
+class MetaData(Dict[str, Union[str, int, float]], HashableMixin):
+    pass
 
 
 class HasAList(Generic[CompositeListElementT]):
@@ -532,7 +545,7 @@ class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     time_stamp_seq: Optional[TimeStampSequence] = None
-    metadata: MetaData = None
+    metadata: Optional[MetaData] = None
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
@@ -569,7 +582,7 @@ class EpisodeData(TypeShapeTableMixin):
         cls,
         sequence_list: List[ElementSequence],
         timestamp_seq: Optional[TimeStampSequence] = None,
-        metadata: MetaData = None,
+        metadata: Optional[MetaData] = None,
     ):
 
         for sequence in sequence_list:
@@ -705,7 +718,7 @@ class ChunkSpec(TypeShapeTableMixin):
     n_episode_intact: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    extra_info: MetaData = None
+    extra_info: Optional[MetaData] = None
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -740,7 +753,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     def from_data_list(
         cls,
         data_list: List[EpisodeData],
-        extra_info: MetaData = None,
+        extra_info: Optional[MetaData] = None,
         shuffle: bool = True,
         with_intact_data: bool = True,
     ) -> "MultiEpisodeChunk":
