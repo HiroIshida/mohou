@@ -1,3 +1,4 @@
+import copy
 import os
 import pathlib
 import pickle
@@ -220,6 +221,18 @@ def test_episode_data_assertion_type_inconsitency():
 
     with pytest.raises(AssertionError):
         EpisodeData.from_seq_list([image_seq, image_seq])
+
+
+def test_two_chunk_consistency():
+    def create_edata(n_length):
+        av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(n_length)])
+        data = EpisodeData.from_seq_list([av_seq])
+        return data
+
+    lst = [create_edata(5) for _ in range(100)]
+    chunk = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
+    chunk2 = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
+    assert pickle.dumps(chunk) == pickle.dumps(chunk2)
 
 
 @pytest.fixture(scope="session")
