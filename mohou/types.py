@@ -473,10 +473,18 @@ class TypeShapeTableMixin:
 
 
 @dataclass
+class TimeStampSequence(HasAList[float]):
+    _data: List[float]
+
+    def _get_has_a_list(self) -> List[float]:
+        return self._data
+
+
+@dataclass
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    time_stamp_list: Optional[List[float]] = None
+    time_stamp_seq: Optional[TimeStampSequence] = None
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
@@ -510,7 +518,7 @@ class EpisodeData(TypeShapeTableMixin):
 
     @classmethod
     def from_seq_list(
-        cls, sequence_list: List[ElementSequence], time_stamp_list: Optional[List[float]] = None
+        cls, sequence_list: List[ElementSequence], timestamp_seq: Optional[List[float]] = None
     ):
 
         for sequence in sequence_list:
@@ -518,8 +526,8 @@ class EpisodeData(TypeShapeTableMixin):
 
         all_same_length = len(set(map(len, sequence_list))) == 1
         assert all_same_length
-        if time_stamp_list is not None:
-            assert len(sequence_list[0]) == len(time_stamp_list)
+        if timestamp_seq is not None:
+            assert len(sequence_list[0]) == len(timestamp_seq)
 
         types = [type(seq[0]) for seq in sequence_list]
 
@@ -536,7 +544,7 @@ class EpisodeData(TypeShapeTableMixin):
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, type_shape_table, time_stamp_list)  # type: ignore
+        return cls(sequence_dict, type_shape_table, timestamp_seq)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -567,11 +575,12 @@ class EpisodeData(TypeShapeTableMixin):
             elems = [seq[index_like] for seq in self.sequence_dict.values()]
             return ElementDict(elems)
         elif isinstance(index_like, slice) or isinstance(index_like, list):
+            partial_ts_seq = self.time_stamp_seq[index_like]
             partial_seq_list = []
             for seq in self.sequence_dict.values():
                 if seq.elem_type != TerminateFlag:
                     partial_seq_list.append(ElementSequence(seq[index_like]))  # type: ignore
-            return EpisodeData.from_seq_list(partial_seq_list)
+            return EpisodeData.from_seq_list(partial_seq_list, timestamp_seq=partial_ts_seq)
         else:
             assert False
 

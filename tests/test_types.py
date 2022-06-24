@@ -21,6 +21,7 @@ from mohou.types import (
     RGBDImage,
     RGBImage,
     TerminateFlag,
+    TimeStampSequence,
     VectorBase,
     _chunk_cache,
     extract_contour_by_laplacian,
@@ -171,7 +172,8 @@ def test_episode_data():
     # creation
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
-    episode = EpisodeData.from_seq_list([image_seq, av_seq])
+    ts_seq = TimeStampSequence([i * np.random.randn() * 0.001 for i in range(10)])
+    episode = EpisodeData.from_seq_list([image_seq, av_seq], timestamp_seq=ts_seq)
 
     assert set(episode.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
