@@ -736,6 +736,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         elem_type: Type[VectorBase],
         project_name: Optional[str] = None,
         hz: Optional[float] = None,
+        postfix: Optional[str] = None,
     ) -> None:
 
         n_vec_dim = self.spec.type_shape_table[elem_type][0]
@@ -772,7 +773,10 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             axs[-1].set_xlabel("time [s]")
 
         project_path = get_project_path(project_name)
-        file_path = project_path / "seq-{}.png".format(elem_type.__name__)
+        if postfix is None:
+            file_path = project_path / "seq-{0}.png".format(elem_type.__name__)
+        else:
+            file_path = project_path / "seq-{0}-{1}.png".format(postfix, elem_type.__name__)
         file_name = str(file_path)
         fig.savefig(file_name, format="png", dpi=300)
         print("saved to {}".format(file_name))
