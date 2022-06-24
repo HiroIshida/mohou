@@ -172,11 +172,22 @@ def test_episode_data():
     # creation
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
-    data = EpisodeData.from_seq_list([image_seq, av_seq])
+    episode = EpisodeData.from_seq_list([image_seq, av_seq])
 
-    assert set(data.types()) == set([AngleVector, RGBImage, TerminateFlag])
-    assert isinstance(data[0], ElementDict)  # access by index
-    assert isinstance(data[:3], EpisodeData)  # access by slice
+    assert set(episode.types()) == set([AngleVector, RGBImage, TerminateFlag])
+
+    edict = episode[0]
+    assert isinstance(edict, ElementDict)  # access by index
+    np.testing.assert_almost_equal(edict[RGBImage].numpy(), image_seq[0].numpy())
+
+    i_start = 2
+    i_end = 5
+    episode_partial = episode[i_start:i_end]
+    assert isinstance(episode_partial, EpisodeData)  # access by slice
+    np.testing.assert_almost_equal(episode_partial[0][RGBImage].numpy(), image_seq[i_start].numpy())
+    np.testing.assert_almost_equal(
+        episode_partial[-1][RGBImage].numpy(), image_seq[i_end - 1].numpy()
+    )
 
 
 def test_episode_data_assertion_different_size():
