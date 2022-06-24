@@ -468,20 +468,18 @@ class TypeShapeTableMixin:
 
 
 @dataclass(frozen=True)
-class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
-    sequence_list: List[ElementSequence]
+class EpisodeData(TypeShapeTableMixin):
+    sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
         self.check_terminate_seq(ef_seq)
 
-    def _get_has_a_list(self) -> List[ElementSequence]:
-        return self.sequence_list
-
-    def get_elem_dict(self, idx) -> ElementDict:
-        elems = [seq[idx] for seq in self.sequence_list]
-        return ElementDict(elems)
+    def __len__(self) -> int:
+        # assume at least TerminateFlag is included
+        assert TerminateFlag in self.sequence_dict
+        return len(self.sequence_dict[TerminateFlag])
 
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
@@ -526,20 +524,16 @@ class EpisodeData(HasAList[ElementSequence], TypeShapeTableMixin):
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, "all sequences must have different type"
-        return cls(sequence_list, type_shape_table)
+
+        sequence_dict = {seq.elem_type: seq for seq in sequence_list}
+        return cls(sequence_dict, type_shape_table)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
-        def get_sequence_by_primitive_type(elem_type):
-            for seq in self.sequence_list:
-                if isinstance(seq[0], elem_type):
-                    # thanks to all_different_type
-                    return seq
-            assert False, "element with type {} not found".format(elem_type)
 
         if issubclass(elem_type, PrimitiveElementBase):
-            return get_sequence_by_primitive_type(elem_type)  # type: ignore
+            return self.sequence_dict[elem_type]  # type: ignore
         elif issubclass(elem_type, CompositeImageBase):
-            seqs = [get_sequence_by_primitive_type(t) for t in elem_type.image_types]
+            seqs = [self.sequence_dict[t] for t in elem_type.image_types]
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False, "element with type {} not found".format(elem_type)
@@ -630,7 +624,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         type_shape_table = data_list[0].type_shape_table
 
         # chunk spec
-        n_average = int(sum([len(data[0]) for data in data_list]) / len(data_list))
+        n_average = int(sum([len(data) for data in data_list]) / len(data_list))
         spec = ChunkSpec(
             len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
         )
