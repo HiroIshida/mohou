@@ -652,6 +652,8 @@ class EpisodeData(TypeShapeTableMixin):
         assert self.time_stamp_seq is not None
         i_start_data = self.time_stamp_seq.index_geq(t_start_data)
         i_end_data = self.time_stamp_seq.index_geq(t_end_data)
+
+        assert i_start_data < i_end_data
         partial_episode = self[i_start_data : i_end_data + 1]
 
         if t_end_task is None:
