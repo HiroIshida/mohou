@@ -174,7 +174,9 @@ def test_episode_data():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     ts_seq = TimeStampSequence([i for i in range(10)])
-    episode = EpisodeData.from_seq_list([image_seq, av_seq], timestamp_seq=ts_seq)
+    episode = EpisodeData.from_seq_list(
+        [image_seq, av_seq], timestamp_seq=ts_seq, metadata={"id": "hogehoge"}
+    )
 
     assert set(episode.types()) == set([AngleVector, RGBImage, TerminateFlag])
 

@@ -51,6 +51,7 @@ ColorImageT = TypeVar("ColorImageT", bound="ColorImageBase")
 CompositeImageT = TypeVar("CompositeImageT", bound="CompositeImageBase")
 ImageT = TypeVar("ImageT", bound="ImageBase")
 VectorT = TypeVar("VectorT", bound="VectorBase")
+MetaData = Optional[Dict[str, Union[str, int, float]]]
 
 
 CompositeListElementT = TypeVar("CompositeListElementT")
@@ -531,6 +532,7 @@ class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     time_stamp_seq: Optional[TimeStampSequence] = None
+    metadata: MetaData = None
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
@@ -564,7 +566,10 @@ class EpisodeData(TypeShapeTableMixin):
 
     @classmethod
     def from_seq_list(
-        cls, sequence_list: List[ElementSequence], timestamp_seq: Optional[TimeStampSequence] = None
+        cls,
+        sequence_list: List[ElementSequence],
+        timestamp_seq: Optional[TimeStampSequence] = None,
+        metadata: MetaData = None,
     ):
 
         for sequence in sequence_list:
@@ -590,7 +595,7 @@ class EpisodeData(TypeShapeTableMixin):
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, type_shape_table, timestamp_seq)  # type: ignore
+        return cls(sequence_dict, type_shape_table, timestamp_seq, metadata)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -694,16 +699,13 @@ class EpisodeData(TypeShapeTableMixin):
         clip.write_gif(filename, fps=fps)
 
 
-ExtraInfoType = Optional[Dict[str, Union[str, int, float]]]
-
-
 @dataclass(frozen=True)
 class ChunkSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    extra_info: ExtraInfoType = None
+    extra_info: MetaData = None
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -738,7 +740,7 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     def from_data_list(
         cls,
         data_list: List[EpisodeData],
-        extra_info: ExtraInfoType = None,
+        extra_info: MetaData = None,
         shuffle: bool = True,
         with_intact_data: bool = True,
     ) -> "MultiEpisodeChunk":
