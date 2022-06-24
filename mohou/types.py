@@ -472,6 +472,7 @@ class TypeShapeTableMixin:
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
+    time_stamp_list: Optional[List[float]] = None
 
     def __post_init__(self):
         ef_seq = self.get_sequence_by_type(TerminateFlag)
@@ -504,13 +505,17 @@ class EpisodeData(TypeShapeTableMixin):
         assert change_count == 1
 
     @classmethod
-    def from_seq_list(cls, sequence_list: List[ElementSequence]):
+    def from_seq_list(
+        cls, sequence_list: List[ElementSequence], time_stamp_list: Optional[List[float]] = None
+    ):
 
         for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
 
         all_same_length = len(set(map(len, sequence_list))) == 1
         assert all_same_length
+        if time_stamp_list is not None:
+            assert len(sequence_list[0]) == len(time_stamp_list)
 
         types = [type(seq[0]) for seq in sequence_list]
 
@@ -527,7 +532,7 @@ class EpisodeData(TypeShapeTableMixin):
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, type_shape_table)  # type: ignore
+        return cls(sequence_dict, type_shape_table, time_stamp_list)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
