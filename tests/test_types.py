@@ -175,6 +175,8 @@ def test_episode_data():
     data = EpisodeData.from_seq_list([image_seq, av_seq])
 
     assert set(data.types()) == set([AngleVector, RGBImage, TerminateFlag])
+    assert isinstance(data[0], ElementDict)  # access by index
+    assert isinstance(data[:3], EpisodeData)  # access by slice
 
 
 def test_episode_data_assertion_different_size():

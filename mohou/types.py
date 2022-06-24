@@ -17,6 +17,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    overload,
 )
 
 import cv2
@@ -537,6 +538,28 @@ class EpisodeData(TypeShapeTableMixin):
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False, "element with type {} not found".format(elem_type)
+
+    @overload
+    def __getitem__(self, index: int) -> ElementDict:
+        pass
+
+    @overload
+    def __getitem__(self, slicee: slice) -> "EpisodeData":
+        """remove TerminateFlag"""
+        pass
+
+    def __getitem__(self, index_like):
+        if isinstance(index_like, int):
+            elems = [seq[index_like] for seq in self.sequence_dict.values()]
+            return ElementDict(elems)
+        elif isinstance(index_like, slice):
+            partial_seq_list = []
+            for seq in self.sequence_dict.values():
+                if seq.elem_type != TerminateFlag:
+                    partial_seq_list.append(ElementSequence(seq[index_like]))  # type: ignore
+            return EpisodeData.from_seq_list(partial_seq_list)
+        else:
+            assert False
 
     def save_debug_gif(self, filename: str, fps: int = 20):
         t: Type[ImageBase]
