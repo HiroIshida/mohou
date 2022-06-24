@@ -65,7 +65,11 @@ class HasAList(Sequence, Generic[CompositeListElementT]):
         return self._get_has_a_list().__iter__()
 
     def __getitem__(self, indices_like):  # TODO(HiroIshida) add type hints?
-        return self._get_has_a_list()[indices_like]
+        lst_inner = self._get_has_a_list()
+        if isinstance(indices_like, list):
+            return [lst_inner[i] for i in indices_like]
+        else:
+            return lst_inner[indices_like]
 
     def __len__(self) -> int:
         return len(self._get_has_a_list())
@@ -468,7 +472,7 @@ class TypeShapeTableMixin:
         return list(self.type_shape_table.keys())  # type: ignore
 
 
-@dataclass(frozen=True)
+@dataclass
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -549,6 +553,11 @@ class EpisodeData(TypeShapeTableMixin):
         pass
 
     @overload
+    def __getitem__(self, indices: List[int]) -> "EpisodeData":
+        """remove TerminateFlag"""
+        pass
+
+    @overload
     def __getitem__(self, slicee: slice) -> "EpisodeData":
         """remove TerminateFlag"""
         pass
@@ -557,7 +566,7 @@ class EpisodeData(TypeShapeTableMixin):
         if isinstance(index_like, int):
             elems = [seq[index_like] for seq in self.sequence_dict.values()]
             return ElementDict(elems)
-        elif isinstance(index_like, slice):
+        elif isinstance(index_like, slice) or isinstance(index_like, list):
             partial_seq_list = []
             for seq in self.sequence_dict.values():
                 if seq.elem_type != TerminateFlag:

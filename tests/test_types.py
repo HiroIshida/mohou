@@ -188,6 +188,11 @@ def test_episode_data():
         episode_partial[-1][RGBImage].numpy(), image_seq[i_end - 1].numpy()
     )
 
+    episode_partial = episode[[2, 6]]
+    assert isinstance(episode_partial, EpisodeData)  # access by indices
+    np.testing.assert_almost_equal(episode_partial[0][RGBImage].numpy(), image_seq[2].numpy())
+    np.testing.assert_almost_equal(episode_partial[-1][RGBImage].numpy(), image_seq[6].numpy())
+
 
 def test_episode_data_assertion_different_size():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(3)])
