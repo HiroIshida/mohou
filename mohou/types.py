@@ -138,6 +138,12 @@ class PrimitiveElementBase(ElementBase):
     def __getitem__(self, index):
         return self._data[index]
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PrimitiveElementBase):
+            return NotImplemented
+        assert type(self) == type(other)
+        return np.allclose(self._data, other._data, atol=1e-6)
+
 
 class VectorBase(PrimitiveElementBase):
     def __init__(self, data: np.ndarray) -> None:
@@ -395,6 +401,15 @@ class CompositeImageBase(ImageBase):
         for image in self.images:
             image.resize(shape2d_new)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CompositeImageBase):
+            return NotImplemented
+        assert type(self) == type(other)
+        for im_self, im_other in zip(self.images, other.images):
+            if im_self != im_other:
+                return False
+        return True
+
 
 class RGBDImage(CompositeImageBase):
     image_types = [RGBImage, DepthImage]
@@ -429,6 +444,15 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
 
         else:
             assert False
+
+    def __eq__(self, other: object):
+        if not isinstance(other, ElementDict):
+            return NotImplemented
+        assert isinstance(other, ElementDict)
+        for key in self.keys():
+            if self[key] != other[key]:
+                return False
+        return True
 
 
 def get_element_type(type_name: str) -> Type[ElementBase]:
