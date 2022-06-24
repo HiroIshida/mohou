@@ -56,13 +56,25 @@ VectorT = TypeVar("VectorT", bound="VectorBase")
 CompositeListElementT = TypeVar("CompositeListElementT")
 
 
-class HasAList(Sequence, Generic[CompositeListElementT]):
+class HasAList(Generic[CompositeListElementT]):
     @abstractmethod
     def _get_has_a_list(self) -> List[CompositeListElementT]:
         pass
 
     def __iter__(self) -> Iterator[CompositeListElementT]:
         return self._get_has_a_list().__iter__()
+
+    @overload
+    def __getitem__(self, indices: List[int]) -> List[CompositeListElementT]:
+        pass
+
+    @overload
+    def __getitem__(self, indices: slice) -> List[CompositeListElementT]:
+        pass
+
+    @overload
+    def __getitem__(self, index: int) -> CompositeListElementT:
+        pass
 
     def __getitem__(self, indices_like):  # TODO(HiroIshida) add type hints?
         lst_inner = self._get_has_a_list()
@@ -474,13 +486,23 @@ class TypeShapeTableMixin:
 
 @dataclass
 class TimeStampSequence(HasAList[float]):
+    """data must be increasing order"""
+
     _data: List[float]
+
+    def __post_init__(self):
+        assert sorted(self._data) == self._data
 
     def _get_has_a_list(self) -> List[float]:
         return self._data
 
+    def index_geq(self, time: float) -> int:
+        """find index greater than or equal to time"""
+        eps = 1e-8
+        return [i for i, t in enumerate(self._data) if t > time - eps][0]
 
-@dataclass
+
+@dataclass(frozen=True)
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -518,7 +540,7 @@ class EpisodeData(TypeShapeTableMixin):
 
     @classmethod
     def from_seq_list(
-        cls, sequence_list: List[ElementSequence], timestamp_seq: Optional[List[float]] = None
+        cls, sequence_list: List[ElementSequence], timestamp_seq: Optional[TimeStampSequence] = None
     ):
 
         for sequence in sequence_list:
@@ -575,14 +597,60 @@ class EpisodeData(TypeShapeTableMixin):
             elems = [seq[index_like] for seq in self.sequence_dict.values()]
             return ElementDict(elems)
         elif isinstance(index_like, slice) or isinstance(index_like, list):
-            partial_ts_seq = self.time_stamp_seq[index_like]
+
+            if self.time_stamp_seq is None:
+                partial_ts_seq = None
+            else:
+                partial_ts_seq = TimeStampSequence(self.time_stamp_seq[index_like])
+
             partial_seq_list = []
             for seq in self.sequence_dict.values():
                 if seq.elem_type != TerminateFlag:
+                    # TODO(HiroIshida): remove type ignore
                     partial_seq_list.append(ElementSequence(seq[index_like]))  # type: ignore
             return EpisodeData.from_seq_list(partial_seq_list, timestamp_seq=partial_ts_seq)
         else:
             assert False
+
+    def slice_by_time(
+        self, t_start_data: float, t_end_data: float, t_end_task: Optional[float] = None
+    ) -> "EpisodeData":
+        """slice episode using times.
+        t_start_data: start time of data
+        t_end_data: end time of this episode
+        t_end_task: input this if t_end_task does not match t_end_data. This is important if TerminateFlag before the terminal index.
+
+        These three values must satisfy following realtions t_start_data < t_end_task < t_end_data
+
+        """
+        assert t_start_data < t_end_data
+
+        assert self.time_stamp_seq is not None
+        i_start_data = self.time_stamp_seq.index_geq(t_start_data)
+        i_end_data = self.time_stamp_seq.index_geq(t_end_data)
+        partial_episode = self[i_start_data : i_end_data + 1]
+
+        if t_end_task is None:
+            return partial_episode
+        else:
+            assert t_start_data < t_end_task < t_end_data
+            # create flag sequence considering t_end_task
+            i_end_task = self.time_stamp_seq.index_geq(t_end_task)
+            flag_list_false = [
+                TerminateFlag.from_bool(False) for _ in range(i_end_task - i_start_data)
+            ]
+            flag_list_true = [
+                TerminateFlag.from_bool(True) for _ in range(i_end_data - i_end_task + 1)
+            ]
+            flag_seq = ElementSequence[TerminateFlag](flag_list_false + flag_list_true)
+
+            # bit dirty...
+            assert partial_episode.time_stamp_seq is not None  # just for mypy
+            time_seq = partial_episode.time_stamp_seq
+            seq_dict = copy.deepcopy(partial_episode.sequence_dict)
+            # TODO(HiroIshida) remove type-ignore (generic dict..?)
+            seq_dict[TerminateFlag] = flag_seq  # type: ignore
+            return EpisodeData.from_seq_list(list(seq_dict.values()), timestamp_seq=time_seq)
 
     def save_debug_gif(self, filename: str, fps: int = 20):
         t: Type[ImageBase]
