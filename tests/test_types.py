@@ -17,6 +17,7 @@ from mohou.types import (
     EpisodeData,
     GrayImage,
     GripperState,
+    MetaData,
     MultiEpisodeChunk,
     PrimitiveImageBase,
     RGBDImage,
@@ -32,6 +33,15 @@ from mohou.types import (
 @pytest.fixture(scope="session")
 def sample_image_path():
     return os.path.join(pathlib.Path(__file__).resolve().parent, "data", "sample.png")
+
+
+def test_metadata():
+    m1 = MetaData({"hoge": "hogehoge"})
+    m2 = MetaData({"hoge": "hogehoge"})
+    m3 = MetaData({"fuga": "fugafuaga"})
+    assert m1.hash_value == m2.hash_value
+    with pytest.raises(AssertionError):
+        assert m1.hash_value == m3.hash_value
 
 
 def test_elements():
