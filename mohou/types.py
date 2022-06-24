@@ -445,6 +445,15 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
         else:
             assert False
 
+    def __eq__(self, other: object):
+        if not isinstance(other, ElementDict):
+            return NotImplemented
+        assert isinstance(other, ElementDict)
+        for key in self.keys():
+            if self[key] != other[key]:
+                return False
+        return True
+
 
 def get_element_type(type_name: str) -> Type[ElementBase]:
     for t in get_all_concrete_leaftypes(ElementBase):

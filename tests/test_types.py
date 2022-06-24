@@ -195,12 +195,15 @@ def test_episode_data():
     assert episode_partial[-1][RGBImage] == image_seq[6]
 
     # test slice_by_time
-    episode_partial = episode.slice_by_time(0, 7.0, 4.0)
+    episode_partial = episode.slice_by_time(1.2, 9.0, 5.0)
     assert len(episode_partial) == 8
     flag_seq = episode_partial.get_sequence_by_type(TerminateFlag)
-    for i in range(0, 4):
+
+    for i in range(8):
+        episode_partial[i] == episode[i + 2]
+    for i in range(0, 3):
         assert flag_seq[i] == TerminateFlag.from_bool(False)
-    for i in range(5, 8):
+    for i in range(3, 8):
         assert flag_seq[i] == TerminateFlag.from_bool(True)
 
 
