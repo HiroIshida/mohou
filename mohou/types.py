@@ -758,8 +758,15 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             for idx in sorted(indices_intact, reverse=True):
                 data_list_intact.append(data_list.pop(idx))
 
+        # use fixed random seed where it's scope is only in this function
+        # The reason why I used fixed seed is to keep two different shuffled
+        # chunk generated has the contents in the same order.
+        # This is particulary important say you make a chunk with 5hz and another
+        # with 20hz, and do some computation using both of chunks.
+        rn = random.Random()
+        rn.seed(0)
         if shuffle:
-            random.shuffle(data_list)
+            rn.shuffle(data_list)
 
         type_shape_table = data_list[0].type_shape_table
 
