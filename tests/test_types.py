@@ -44,7 +44,7 @@ def test_gripper_state():
     for arr in [np.zeros(2), np.ones(2)]:
         gs = GripperState(arr.astype(bool))
         gs_reconstructed = GripperState.from_tensor(gs.to_tensor())
-        np.testing.assert_almost_equal(gs._data, gs_reconstructed._data)
+        assert gs == gs_reconstructed
 
 
 def test_rdb_image_creation(sample_image_path):
@@ -87,10 +87,10 @@ def test_depth_image_creation():
 def test_primitive_images(T: Type[PrimitiveImageBase]):
     img = T.dummy_from_shape((100, 100))
     img2 = T.from_tensor(img.to_tensor())
-    np.testing.assert_almost_equal(img._data, img2._data, decimal=5)
+    assert img == img2
 
     with pytest.raises(AssertionError):
-        np.testing.assert_almost_equal(img.randomize()._data, img.randomize()._data, decimal=5)
+        assert img.randomize() == img2.randomize()
 
     img.to_rgb()
     assert img.shape == (100, 100, img.channel())
@@ -108,7 +108,7 @@ def test_rdbd_image():
 
     rgbd2 = RGBDImage.from_tensor(rgbd.to_tensor())
     for im1, im2 in zip(rgbd.images, rgbd2.images):
-        np.testing.assert_almost_equal(im1._data, im2._data, decimal=5)
+        assert im1 == im2
 
     rgbd.to_rgb()
 
@@ -180,30 +180,28 @@ def test_episode_data():
     # test __getitem__
     edict = episode[0]
     assert isinstance(edict, ElementDict)  # access by index
-    np.testing.assert_almost_equal(edict[RGBImage].numpy(), image_seq[0].numpy())
+    assert edict[RGBImage] == image_seq[0]
 
     i_start = 2
     i_end = 5
     episode_partial = episode[i_start:i_end]
     assert isinstance(episode_partial, EpisodeData)  # access by slice
-    np.testing.assert_almost_equal(episode_partial[0][RGBImage].numpy(), image_seq[i_start].numpy())
-    np.testing.assert_almost_equal(
-        episode_partial[-1][RGBImage].numpy(), image_seq[i_end - 1].numpy()
-    )
+    assert episode_partial[0][RGBImage] == image_seq[i_start]
+    assert episode_partial[-1][RGBImage] == image_seq[i_end - 1]
 
     episode_partial = episode[[2, 6]]
     assert isinstance(episode_partial, EpisodeData)  # access by indices
-    np.testing.assert_almost_equal(episode_partial[0][RGBImage].numpy(), image_seq[2].numpy())
-    np.testing.assert_almost_equal(episode_partial[-1][RGBImage].numpy(), image_seq[6].numpy())
+    assert episode_partial[0][RGBImage] == image_seq[2]
+    assert episode_partial[-1][RGBImage] == image_seq[6]
 
     # test slice_by_time
     episode_partial = episode.slice_by_time(0, 7.0, 4.0)
     assert len(episode_partial) == 8
     flag_seq = episode_partial.get_sequence_by_type(TerminateFlag)
     for i in range(0, 4):
-        np.testing.assert_equal(flag_seq[i].numpy(), TerminateFlag.from_bool(False).numpy())
+        assert flag_seq[i] == TerminateFlag.from_bool(False)
     for i in range(5, 8):
-        np.testing.assert_equal(flag_seq[i].numpy(), TerminateFlag.from_bool(True).numpy())
+        assert flag_seq[i] == TerminateFlag.from_bool(True)
 
 
 def test_episode_data_assertion_different_size():

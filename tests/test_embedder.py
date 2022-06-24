@@ -18,4 +18,4 @@ def test_pca_encoder(image_av_chunk):  # noqa
     inp = AngleVector(np.random.randn(10))
     feature = pca_emb.forward(inp)
     reconstructed = pca_emb.backward(feature)
-    np.testing.assert_almost_equal(reconstructed.numpy(), inp.numpy())
+    assert reconstructed == inp
