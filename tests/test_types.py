@@ -21,6 +21,7 @@ from mohou.types import (
     RGBDImage,
     RGBImage,
     TerminateFlag,
+    TimeStampSequence,
     VectorBase,
     _chunk_cache,
     extract_contour_by_laplacian,
@@ -171,10 +172,12 @@ def test_episode_data():
     # creation
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
-    episode = EpisodeData.from_seq_list([image_seq, av_seq])
+    ts_seq = TimeStampSequence([i for i in range(10)])
+    episode = EpisodeData.from_seq_list([image_seq, av_seq], timestamp_seq=ts_seq)
 
     assert set(episode.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
+    # test __getitem__
     edict = episode[0]
     assert isinstance(edict, ElementDict)  # access by index
     np.testing.assert_almost_equal(edict[RGBImage].numpy(), image_seq[0].numpy())
@@ -187,6 +190,20 @@ def test_episode_data():
     np.testing.assert_almost_equal(
         episode_partial[-1][RGBImage].numpy(), image_seq[i_end - 1].numpy()
     )
+
+    episode_partial = episode[[2, 6]]
+    assert isinstance(episode_partial, EpisodeData)  # access by indices
+    np.testing.assert_almost_equal(episode_partial[0][RGBImage].numpy(), image_seq[2].numpy())
+    np.testing.assert_almost_equal(episode_partial[-1][RGBImage].numpy(), image_seq[6].numpy())
+
+    # test slice_by_time
+    episode_partial = episode.slice_by_time(0, 7.0, 4.0)
+    assert len(episode_partial) == 8
+    flag_seq = episode_partial.get_sequence_by_type(TerminateFlag)
+    for i in range(0, 4):
+        np.testing.assert_equal(flag_seq[i].numpy(), TerminateFlag.from_bool(False).numpy())
+    for i in range(5, 8):
+        np.testing.assert_equal(flag_seq[i].numpy(), TerminateFlag.from_bool(True).numpy())
 
 
 def test_episode_data_assertion_different_size():
