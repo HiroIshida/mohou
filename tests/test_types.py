@@ -1,4 +1,3 @@
-import copy
 import os
 import pathlib
 import pickle
@@ -292,24 +291,3 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
 
     with pytest.raises(AssertionError):
         MultiEpisodeChunk.from_data_list([data1, data2])
-
-
-def test_multi_episode_chunk_merge(image_av_chunk):
-    chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
-    chunk.merge(copy.deepcopy(chunk))
-    assert len(chunk.data_list) == len(image_av_chunk.data_list) * 2
-
-    # OK
-    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
-    data = EpisodeData.from_seq_list([image_seq])
-    chunk2 = MultiEpisodeChunk.from_data_list([data], with_intact_data=False)
-    chunk: MultiEpisodeChunk = copy.deepcopy(image_av_chunk)
-    chunk.merge(chunk2)
-    assert set(chunk.types()) == set([RGBImage, TerminateFlag])
-
-    # NG
-    depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
-    data = EpisodeData.from_seq_list([image_seq, depth_seq])
-    chunk3 = MultiEpisodeChunk.from_data_list([data], with_intact_data=False)
-    with pytest.raises(AssertionError):
-        chunk.merge(chunk3)

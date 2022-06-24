@@ -705,32 +705,6 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     def get_not_intact_chunk(self) -> "MultiEpisodeChunk":
         return MultiEpisodeChunk(self.data_list, [], self.type_shape_table, self.spec)
 
-    def merge(self, other: "MultiEpisodeChunk") -> None:
-        keys_self = set(self.types())
-        keys_other = set(other.types())
-        assert keys_other.issubset(
-            keys_self
-        )  # TODO(HiroIshida) current limitation, and easily remove this assertion
-        keys_common = keys_self.intersection(keys_other)
-
-        def filter_episode_data_list(episode_data_list: List[EpisodeData]):
-            # TODO(HiroIshida) not efficient at all...
-            episode_data_list_filtered = []
-            for episode_data in episode_data_list:
-                seqs = []
-                for key in keys_common:
-                    seqs.append(episode_data.get_sequence_by_type(key))
-                episode_data_list_filtered.append(EpisodeData.from_seq_list(seqs))
-            assert len(episode_data_list) == len(episode_data_list_filtered)
-            return episode_data_list_filtered
-
-        data_list_new = other.data_list
-        data_list_intact_new = other.data_list_intact
-        data_list_new.extend(filter_episode_data_list(self.data_list))
-        self.data_list = data_list_new
-        self.data_list_intact = data_list_intact_new
-        self.type_shape_table = other.type_shape_table
-
     def plot_vector_histories(
         self,
         elem_type: Type[VectorBase],
@@ -743,7 +717,6 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         fig = plt.figure()
         fig, axs = plt.subplots(n_vec_dim)
-
         for i_dim, ax in enumerate(axs):
 
             y_min, y_max = +np.inf, -np.inf  # will be updated in the following loop
