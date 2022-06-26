@@ -18,12 +18,16 @@ from mohou.types import (
 )
 
 
-def test_ElemCovMatchPostProcessor():
-    class Vector1(VectorBase):
-        pass
+class Vector1(VectorBase):
+    pass
 
-    class Vector2(VectorBase):
-        pass
+
+class Vector2(VectorBase):
+    pass
+
+
+@pytest.fixture(scope="session")
+def sample_elem_covmatch_post_processor():
 
     dim1 = 2
     dim2 = 3
@@ -36,6 +40,11 @@ def test_ElemCovMatchPostProcessor():
     c = np.concatenate([a, b], axis=1)
     type_dim_table = {Vector1: dim1, Vector2: dim2}
     normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, type_dim_table)
+    return normalizer
+
+
+def test_elem_covmatch_post_processor(sample_elem_covmatch_post_processor):
+    normalizer = sample_elem_covmatch_post_processor
     inp = np.random.randn(5)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
@@ -45,6 +54,16 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=1)
     scaled_cstds = normalizer.get_scaled_characteristic_stds()
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+
+def test_elem_covmatch_post_processor_delete(sample_elem_covmatch_post_processor):
+    normalizer: ElemCovMatchPostProcessor = sample_elem_covmatch_post_processor
+    normalizer.delete(Vector1)
+    normalizer.dims == (3,)
+    inp = np.random.randn(3)
+    normalized = normalizer.apply(inp)
+    denormalized = normalizer.inverse_apply(normalized)
+    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
 
 def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
