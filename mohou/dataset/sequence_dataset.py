@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 import torch
@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
-from mohou.utils import assert_equal_with_message, assert_two_sequences_same_length
+from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
 
 logger = logging.getLogger(__name__)
 
@@ -83,11 +83,45 @@ class SequenceDataAugmentor:  # functor
         for other_seq_list in other_seq_list_list:
             other_seq_list_auged = copy.deepcopy(other_seq_list)
             for _ in range(self.config.n_aug):
-                for weight_seq in other_seq_list:
-                    other_seq_list_auged.append(copy.deepcopy(weight_seq))
+                for other_seq in other_seq_list:
+                    other_seq_list_auged.append(copy.deepcopy(other_seq))
             other_seq_list_auged_list.append(other_seq_list_auged)
 
         return state_seq_list_auged, other_seq_list_auged_list
+
+
+ArrayOrListT = TypeVar("ArrayOrListT", bound=Union[np.ndarray, List])
+
+
+def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> List[ArrayOrListT]:
+    n_seqlen_max = max([len(seq) for seq in seq_list])
+    n_seqlen_target = n_seqlen_max + n_after_termination
+
+    seq_list = copy.deepcopy(seq_list)
+    padded_seq_list: List[ArrayOrListT] = []
+    for seq in seq_list:
+        n_seqlen = len(seq)
+        n_padding = n_seqlen_target - n_seqlen
+        assert n_padding >= 0
+
+        # TODO(HiroIshida) To remove type-ignores it's better to use singledispatch .
+        # however we prefere simpilicy in this case.
+        if isinstance(seq, list):
+            padded_seq = seq + [copy.deepcopy(seq[-1]) for _ in range(n_padding)]
+        elif isinstance(seq, np.ndarray):
+            if n_padding == 0:
+                padded_seq = seq  # type: ignore
+            else:
+                elem_last = seq[-1]
+                padding_seq_shape = [n_padding] + [1 for _ in range(elem_last.ndim)]
+                padding_seq = np.tile(elem_last, padding_seq_shape)
+                padded_seq = np.concatenate((seq, padding_seq), axis=0)
+        else:
+            assert False
+
+        assert len(padded_seq) == n_seqlen_target
+        padded_seq_list.append(padded_seq)  # type: ignore
+    return padded_seq_list
 
 
 class WeightPolicy(ABC):
@@ -132,7 +166,7 @@ class AutoRegressiveDataset(Dataset):
         return state, context, weight
 
     def __post_init__(self):  # validation
-        assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
+        assert_seq_list_list_compatible([self.state_seq_list, self.weight_seq_list])
         assert_equal_with_message(
             len(self.static_context_list), len(self.state_seq_list), "length of sequence"
         )
@@ -163,7 +197,7 @@ class AutoRegressiveDataset(Dataset):
         else:
             logger.info("use weight policy: {}".format(weighting))
             weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
-        assert_two_sequences_same_length(state_seq_list, weight_seq_list)
+            assert_seq_list_list_compatible([state_seq_list, weight_seq_list])
 
         # setting up biases
         if static_context_list is None:  # create sequence of 0-dim vector
@@ -180,8 +214,12 @@ class AutoRegressiveDataset(Dataset):
         assert weight_seq_list_auged is not None  # for mypy
 
         # make all sequence to the same length due to torch batch computation requirement
-        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
-            state_seq_list_auged, weight_seq_list_auged, augconfig
+        assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])
+        state_seq_list_auged_adjusted = make_same_length(
+            state_seq_list_auged, augconfig.n_dummy_after_termination
+        )
+        weight_seq_list_auged_adjusted = make_same_length(
+            weight_seq_list_auged, augconfig.n_dummy_after_termination
         )
         return cls(
             state_seq_list_auged_adjusted,
@@ -189,38 +227,6 @@ class AutoRegressiveDataset(Dataset):
             weight_seq_list_auged_adjusted,
             encoding_rule,
         )
-
-    @staticmethod
-    def make_same_length(
-        state_seq_list: List[np.ndarray],
-        weight_seq_list: List[np.ndarray],
-        augconfig: AutoRegressiveDatasetConfig,
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        """Makes all sequences have the same length"""
-
-        n_max_in_dataset_raw = max([len(seq) for seq in state_seq_list])
-        n_max_in_dataset = n_max_in_dataset_raw + augconfig.n_dummy_after_termination
-
-        for i in range(len(state_seq_list)):
-            state_seq = state_seq_list[i]
-            weight_seq = weight_seq_list[i]
-
-            n_seq = len(state_seq)
-            n_padding = n_max_in_dataset - n_seq
-
-            padding_state_seq = np.tile(state_seq[-1], (n_padding, 1))
-            padded_state_seq = np.vstack((state_seq, padding_state_seq))
-
-            padding_weight_seq = np.array([weight_seq[-1]] * n_padding)
-            padded_weight_seq = np.hstack((weight_seq, padding_weight_seq))
-            assert len(padded_state_seq) == n_max_in_dataset
-            assert len(padded_weight_seq) == n_max_in_dataset
-
-            state_seq_list[i] = padded_state_seq
-            weight_seq_list[i] = padded_weight_seq
-
-        assert_two_sequences_same_length(state_seq_list, weight_seq_list)
-        return state_seq_list, weight_seq_list
 
 
 @dataclass
@@ -254,7 +260,7 @@ class MarkovControlSystemDataset(Dataset):
 
         ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
         obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
-        assert_two_sequences_same_length(ctrl_seq_list, obs_seq_list)
+        assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
         ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)

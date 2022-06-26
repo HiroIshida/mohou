@@ -1,5 +1,5 @@
 import queue
-from typing import Any, Iterator, List, Sequence, Type, TypeVar, Union
+from typing import Any, Iterator, List, Type, TypeVar, Union
 
 import numpy as np
 import PIL
@@ -67,13 +67,13 @@ def assert_isinstance_with_message(given: Any, expected: Type):
     assert isinstance(given, expected), message
 
 
-def assert_two_sequences_same_length(
-    seq_list1: Sequence[np.ndarray], seq_list2: Sequence[np.ndarray]
-):
-    if __debug__:
-        assert_equal_with_message(len(seq_list1), len(seq_list2), "seq_list length of lhs")
-        for seq1, seq2 in zip(seq_list1, seq_list2):
-            assert_equal_with_message(len(seq1), len(seq2), "seq length of lhs")
+def assert_seq_list_list_compatible(seq_llist: List[List[Any]]):
+    if not __debug__:
+        return
+    seqlen_list_reference = [len(seq) for seq in seq_llist[0]]  # first seq_list as ref
+    for seq_list in seq_llist:
+        seqlen_list = [len(seq) for seq in seq_list]
+        assert seqlen_list == seqlen_list_reference
 
 
 def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
