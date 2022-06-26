@@ -96,6 +96,7 @@ def make_same_length(
     """Makes all sequences have the same length"""
     # here llist means list of list
     # check if all sequence list has same length
+    seq_llist = copy.deepcopy(seq_llist)
     seqlen_list_reference = [len(seq) for seq in seq_llist[0]]  # first seq_list as ref
     for seq_list in seq_llist:
         seqlen_list = [len(seq) for seq in seq_list]

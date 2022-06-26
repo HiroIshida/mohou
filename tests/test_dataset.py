@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 import torch
 from test_types import image_av_chunk_uneven  # noqa
@@ -38,28 +36,27 @@ def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
 
 def test_make_same_length():
     n_seq = 5
+    n_seqlen_max = -1
     seq_0dim_list = []
     seq_1dim_list = []
+    seq_2dim_list = []
     seq_3dim_list = []
     for i in range(n_seq):
         n_seqlen = 10 + np.random.randint(10)
+        n_seqlen_max = max(n_seqlen, n_seqlen_max)
         seq_0dim_list.append(np.array([np.random.randn() for _ in range(n_seqlen)]))
         seq_1dim_list.append(np.array([np.random.randn(5) for _ in range(n_seqlen)]))
+        seq_2dim_list.append(np.array([np.random.randn(5, 5) for _ in range(n_seqlen)]))
         seq_3dim_list.append(np.array([np.random.randn(5, 5, 5) for _ in range(n_seqlen)]))
     conf = AutoRegressiveDatasetConfig()
-    aa_gt, bb_gt = AutoRegressiveDataset.make_same_length(
-        copy.deepcopy(seq_1dim_list), copy.deepcopy(seq_0dim_list), conf
-    )
-    seq_llist = make_same_length(
-        copy.deepcopy([seq_1dim_list, seq_0dim_list]), conf.n_dummy_after_termination
-    )
-    aa, bb = seq_llist
 
-    for a, a_gt in zip(aa, aa_gt):
-        np.testing.assert_almost_equal(a, a_gt)
+    seq_llist = [seq_0dim_list, seq_1dim_list, seq_2dim_list, seq_3dim_list]
+    seq_llist_modified = make_same_length(seq_llist, conf.n_dummy_after_termination)
 
-    for b, b_gt in zip(bb, bb_gt):
-        np.testing.assert_almost_equal(b, b_gt)
+    n_seqlen_gt = n_seqlen_max + conf.n_dummy_after_termination
+    for seq_list in seq_llist_modified:
+        for seq in seq_list:
+            assert len(seq) == n_seqlen_gt
 
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
