@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
-from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
+from mohou.utils import AnyT, assert_equal_with_message, assert_seq_list_list_compatible
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,7 @@ class SequenceDataAugmentor:  # functor
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    def apply(
-        self, state_seq_list: List[np.ndarray], other_seq_list_list: List[List[np.ndarray]]
-    ) -> Tuple[List[np.ndarray], List[List[np.ndarray]]]:
+    def apply(self, state_seq_list: List[np.ndarray]) -> List[np.ndarray]:
         """apply augmentation
         state_seq_list will be randomized.
         each seq_list in other_seq_list_list will not be randomized. But just augmented so that they are
@@ -77,17 +75,15 @@ class SequenceDataAugmentor:  # functor
 
         state_seq_list_auged = copy.deepcopy(state_seq_list)
         state_seq_list_auged.extend(noised_state_seq_list)
+        return state_seq_list_auged
 
-        # Just increase the number keeping its order matches with state_seq_list_auged
-        other_seq_list_auged_list = []
-        for other_seq_list in other_seq_list_list:
-            other_seq_list_auged = copy.deepcopy(other_seq_list)
-            for _ in range(self.config.n_aug):
-                for other_seq in other_seq_list:
-                    other_seq_list_auged.append(copy.deepcopy(other_seq))
-            other_seq_list_auged_list.append(other_seq_list_auged)
-
-        return state_seq_list_auged, other_seq_list_auged_list
+    def apply_norand(self, seq_list: List[AnyT]) -> List[AnyT]:
+        """data augmentation with the same order as apply but without any randomization"""
+        seq_list_auged = copy.deepcopy(seq_list)
+        for _ in range(self.config.n_aug):
+            for seq in seq_list:
+                seq_list_auged.append(copy.deepcopy(seq))
+        return seq_list_auged
 
 
 ArrayOrListT = TypeVar("ArrayOrListT", bound=Union[np.ndarray, List])
@@ -208,9 +204,9 @@ class AutoRegressiveDataset(Dataset):
 
         # augmentation
         augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
-        state_seq_list_auged, [weight_seq_list_auged, static_context_list_auged] = augmentor.apply(
-            state_seq_list, [weight_seq_list, static_context_list]
-        )
+        state_seq_list_auged = augmentor.apply(state_seq_list)
+        weight_seq_list_auged = augmentor.apply_norand(weight_seq_list)
+        static_context_list_auged = augmentor.apply_norand(static_context_list)
         assert weight_seq_list_auged is not None  # for mypy
 
         # make all sequence to the same length due to torch batch computation requirement
@@ -265,8 +261,8 @@ class MarkovControlSystemDataset(Dataset):
         ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
 
-        ctrl_seq_list_auged, _ = ctrl_augmentor.apply(ctrl_seq_list, [])
-        obs_seq_list_auged, _ = obs_augmentor.apply(obs_seq_list, [])
+        ctrl_seq_list_auged = ctrl_augmentor.apply(ctrl_seq_list)
+        obs_seq_list_auged = obs_augmentor.apply(obs_seq_list)
 
         inp_ctrl_seq = []
         inp_obs_seq = []
