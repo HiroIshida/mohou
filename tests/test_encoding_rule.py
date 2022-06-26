@@ -40,9 +40,9 @@ def test_ElemCovMatchPostProcessor():
     denormalized = normalizer.inverse_apply(normalized)
     np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
-    cstds = normalizer.characteristic_stds
+    cstds = normalizer.get_characteristic_stds()
     np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=1)
-    scaled_cstds = normalizer.scaled_characteristic_stds
+    scaled_cstds = normalizer.get_scaled_characteristic_stds()
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
