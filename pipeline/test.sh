@@ -10,6 +10,7 @@ function test_batch {
     local use_vae=$2
     local test_warm_train=$3
     local use_context=$4
+    local use_chimera=$5  # train chimera (ae + lstm) instead of lstm
 
     local vae_option=""
     if [ $use_vae = true ]; then
@@ -38,19 +39,24 @@ function test_batch {
     fi
     python3 -m mohou.script.visualize_autoencoder_result -pn $project_name -n 2
 
-    # train lstm two times
-    python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 $context_flag
-    if [ $test_warm_train = true ]; then
-        python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 --warm $context_flag
+    if [$use_chimera = true]; then
+        python3 -m mohou.script.train_chimera -pn $project_name -valid-ratio 0.5 -n 2
+        # TODO(HiroIshida): test succeeding stuff (vis, prop ...)
+    else  # train lstm
+        # train lstm two times
+        python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 $context_flag
+        if [ $test_warm_train = true ]; then
+            python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 --warm $context_flag
+        fi
+        python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
+        python3 -m mohou.script.visualize_train_history -pn $project_name
+        python3 $example_path/kuka_reaching.py -pn $project_name --feedback
     fi
-
-    python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
-    python3 -m mohou.script.visualize_train_history -pn $project_name
-    python3 $example_path/kuka_reaching.py -pn $project_name --feedback
 }
 
 test_batch RGB true true false # test warm train
 test_batch RGB false false true # test using context
+test_batch RGB false false false true # test chimera
 test_batch RGB false false false
 test_batch Depth false false false
 test_batch RGBD false false false
