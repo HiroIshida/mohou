@@ -12,12 +12,23 @@ from mohou.types import (
     AngleVector,
     ImageBase,
     MultiEpisodeChunk,
+    RGBImage,
     TerminateFlag,
     VectorBase,
 )
 
 
-def test_ElemCovMatchPostProcessor():
+class Vector1(VectorBase):
+    pass
+
+
+class Vector2(VectorBase):
+    pass
+
+
+@pytest.fixture(scope="session")
+def sample_elem_covmatch_post_processor():
+
     dim1 = 2
     dim2 = 3
     bias = 10
@@ -27,16 +38,32 @@ def test_ElemCovMatchPostProcessor():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
+    type_dim_table = {Vector1: dim1, Vector2: dim2}
+    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, type_dim_table)
+    return normalizer
+
+
+def test_elem_covmatch_post_processor(sample_elem_covmatch_post_processor):
+    normalizer = sample_elem_covmatch_post_processor
     inp = np.random.randn(5)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
     np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
-    cstds = normalizer.characteristic_stds
+    cstds = normalizer.get_characteristic_stds()
     np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=1)
-    scaled_cstds = normalizer.scaled_characteristic_stds
+    scaled_cstds = normalizer.get_scaled_characteristic_stds()
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+
+def test_elem_covmatch_post_processor_delete(sample_elem_covmatch_post_processor):
+    normalizer: ElemCovMatchPostProcessor = sample_elem_covmatch_post_processor
+    normalizer.delete(Vector1)
+    normalizer.dims == (3,)
+    inp = np.random.randn(3)
+    normalized = normalizer.apply(inp)
+    denormalized = normalizer.inverse_apply(normalized)
+    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
 
 def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
@@ -62,6 +89,24 @@ def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> En
 def test_encoding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
     rule = create_encoding_rule(chunk)
+    vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
+    vector_seq = vector_seq_list[0]
+    assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+
+
+def test_encoding_rule_delete(image_av_chunk):  # noqa
+    chunk: MultiEpisodeChunk = image_av_chunk
+    rule = create_encoding_rule(chunk)
+    rule_dimension_pre = rule.dimension
+
+    delete_key = AngleVector
+    delete_size = rule[delete_key].output_size
+    rule.delete(delete_key)
+
+    assert tuple(rule.keys()) == (RGBImage, TerminateFlag)
+    assert rule.dimension == rule[RGBImage].output_size + rule[TerminateFlag].output_size
+    assert rule.dimension == rule_dimension_pre - delete_size
+
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)

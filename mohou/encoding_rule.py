@@ -1,13 +1,6 @@
 import copy
-import functools  # for cached_property
 import logging
 from abc import ABC, abstractmethod
-
-if hasattr(functools, "cached_property"):
-    from functools import cached_property
-else:
-    from cached_property import cached_property  # type: ignore
-
 from dataclasses import dataclass
 from typing import Dict, Generator, List, Optional, Type
 
@@ -45,16 +38,41 @@ class IdenticalPostProcessor(PostProcessor):
         return vec
 
 
-@dataclass(frozen=True)
+@dataclass
 class ElemCovMatchPostProcessor(PostProcessor):
-    dims: List[int]
-    means: List[np.ndarray]
-    covs: List[np.ndarray]
+    @dataclass
+    class NormalizationSpec:
+        dim: int
+        mean: np.ndarray
+        cov: np.ndarray
+
+    type_spec_table: Dict[Type[ElementBase], NormalizationSpec]
+    _scaled_charc_stds: Optional[np.ndarray] = None
 
     def __post_init__(self):
-        for i, dim in enumerate(self.dims):
-            assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
-            assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
+        for key, spec in self.type_spec_table.items():
+            dim = spec.dim
+            mean = spec.mean
+            cov = spec.cov
+            type_name = key.__name__
+            assert_equal_with_message(mean.shape, (dim,), "mean shape of {}".format(type_name))
+            assert_equal_with_message(cov.shape, (dim, dim), "cov shape of {}".format(type_name))
+
+    def delete(self, elem_type: Type[ElementBase]) -> None:
+        self.type_spec_table.pop(elem_type)
+        self._scaled_charc_stds = None  # delete cache
+
+    @property
+    def dims(self) -> List[int]:
+        return [val.dim for val in self.type_spec_table.values()]
+
+    @property
+    def means(self) -> List[np.ndarray]:
+        return [val.mean for val in self.type_spec_table.values()]
+
+    @property
+    def covs(self) -> List[np.ndarray]:
+        return [val.cov for val in self.type_spec_table.values()]
 
     @staticmethod
     def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
@@ -63,33 +81,44 @@ class ElemCovMatchPostProcessor(PostProcessor):
             yield slice(head, head + dim)
             head += dim
 
-    @cached_property
-    def characteristic_stds(self) -> np.ndarray:
+    def get_characteristic_stds(self) -> np.ndarray:
         def get_max_std(cov) -> float:
             eig_values, _ = np.linalg.eig(cov)
             max_eig_cov = max(eig_values)
             return np.sqrt(max_eig_cov)
 
-        char_stds = np.array(list(map(get_max_std, self.covs)))
-        logger.info("char stds: {}".format(char_stds))
-        return char_stds
+        charc_stds = np.array(list(map(get_max_std, self.covs)))
+        logger.info("char stds: {}".format(charc_stds))
+        return charc_stds
 
-    @cached_property
-    def scaled_characteristic_stds(self) -> np.ndarray:
-        c_stds = self.characteristic_stds
-        return c_stds / np.max(c_stds)
+    def get_scaled_characteristic_stds(self) -> np.ndarray:
+        # use cache if exists
+        if self._scaled_charc_stds is not None:
+            return self._scaled_charc_stds
+
+        charc_stds = self.get_characteristic_stds()
+        scaled_charc_stds = charc_stds / np.max(charc_stds)
+        self._scaled_charc_stds = scaled_charc_stds  # caching
+        return scaled_charc_stds
 
     @staticmethod
     def is_binary_sequence(partial_feature_seq: np.ndarray):
         return len(set(partial_feature_seq.flatten().tolist())) == 2
 
     @classmethod
-    def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+    def from_feature_seqs(
+        cls, feature_seq: np.ndarray, type_dim_table: Dict[Type[ElementBase], int]
+    ):
+
+        Spec = ElemCovMatchPostProcessor.NormalizationSpec
+
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
-        means = []
-        covs = []
-        for rang in cls.get_ranges(dims):
-            feature_seq_partial = feature_seq[:, rang]
+        dims = list(type_dim_table.values())
+
+        type_spec_table = {}
+
+        for typee, rangee in zip(type_dim_table.keys(), cls.get_ranges(dims)):
+            feature_seq_partial = feature_seq[:, rangee]
             dim = feature_seq_partial.shape[1]
             if cls.is_binary_sequence(feature_seq_partial):
                 # because it's strange to compute covariance for binary sequence
@@ -104,17 +133,17 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
-            means.append(mean)
-            covs.append(cov)
-        return cls(dims, means, covs)
+            type_spec_table[typee] = Spec(dim, mean, cov)
+        return cls(type_spec_table)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+
         vec_out = copy.deepcopy(vec)
-        char_stds = self.scaled_characteristic_stds
+        charc_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / charc_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
 
@@ -122,7 +151,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        char_stds = self.scaled_characteristic_stds
+        char_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
             vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new
@@ -131,6 +160,11 @@ class ElemCovMatchPostProcessor(PostProcessor):
 
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     post_processor: PostProcessor
+
+    def delete(self, elem_type: Type[ElementBase]) -> None:
+        if isinstance(self.post_processor, ElemCovMatchPostProcessor):
+            self.post_processor.delete(elem_type)
+        self.pop(elem_type)
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
@@ -217,7 +251,9 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
-            dims = [emb.output_size for emb in encoder_list]
-            normalizer = ElemCovMatchPostProcessor.from_feature_seqs(vector_seq_concated, dims)
+            type_dim_table = {t: rule[t].output_size for t in rule.keys()}
+            normalizer = ElemCovMatchPostProcessor.from_feature_seqs(
+                vector_seq_concated, type_dim_table
+            )
             rule.post_processor = normalizer
         return rule
