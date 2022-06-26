@@ -36,7 +36,6 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
     ae: AutoEncoder[ImageT]
 
     def _setup_from_config(self, config: ChimeraConfig) -> None:
-        self.image_type = config.ae_config.image_type
         # TODO(HiroIshida) currently fixed to auto encoder
         self.lstm = LSTM(config.lstm_config)
         if isinstance(config.ae_config, AutoEncoderConfig):
@@ -48,6 +47,8 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
             self.ae = ae
         else:
             assert False
+
+        self.image_type = self.ae.image_type
 
     def get_encoder(self) -> ImageEncoder[ImageT]:
         return self.ae.get_encoder()

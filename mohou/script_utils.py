@@ -149,7 +149,7 @@ def train_chimera(
     ae = TrainCache.load(project_name, AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
-    model = Chimera(conf)
+    model = Chimera(conf)  # type: ignore[var-annotated]
     train(tcache, dataset, model, train_config)
 
 

@@ -6,7 +6,6 @@ from mohou.model.autoencoder import (
     AutoEncoderConfig,
     VariationalAutoEncoder,
 )
-from mohou.model.chimera import Chimera, ChimeraConfig
 from mohou.model.common import (
     LossDict,
     ModelBase,
@@ -17,3 +16,5 @@ from mohou.model.common import (
 )
 from mohou.model.lstm import LSTM, LSTMConfig
 from mohou.model.markov import ControlModel, MarkoveModelConfig
+
+from mohou.model.chimera import Chimera, ChimeraConfig  # isort: skip
