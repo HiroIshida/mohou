@@ -18,6 +18,12 @@ from mohou.types import (
 
 
 def test_ElemCovMatchPostProcessor():
+    class Vector1(VectorBase):
+        pass
+
+    class Vector2(VectorBase):
+        pass
+
     dim1 = 2
     dim2 = 3
     bias = 10
@@ -27,7 +33,8 @@ def test_ElemCovMatchPostProcessor():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
+    type_dim_table = {Vector1: dim1, Vector2: dim2}
+    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, type_dim_table)
     inp = np.random.randn(5)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)

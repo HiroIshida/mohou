@@ -47,14 +47,34 @@ class IdenticalPostProcessor(PostProcessor):
 
 @dataclass(frozen=True)
 class ElemCovMatchPostProcessor(PostProcessor):
-    dims: List[int]
-    means: List[np.ndarray]
-    covs: List[np.ndarray]
+    @dataclass
+    class NormalizationSpec:
+        dim: int
+        mean: np.ndarray
+        cov: np.ndarray
+
+    type_spec_table: Dict[Type[ElementBase], NormalizationSpec]
 
     def __post_init__(self):
-        for i, dim in enumerate(self.dims):
-            assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
-            assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
+        for key, spec in self.type_spec_table.items():
+            dim = spec.dim
+            mean = spec.mean
+            cov = spec.cov
+            type_name = key.__name__
+            assert_equal_with_message(mean.shape, (dim,), "mean shape of {}".format(type_name))
+            assert_equal_with_message(cov.shape, (dim, dim), "cov shape of {}".format(type_name))
+
+    @property
+    def dims(self) -> List[int]:
+        return [val.dim for val in self.type_spec_table.values()]
+
+    @property
+    def means(self) -> List[np.ndarray]:
+        return [val.mean for val in self.type_spec_table.values()]
+
+    @property
+    def covs(self) -> List[np.ndarray]:
+        return [val.cov for val in self.type_spec_table.values()]
 
     @staticmethod
     def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
@@ -84,12 +104,19 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return len(set(partial_feature_seq.flatten().tolist())) == 2
 
     @classmethod
-    def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+    def from_feature_seqs(
+        cls, feature_seq: np.ndarray, type_dim_table: Dict[Type[ElementBase], int]
+    ):
+
+        Spec = ElemCovMatchPostProcessor.NormalizationSpec
+
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
-        means = []
-        covs = []
-        for rang in cls.get_ranges(dims):
-            feature_seq_partial = feature_seq[:, rang]
+        dims = list(type_dim_table.values())
+
+        type_spec_table  = {}
+
+        for typee, rangee in zip(type_dim_table.keys(), cls.get_ranges(dims)):
+            feature_seq_partial = feature_seq[:, rangee]
             dim = feature_seq_partial.shape[1]
             if cls.is_binary_sequence(feature_seq_partial):
                 # because it's strange to compute covariance for binary sequence
@@ -104,13 +131,13 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
-            means.append(mean)
-            covs.append(cov)
-        return cls(dims, means, covs)
+            type_spec_table[typee] = Spec(dim, mean, cov)
+        return cls(type_spec_table)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
         for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
@@ -217,7 +244,9 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
-            dims = [emb.output_size for emb in encoder_list]
-            normalizer = ElemCovMatchPostProcessor.from_feature_seqs(vector_seq_concated, dims)
+            type_dim_table = {t: rule[t].output_size for t in rule.keys()}
+            normalizer = ElemCovMatchPostProcessor.from_feature_seqs(
+                vector_seq_concated, type_dim_table
+            )
             rule.post_processor = normalizer
         return rule
