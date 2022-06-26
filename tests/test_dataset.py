@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+from test_encoding_rule import create_encoding_rule  # noqa
 from test_types import image_av_chunk_uneven  # noqa
 from torch.utils.data import DataLoader
 
@@ -12,9 +12,8 @@ from mohou.dataset import (
     SequenceDatasetConfig,
     make_same_length,
 )
-from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
-from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage, TerminateFlag
+from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
 from mohou.utils import assert_seq_list_list_compatible
 
 
@@ -61,19 +60,7 @@ def test_make_same_length():
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
-    n_image_encoded = 5
-    n_av_encoded = 10
-    f1 = ImageEncoder(
-        RGBImage,
-        lambda img: torch.zeros(n_image_encoded),
-        lambda vec: torch.zeros(3, 100, 100),
-        (100, 100, 3),
-        n_image_encoded,
-    )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
-    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
-
-    rule = EncodingRule.from_encoders([f1, f2, f3])
+    rule = create_encoding_rule(chunk, normalize=False)
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
@@ -89,16 +76,9 @@ def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
 
 def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk_uneven
-    n_image_encoded = 5
-    n_av_encoded = 10
-    f1 = ImageEncoder(
-        RGBImage,
-        lambda img: torch.zeros(n_image_encoded),
-        lambda vec: torch.zeros(3, 100, 100),
-        (100, 100, 3),
-        n_image_encoded,
-    )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
+    default_rule = create_encoding_rule(chunk, normalize=False)
+    f1 = default_rule[RGBImage]
+    f2 = default_rule[AngleVector]
     control_encode_rule = EncodingRule.from_encoders([f2])
     observation_encode_rule = EncodingRule.from_encoders([f1, f2])
 

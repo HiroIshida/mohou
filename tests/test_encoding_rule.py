@@ -1,4 +1,5 @@
 from itertools import permutations
+from typing import Tuple
 
 import numpy as np
 import pytest
@@ -7,7 +8,13 @@ from test_types import image_av_chunk  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import ElemCovMatchPostProcessor, EncodingRule
-from mohou.types import AngleVector, RGBDImage, RGBImage, TerminateFlag, VectorBase
+from mohou.types import (
+    AngleVector,
+    ImageBase,
+    MultiEpisodeChunk,
+    TerminateFlag,
+    VectorBase,
+)
 
 
 def test_ElemCovMatchPostProcessor():
@@ -32,56 +39,59 @@ def test_ElemCovMatchPostProcessor():
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
+def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
+    dim_image_encoded = 5
+    dim_av = chunk.get_element_shape(AngleVector)[0]
+    image_type = [t for t in chunk.types() if issubclass(t, ImageBase)].pop()
+    dims_image: Tuple[int, int, int] = chunk.get_element_shape(image_type)  # type: ignore
+
+    f1 = ImageEncoder(
+        image_type,
+        lambda img: torch.zeros(dim_image_encoded),
+        lambda vec: torch.zeros(tuple(reversed(dims_image))),
+        dims_image,
+        dim_image_encoded,
+    )
+    f2 = VectorIdenticalEncoder(AngleVector, dim_av)
+    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
+    optional_chunk = chunk if normalize else None
+    rule = EncodingRule.from_encoders([f1, f2, f3], chunk=optional_chunk)
+    return rule
+
+
 def test_encoding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
-    n_image_encoded = 5
-    n_av_encoded = 10
-    f1 = ImageEncoder(
-        RGBImage,
-        lambda img: torch.zeros(n_image_encoded),
-        lambda vec: torch.zeros(3, 100, 100),
-        (100, 100, 3),
-        n_image_encoded,
-    )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
-    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
-
-    rule = EncodingRule.from_encoders([f1, f2, f3], chunk=chunk)
+    rule = create_encoding_rule(chunk)
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
+    assert vector_seq.shape == (len(chunk[0]), rule.dimension)
 
-    assert vector_seq.shape == (10, n_image_encoded + n_av_encoded + 1)
 
+def test_encoding_rule_order(image_av_chunk):  # noqa
     class Dummy(VectorBase):
         pass
+
+    chunk = image_av_chunk
+    rule = create_encoding_rule(chunk)
 
     # Check dict insertion oreder is preserved
     # NOTE: from 3.7, order is preserved as lang. spec.
     # NOTE: from 3.6, order is preserved in a cpython implementation
-    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
     f4 = VectorIdenticalEncoder(Dummy, 2)
-    pairs = [(f1, RGBImage), (f2, AngleVector), (f3, TerminateFlag), (f4, Dummy)]
+    pairs = [(t, rule[t]) for t in rule.keys()]
+    pairs.append((Dummy, f4))
     for pairs_perm in permutations(pairs, 4):
-        encoders = [p[0] for p in pairs_perm]
-        types = [p[1] for p in pairs_perm]
+        types = [p[0] for p in pairs_perm]
+        encoders = [p[1] for p in pairs_perm]
         rule = EncodingRule.from_encoders(encoders)
         assert rule.encode_order == types
 
 
 def test_encoding_rule_assertion(image_av_chunk):  # noqa
-
     chunk = image_av_chunk
-    n_image_encoded = 5
-    n_av_encoded = 10
-    f1 = ImageEncoder(
-        RGBDImage,
-        lambda img: torch.zeros(n_image_encoded),
-        lambda vec: torch.zeros(4, 100, 100),
-        (100, 100, 4),
-        n_image_encoded,
-    )
-    f2 = VectorIdenticalEncoder(AngleVector, n_av_encoded)
-    rule = EncodingRule.from_encoders([f1, f2])
+    rule = create_encoding_rule(chunk)
+    # add wrong dimension encoder
+    rule[AngleVector] = VectorIdenticalEncoder(AngleVector, 1000)
 
     with pytest.raises(AssertionError):
         rule.apply_to_multi_episode_chunk(chunk)

@@ -521,6 +521,9 @@ class TypeShapeTableMixin:
     def types(self) -> List[Type[ElementBase]]:
         return list(self.type_shape_table.keys())  # type: ignore
 
+    def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
+        return self.type_shape_table[elem_type]  # type: ignore
+
 
 @dataclass
 class TimeStampSequence(HasAList[float]):
@@ -791,9 +794,6 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
             len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
         )
         return cls(data_list, data_list_intact, type_shape_table, spec)
-
-    def get_element_shape(self, elem_type: Type[ElementBase]) -> Tuple[int, ...]:
-        return self.type_shape_table[elem_type]
 
     @classmethod
     def load(
