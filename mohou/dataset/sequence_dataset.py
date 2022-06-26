@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
-from mohou.utils import assert_equal_with_message, assert_two_sequences_same_length
+from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class AutoRegressiveDataset(Dataset):
         return state, context, weight
 
     def __post_init__(self):  # validation
-        assert_two_sequences_same_length(self.state_seq_list, self.weight_seq_list)
+        assert_seq_list_list_compatible([self.state_seq_list, self.weight_seq_list])
         assert_equal_with_message(
             len(self.static_context_list), len(self.state_seq_list), "length of sequence"
         )
@@ -198,7 +198,7 @@ class AutoRegressiveDataset(Dataset):
         else:
             logger.info("use weight policy: {}".format(weighting))
             weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
-        assert_two_sequences_same_length(state_seq_list, weight_seq_list)
+            assert_seq_list_list_compatible([state_seq_list, weight_seq_list])
 
         # setting up biases
         if static_context_list is None:  # create sequence of 0-dim vector
@@ -257,7 +257,7 @@ class MarkovControlSystemDataset(Dataset):
 
         ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
         obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
-        assert_two_sequences_same_length(ctrl_seq_list, obs_seq_list)
+        assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
         ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
