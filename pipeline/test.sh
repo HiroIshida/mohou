@@ -56,9 +56,9 @@ function test_batch {
     fi
 }
 
-#test_batch RGB true true false # test warm train
-#test_batch RGB false false true # test using context
+test_batch RGB true true false # test warm train
+test_batch RGB false false true # test using context
 test_batch RGB false false false true # test chimera
-#test_batch RGB false false false
-#test_batch Depth false false false
-#test_batch RGBD false false false
+test_batch RGB false false false
+test_batch Depth false false false
+test_batch RGBD false false false
