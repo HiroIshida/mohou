@@ -215,8 +215,8 @@ class AutoRegressiveDataset(Dataset):
         assert weight_seq_list_auged is not None  # for mypy
 
         # make all sequence to the same length due to torch batch computation requirement
-        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = cls.make_same_length(
-            state_seq_list_auged, weight_seq_list_auged, augconfig
+        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = make_same_length(
+            [state_seq_list_auged, weight_seq_list_auged], augconfig.n_dummy_after_termination
         )
         return cls(
             state_seq_list_auged_adjusted,
@@ -224,38 +224,6 @@ class AutoRegressiveDataset(Dataset):
             weight_seq_list_auged_adjusted,
             encoding_rule,
         )
-
-    @staticmethod
-    def make_same_length(
-        state_seq_list: List[np.ndarray],
-        weight_seq_list: List[np.ndarray],
-        augconfig: AutoRegressiveDatasetConfig,
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        """Makes all sequences have the same length"""
-
-        n_max_in_dataset_raw = max([len(seq) for seq in state_seq_list])
-        n_max_in_dataset = n_max_in_dataset_raw + augconfig.n_dummy_after_termination
-
-        for i in range(len(state_seq_list)):
-            state_seq = state_seq_list[i]
-            weight_seq = weight_seq_list[i]
-
-            n_seq = len(state_seq)
-            n_padding = n_max_in_dataset - n_seq
-
-            padding_state_seq = np.tile(state_seq[-1], (n_padding, 1))
-            padded_state_seq = np.vstack((state_seq, padding_state_seq))
-
-            padding_weight_seq = np.array([weight_seq[-1]] * n_padding)
-            padded_weight_seq = np.hstack((weight_seq, padding_weight_seq))
-            assert len(padded_state_seq) == n_max_in_dataset
-            assert len(padded_weight_seq) == n_max_in_dataset
-
-            state_seq_list[i] = padded_state_seq
-            weight_seq_list[i] = padded_weight_seq
-
-        assert_two_sequences_same_length(state_seq_list, weight_seq_list)
-        return state_seq_list, weight_seq_list
 
 
 @dataclass
