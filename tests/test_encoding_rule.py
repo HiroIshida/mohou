@@ -62,10 +62,10 @@ def test_encoding_rule(image_av_chunk):  # noqa
     f4 = VectorIdenticalEncoder(Dummy, 2)
     pairs = [(f1, RGBImage), (f2, AngleVector), (f3, TerminateFlag), (f4, Dummy)]
     for pairs_perm in permutations(pairs, 4):
-        fs = [p[0] for p in pairs_perm]
-        ts = [p[1] for p in pairs_perm]
-        rule = EncodingRule.from_encoders(fs)
-        assert list(rule.keys()) == ts
+        encoders = [p[0] for p in pairs_perm]
+        types = [p[1] for p in pairs_perm]
+        rule = EncodingRule.from_encoders(encoders)
+        assert rule.encode_order == types
 
 
 def test_encoding_rule_assertion(image_av_chunk):  # noqa

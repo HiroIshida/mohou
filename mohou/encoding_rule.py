@@ -194,6 +194,10 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     def dimension(self) -> int:
         return sum(encoder.output_size for encoder in self.values())
 
+    @property
+    def encode_order(self) -> List[Type[ElementBase]]:
+        return list(self.keys())
+
     def __str__(self) -> str:
         string = "total dim: {}".format(self.dimension)
         for elem_type, encoder in self.items():
