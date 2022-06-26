@@ -102,7 +102,7 @@ class ChimeraDataset(Dataset):
             first_elem_type, ImageBase
         )  # TODO(HiroIshida) relax this. see the model loss func
         image_type: Type[ImageBase] = first_elem_type
-        encoding_rule.pop(image_type)  # because image encoding is done in the chimera model
+        encoding_rule.delete(image_type)  # because image encoding is done in the chimera model
         vector_seqs: List[np.ndarray] = encoding_rule.apply_to_multi_episode_chunk(chunk)
 
         image_seqs: List[List[ImageBase]] = []
