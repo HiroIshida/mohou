@@ -161,10 +161,14 @@ class ElemCovMatchPostProcessor(PostProcessor):
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     post_processor: PostProcessor
 
+    def pop(self, args):
+        # As we have delete function, it is bit confusing
+        raise NotImplementedError  # delete this method if Dict
+
     def delete(self, elem_type: Type[ElementBase]) -> None:
         if isinstance(self.post_processor, ElemCovMatchPostProcessor):
             self.post_processor.delete(elem_type)
-        self.pop(elem_type)
+        super().pop(elem_type)
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
