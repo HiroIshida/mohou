@@ -173,7 +173,11 @@ def visualize_train_histories(project_name: str):
 
 
 def visualize_image_reconstruction(
-    project_name: str, chunk: MultiEpisodeChunk, autoencoder: AutoEncoderBase, n_vis: int = 5
+    project_name: str,
+    chunk: MultiEpisodeChunk,
+    autoencoder: AutoEncoderBase,
+    n_vis: int = 5,
+    prefix: Optional[str] = None,
 ):
 
     chunk_intact = chunk.get_intact_chunk()
@@ -204,7 +208,10 @@ def visualize_image_reconstruction(
             ax1.imshow(img.to_rgb()._data)
             ax2.imshow(img_reconstructed.to_rgb()._data)
             save_dir_path = get_subproject_path(project_name, "autoencoder_result")
-            file_path = save_dir_path / "result-{}-{}.png".format(postfix, i)
+            filename = "result-{}-{}.png".format(postfix, i)
+            if prefix is not None:
+                filename = prefix + "-" + str(filename)
+            file_path = save_dir_path / filename
             plt.savefig(str(file_path))
 
 

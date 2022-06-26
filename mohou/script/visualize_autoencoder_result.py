@@ -19,18 +19,19 @@ if __name__ == "__main__":
     project_name = args.pn
     n_vis = args.n
 
+    chunk = MultiEpisodeChunk.load(project_name)
+
     if args.chimera:
         ae_type = AutoEncoder  # TODO(HiroIshida): currently fixed
         chimera = TrainCache.load(project_name, Chimera).best_model
         assert chimera is not None
         model = chimera.ae
+        visualize_image_reconstruction(project_name, chunk, model, n_vis, prefix="chimera")
     else:
         ae_type = auto_detect_autoencoder_type(project_name)
         model = TrainCache.load(project_name, ae_type).best_model
         assert model is not None
-
-    chunk = MultiEpisodeChunk.load(project_name)
-    visualize_image_reconstruction(project_name, chunk, model, n_vis)
+        visualize_image_reconstruction(project_name, chunk, model, n_vis)
 
     if ae_type == VariationalAutoEncoder:
         visualize_variational_autoencoder(project_name)
