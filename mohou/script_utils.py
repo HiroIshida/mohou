@@ -173,16 +173,13 @@ def visualize_train_histories(project_name: str):
 
 
 def visualize_image_reconstruction(
-    project_name: str, n_vis: int = 5, ae_type: Type[AutoEncoderBase] = AutoEncoder
+    project_name: str, chunk: MultiEpisodeChunk, autoencoder: AutoEncoderBase, n_vis: int = 5
 ):
 
-    chunk = MultiEpisodeChunk.load(project_name)
     chunk_intact = chunk.get_intact_chunk()
     chunk_not_intact = chunk.get_not_intact_chunk()
 
-    tcache = TrainCache.load(project_name, ae_type)
-    assert tcache.best_model is not None
-    image_type = tcache.best_model.image_type  # type: ignore[union-attr]
+    image_type = autoencoder.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
     dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
     dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
@@ -195,7 +192,7 @@ def visualize_image_reconstruction(
         for i, idx in enumerate(idxes_test):
 
             image_torch = dataset[idx].unsqueeze(dim=0)
-            image_torch_reconstructed = tcache.best_model(image_torch)
+            image_torch_reconstructed = autoencoder(image_torch)
 
             img = dataset.image_type.from_tensor(image_torch.squeeze(dim=0))
             img_reconstructed = dataset.image_type.from_tensor(
