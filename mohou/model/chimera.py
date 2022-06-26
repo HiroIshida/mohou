@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -22,7 +22,7 @@ from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatib
 @dataclass
 class ChimeraConfig(ModelConfigBase):
     lstm_config: LSTMConfig
-    ae_config: AutoEncoderConfig
+    ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
 
 
 class Chimera(ModelBase[ChimeraConfig]):
@@ -36,7 +36,12 @@ class Chimera(ModelBase[ChimeraConfig]):
     def _setup_from_config(self, config: ChimeraConfig) -> None:
         # TODO(HiroIshida) currently fixed to auto encoder
         self.lstm = LSTM(config.lstm_config)
-        self.ae = AutoEncoder(config.ae_config)
+        if isinstance(config.ae_config, AutoEncoderConfig):
+            self.ae = AutoEncoder(config.ae_config)
+        elif isinstance(config.ae_config, AutoEncoder):
+            self.ae = config.ae_config
+        else:
+            assert False
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
         # TODO(HiroIshida) consider weight later
