@@ -145,7 +145,7 @@ def train_chimera(
         chunk = MultiEpisodeChunk.load(project_name)
 
     dataset = ChimeraDataset.from_chunk(chunk, encoding_rule)
-    tcache = TrainCache[Chimera](project_name)
+    tcache = TrainCache(project_name)  # type: ignore[var-annotated]
     ae = TrainCache.load(project_name, AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
