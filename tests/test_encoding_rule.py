@@ -45,21 +45,22 @@ def sample_elem_covmatch_post_processor():
 
 def test_elem_covmatch_post_processor(sample_elem_covmatch_post_processor):
     normalizer = sample_elem_covmatch_post_processor
+    assert normalizer.dimension == 5
     inp = np.random.randn(5)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
     np.testing.assert_almost_equal(inp, denormalized, decimal=2)
 
-    cstds = normalizer.get_characteristic_stds()
-    np.testing.assert_almost_equal(cstds, np.array([1.0, 3.0]), decimal=1)
-    scaled_cstds = normalizer.get_scaled_characteristic_stds()
+    scaled_cstds = [
+        local_proc.scaled_primary_std for local_proc in normalizer.type_local_proc_table.values()
+    ]
     np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
 def test_elem_covmatch_post_processor_delete(sample_elem_covmatch_post_processor):
     normalizer: ElemCovMatchPostProcessor = sample_elem_covmatch_post_processor
     normalizer.delete(Vector1)
-    normalizer.dims == (3,)
+    assert normalizer.dimension == 3
     inp = np.random.randn(3)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
