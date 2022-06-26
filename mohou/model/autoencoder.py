@@ -153,17 +153,14 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     @abstractmethod
     def get_encoder_module(self) -> nn.Module:
         """Must be deterministic"""
-        pass
 
     @abstractmethod
     def get_decoder_module(self) -> nn.Module:
         """Must be deterministic"""
-        pass
 
     @abstractmethod
     def compute_reconstruction_loss(self, img: ImageT) -> float:
         """Must be deterministic"""
-        pass
 
     def check_network_input(self, inp: torch.Tensor):
         assert inp.ndim == 4

@@ -122,7 +122,7 @@ class ChimeraDataset(Dataset):
             image_seqs.append(tmp.elem_list)
 
         # data augmentation
-        augmentor = SequenceDataAugmentor(SequenceDatasetConfig(n_aug=5))
+        augmentor = SequenceDataAugmentor(SequenceDatasetConfig())
         vector_seqs_auged = augmentor.apply(vector_seqs)
         image_seqs_auged: List[List[ImageBase]] = augmentor.apply_norand(image_seqs)
 
