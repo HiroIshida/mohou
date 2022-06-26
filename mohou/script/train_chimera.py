@@ -26,7 +26,6 @@ if __name__ == "__main__":
     n_aug = args.aug
     n_hidden = args.hidden
     n_layer = args.layer
-    cov_scale = args.cov_scale
     valid_ratio = args.valid_ratio
 
     logger = create_default_logger(project_name, "chimera")  # noqa

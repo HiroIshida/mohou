@@ -30,6 +30,7 @@ function test_batch {
     echo "use_vae: $2"
     echo "test_warm_train: $3"
     echo "use_context: $4"
+    echo "use_chimera: $5"
 
     python3 $example_path/kuka_reaching.py -pn $project_name -n 7
     python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type $vae_option
@@ -39,7 +40,8 @@ function test_batch {
     fi
     python3 -m mohou.script.visualize_autoencoder_result -pn $project_name -n 2
 
-    if [$use_chimera = true]; then
+    if [ $use_chimera = true ]; then
+        echo "train chimera"
         python3 -m mohou.script.train_chimera -pn $project_name -valid-ratio 0.5 -n 2
         # TODO(HiroIshida): test succeeding stuff (vis, prop ...)
     else  # train lstm
@@ -54,9 +56,9 @@ function test_batch {
     fi
 }
 
-test_batch RGB true true false # test warm train
-test_batch RGB false false true # test using context
+#test_batch RGB true true false # test warm train
+#test_batch RGB false false true # test using context
 test_batch RGB false false false true # test chimera
-test_batch RGB false false false
-test_batch Depth false false false
-test_batch RGBD false false false
+#test_batch RGB false false false
+#test_batch Depth false false false
+#test_batch RGBD false false false
