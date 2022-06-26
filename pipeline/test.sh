@@ -43,7 +43,9 @@ function test_batch {
     if [ $use_chimera = true ]; then
         echo "train chimera"
         python3 -m mohou.script.train_chimera -pn $project_name -valid-ratio 0.5 -n 2
-        # TODO(HiroIshida): test succeeding stuff (vis, prop ...)
+        python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5 --chimera
+        python3 -m mohou.script.visualize_train_history -pn $project_name
+        # TODO(HiroIshida): test feedback
     else  # train lstm
         # train lstm two times
         python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 $context_flag

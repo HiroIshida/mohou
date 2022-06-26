@@ -6,6 +6,7 @@ from mohou.model.autoencoder import (
     AutoEncoderConfig,
     VariationalAutoEncoder,
 )
+from mohou.model.chimera import Chimera, ChimeraConfig
 from mohou.model.common import (
     LossDict,
     ModelBase,
