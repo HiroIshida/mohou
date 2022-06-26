@@ -98,17 +98,19 @@ def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> 
     n_seqlen_target = n_seqlen_max + n_after_termination
 
     seq_list = copy.deepcopy(seq_list)
-    padded_seq_list = []
+    padded_seq_list: List[ArrayOrListT] = []
     for seq in seq_list:
         n_seqlen = len(seq)
         n_padding = n_seqlen_target - n_seqlen
         assert n_padding >= 0
 
+        # TODO(HiroIshida) To remove type-ignores it's better to use singledispatch .
+        # however we prefere simpilicy in this case.
         if isinstance(seq, list):
             padded_seq = seq + [copy.deepcopy(seq[-1]) for _ in range(n_padding)]
         elif isinstance(seq, np.ndarray):
             if n_padding == 0:
-                padded_seq = copy.copy(seq)
+                padded_seq = seq  # type: ignore
             else:
                 elem_last = seq[-1]
                 padding_seq_shape = [n_padding] + [1 for _ in range(elem_last.ndim)]
@@ -118,7 +120,7 @@ def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> 
             assert False
 
         assert len(padded_seq) == n_seqlen_target
-        padded_seq_list.append(padded_seq)
+        padded_seq_list.append(padded_seq)  # type: ignore
     return padded_seq_list
 
 
