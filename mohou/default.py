@@ -4,12 +4,13 @@ import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
-from mohou.model import LSTM, AutoEncoderBase
+from mohou.model import LSTM, AutoEncoderBase, Chimera
 from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
     GripperState,
+    ImageBase,
     MultiEpisodeChunk,
     TerminateFlag,
     get_all_concrete_leaftypes,
@@ -80,6 +81,19 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
     return encoding_rule
 
 
+def create_chimera_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
+    # experimental
+    encoding_rule = create_default_encoding_rule(project_name)
+    image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
+    chimera = TrainCache.load(project_name, Chimera).best_model
+    assert chimera is not None
+    image_encoder_new = chimera.get_encoder()
+    assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
+    assert encoding_rule[image_type].output_size == image_encoder_new.output_size
+    encoding_rule[image_type] = image_encoder_new
+    return encoding_rule
+
+
 def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     try:
         tcach_lstm = TrainCache.load(project_name, LSTM)
@@ -89,6 +103,16 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
     encoding_rule = create_default_encoding_rule(project_name)
     assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, encoding_rule)
+    return propagator
+
+
+def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
+    encoding_rule = create_chimera_encoding_rule(project_name)
+
+    chimera = TrainCache.load(project_name, Chimera).best_model
+    assert chimera is not None
+
+    propagator = Propagator(chimera.lstm, encoding_rule)
     return propagator
 
 

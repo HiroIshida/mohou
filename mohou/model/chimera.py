@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Type, Union
+from typing import Generic, List, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -11,11 +11,12 @@ from mohou.dataset.sequence_dataset import (
     SequenceDatasetConfig,
     make_same_length,
 )
+from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
-from mohou.types import ImageBase, MultiEpisodeChunk
+from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
 from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
 
 
@@ -25,13 +26,14 @@ class ChimeraConfig(ModelConfigBase):
     ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
 
 
-class Chimera(ModelBase[ChimeraConfig]):
+class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
     """Chimera model with lstm and autoencoder
     This is experimental model and the interface will probably be changed later.
     """
 
+    image_type: Type[ImageT]
     lstm: LSTM
-    ae: AutoEncoder
+    ae: AutoEncoder[ImageT]
 
     def _setup_from_config(self, config: ChimeraConfig) -> None:
         # TODO(HiroIshida) currently fixed to auto encoder
@@ -45,6 +47,11 @@ class Chimera(ModelBase[ChimeraConfig]):
             self.ae = ae
         else:
             assert False
+
+        self.image_type = self.ae.image_type
+
+    def get_encoder(self) -> ImageEncoder[ImageT]:
+        return self.ae.get_encoder()
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
         # TODO(HiroIshida) consider weight later
