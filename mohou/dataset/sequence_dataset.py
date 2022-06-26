@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 import torch
@@ -90,25 +90,23 @@ class SequenceDataAugmentor:  # functor
         return state_seq_list_auged, other_seq_list_auged_list
 
 
-def make_same_length(
-    seq_llist: List[List[np.ndarray]], n_dummy_after_termination: int
-) -> List[List[np.ndarray]]:
-    """Makes all sequences have the same length"""
-    # here llist means list of list
-    # check if all sequence list has same length
-    seq_llist = copy.deepcopy(seq_llist)
-    seqlen_list_reference = [len(seq) for seq in seq_llist[0]]  # first seq_list as ref
-    for seq_list in seq_llist:
-        seqlen_list = [len(seq) for seq in seq_list]
-        assert seqlen_list == seqlen_list_reference
+ArrayOrListT = TypeVar("ArrayOrListT", bound=Union[np.ndarray, List])
 
-    def _make_same_length(seq_list: List[np.ndarray], n_seqlen_target: int):
-        padded_seq_list = []
-        for seq in seq_list:
-            n_seqlen = len(seq)
-            n_padding = n_seqlen_target - n_seqlen
-            assert n_padding >= 0
 
+def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> List[ArrayOrListT]:
+    n_seqlen_max = max([len(seq) for seq in seq_list])
+    n_seqlen_target = n_seqlen_max + n_after_termination
+
+    seq_list = copy.deepcopy(seq_list)
+    padded_seq_list = []
+    for seq in seq_list:
+        n_seqlen = len(seq)
+        n_padding = n_seqlen_target - n_seqlen
+        assert n_padding >= 0
+
+        if isinstance(seq, list):
+            padded_seq = seq + [copy.deepcopy(seq[-1]) for _ in range(n_padding)]
+        elif isinstance(seq, np.ndarray):
             if n_padding == 0:
                 padded_seq = copy.copy(seq)
             else:
@@ -116,13 +114,12 @@ def make_same_length(
                 padding_seq_shape = [n_padding] + [1 for _ in range(elem_last.ndim)]
                 padding_seq = np.tile(elem_last, padding_seq_shape)
                 padded_seq = np.concatenate((seq, padding_seq), axis=0)
+        else:
+            assert False
 
-            assert len(padded_seq) == n_seqlen_target
-            padded_seq_list.append(padded_seq)
-        return padded_seq_list
-
-    n_seqlen_target = max(seqlen_list_reference) + n_dummy_after_termination
-    return [_make_same_length(seq_list, n_seqlen_target) for seq_list in seq_llist]
+        assert len(padded_seq) == n_seqlen_target
+        padded_seq_list.append(padded_seq)
+    return padded_seq_list
 
 
 class WeightPolicy(ABC):
@@ -215,8 +212,12 @@ class AutoRegressiveDataset(Dataset):
         assert weight_seq_list_auged is not None  # for mypy
 
         # make all sequence to the same length due to torch batch computation requirement
-        state_seq_list_auged_adjusted, weight_seq_list_auged_adjusted = make_same_length(
-            [state_seq_list_auged, weight_seq_list_auged], augconfig.n_dummy_after_termination
+        assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])
+        state_seq_list_auged_adjusted = make_same_length(
+            state_seq_list_auged, augconfig.n_dummy_after_termination
+        )
+        weight_seq_list_auged_adjusted = make_same_length(
+            weight_seq_list_auged, augconfig.n_dummy_after_termination
         )
         return cls(
             state_seq_list_auged_adjusted,

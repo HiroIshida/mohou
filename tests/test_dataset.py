@@ -51,11 +51,11 @@ def test_make_same_length():
     conf = AutoRegressiveDatasetConfig()
 
     seq_llist = [seq_0dim_list, seq_1dim_list, seq_2dim_list, seq_3dim_list]
-    seq_llist_modified = make_same_length(seq_llist, conf.n_dummy_after_termination)
 
     n_seqlen_gt = n_seqlen_max + conf.n_dummy_after_termination
-    for seq_list in seq_llist_modified:
-        for seq in seq_list:
+    for seq_list in seq_llist:
+        seq_list_modified = make_same_length(seq_list, conf.n_dummy_after_termination)
+        for seq in seq_list_modified:
             assert len(seq) == n_seqlen_gt
 
 
