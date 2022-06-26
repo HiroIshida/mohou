@@ -42,14 +42,14 @@ class Chimera(ModelBase[ChimeraConfig]):
         # TODO(HiroIshida) consider weight later
         image_seqs, vector_seqs = sample
         assert image_seqs.ndim == 5
-        assert vector_seqs.ndim == 4
+        assert vector_seqs.ndim == 3
         assert image_seqs.shape[0] == vector_seqs.shape[0]  # batch size
         assert image_seqs.shape[1] == vector_seqs.shape[1]  # sequence length
 
         n_batch, n_seqlen = image_seqs.shape[0], image_seqs.shape[1]
 
         # for efficiency we encode the image at once
-        images_at_once = image_seqs.reshape(n_batch * n_seqlen, -1, -1, -1)
+        images_at_once = image_seqs.reshape((n_batch * n_seqlen, *image_seqs.shape[2:]))
         image_features_at_once = self.ae.get_encoder_module()(images_at_once)
         image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
 
@@ -59,12 +59,7 @@ class Chimera(ModelBase[ChimeraConfig]):
         # compute lstm loss
         feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
         assert self.config.lstm_config.n_static_context == 0
-        feature_seq_output = self.lstm.forward(
-            feature_seq_input,
-            torch.empty(
-                0,
-            ),
-        )
+        feature_seq_output = self.lstm.forward(feature_seq_input, torch.empty(n_batch, 0))
         pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
 
         # compute reconstruction loss
