@@ -155,7 +155,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         dims = list(type_dim_table.values())
 
-        type_local_proc_table = {}
+        type_local_proc_table: Dict[Type[ElementBase], LocalProcessor] = {}
 
         for elem_type, bound in zip(type_dim_table.keys(), get_bound_list(dims)):
             feature_seq_partial = feature_seq[:, bound]
