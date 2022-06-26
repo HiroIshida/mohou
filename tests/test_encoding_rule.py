@@ -12,6 +12,7 @@ from mohou.types import (
     AngleVector,
     ImageBase,
     MultiEpisodeChunk,
+    RGBImage,
     TerminateFlag,
     VectorBase,
 )
@@ -69,6 +70,24 @@ def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> En
 def test_encoding_rule(image_av_chunk):  # noqa
     chunk = image_av_chunk
     rule = create_encoding_rule(chunk)
+    vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
+    vector_seq = vector_seq_list[0]
+    assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+
+
+def test_encoding_rule_delete(image_av_chunk):  # noqa
+    chunk: MultiEpisodeChunk = image_av_chunk
+    rule = create_encoding_rule(chunk)
+    rule_dimension_pre = rule.dimension
+
+    delete_key = AngleVector
+    delete_size = rule[delete_key].output_size
+    rule.delete(delete_key)
+
+    assert tuple(rule.keys()) == (RGBImage, TerminateFlag)
+    assert rule.dimension == rule[RGBImage].output_size + rule[TerminateFlag].output_size
+    assert rule.dimension == rule_dimension_pre - delete_size
+
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)
