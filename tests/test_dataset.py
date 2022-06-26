@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import torch
 from test_types import image_av_chunk_uneven  # noqa
@@ -10,6 +12,7 @@ from mohou.dataset import (
     AutoRegressiveDatasetConfig,
     MarkovControlSystemDataset,
     SequenceDatasetConfig,
+    make_same_length,
 )
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
@@ -31,6 +34,32 @@ def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
     for samples in train_loader:
         n_sample_total += samples.shape[0]
     assert n_sample_total == n_image_original * (config.batch_augment_factor + 1)
+
+
+def test_make_same_length():
+    n_seq = 5
+    seq_0dim_list = []
+    seq_1dim_list = []
+    seq_3dim_list = []
+    for i in range(n_seq):
+        n_seqlen = 10 + np.random.randint(10)
+        seq_0dim_list.append(np.array([np.random.randn() for _ in range(n_seqlen)]))
+        seq_1dim_list.append(np.array([np.random.randn(5) for _ in range(n_seqlen)]))
+        seq_3dim_list.append(np.array([np.random.randn(5, 5, 5) for _ in range(n_seqlen)]))
+    conf = AutoRegressiveDatasetConfig()
+    aa_gt, bb_gt = AutoRegressiveDataset.make_same_length(
+        copy.deepcopy(seq_1dim_list), copy.deepcopy(seq_0dim_list), conf
+    )
+    seq_llist = make_same_length(
+        copy.deepcopy([seq_1dim_list, seq_0dim_list]), conf.n_dummy_after_termination
+    )
+    aa, bb = seq_llist
+
+    for a, a_gt in zip(aa, aa_gt):
+        np.testing.assert_almost_equal(a, a_gt)
+
+    for b, b_gt in zip(bb, bb_gt):
+        np.testing.assert_almost_equal(b, b_gt)
 
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa

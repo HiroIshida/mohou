@@ -83,11 +83,45 @@ class SequenceDataAugmentor:  # functor
         for other_seq_list in other_seq_list_list:
             other_seq_list_auged = copy.deepcopy(other_seq_list)
             for _ in range(self.config.n_aug):
-                for weight_seq in other_seq_list:
-                    other_seq_list_auged.append(copy.deepcopy(weight_seq))
+                for other_seq in other_seq_list:
+                    other_seq_list_auged.append(copy.deepcopy(other_seq))
             other_seq_list_auged_list.append(other_seq_list_auged)
 
         return state_seq_list_auged, other_seq_list_auged_list
+
+
+def make_same_length(
+    seq_llist: List[List[np.ndarray]], n_dummy_after_termination: int
+) -> List[List[np.ndarray]]:
+    """Makes all sequences have the same length"""
+    # here llist means list of list
+    # check if all sequence list has same length
+    seqlen_list_reference = [len(seq) for seq in seq_llist[0]]  # first seq_list as ref
+    for seq_list in seq_llist:
+        seqlen_list = [len(seq) for seq in seq_list]
+        assert seqlen_list == seqlen_list_reference
+
+    def _make_same_length(seq_list: List[np.ndarray], n_seqlen_target: int):
+        padded_seq_list = []
+        for seq in seq_list:
+            n_seqlen = len(seq)
+            n_padding = n_seqlen_target - n_seqlen
+            assert n_padding >= 0
+
+            if n_padding == 0:
+                padded_seq = copy.copy(seq)
+            else:
+                elem_last = seq[-1]
+                padding_seq_shape = [n_padding] + [1 for _ in range(elem_last.ndim)]
+                padding_seq = np.tile(elem_last, padding_seq_shape)
+                padded_seq = np.concatenate((seq, padding_seq), axis=0)
+
+            assert len(padded_seq) == n_seqlen_target
+            padded_seq_list.append(padded_seq)
+        return padded_seq_list
+
+    n_seqlen_target = max(seqlen_list_reference) + n_dummy_after_termination
+    return [_make_same_length(seq_list, n_seqlen_target) for seq_list in seq_llist]
 
 
 class WeightPolicy(ABC):

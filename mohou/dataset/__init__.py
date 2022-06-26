@@ -11,4 +11,5 @@ from mohou.dataset.sequence_dataset import (
     PWLinearWeightPolicy,
     SequenceDatasetConfig,
     WeightPolicy,
+    make_same_length,
 )
