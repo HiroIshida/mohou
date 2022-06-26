@@ -16,7 +16,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
-    parser.add_argument("-chunk_postfix", type=str, default="", help="postfix for chunk")
     args = parser.parse_args()
 
     args = parser.parse_args()
