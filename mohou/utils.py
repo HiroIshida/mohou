@@ -18,6 +18,16 @@ class DataclassInitMixin:
         for key, arg in zip(self.__annotations__.keys(), args):
             setattr(self, key, arg)
 
+    def __repr__(self) -> str:
+        out = ""
+        for key in self.__annotations__.keys():
+            val = getattr(self, key)
+            out += "{}: {} \n".format(key, repr(val))
+        return out
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
 
 R = TypeVar("R")
 
