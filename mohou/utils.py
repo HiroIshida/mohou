@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset, random_split
 
 
-class DataclassInitMixin:
+class DataclassLigntMixin:
     # sometimes, dataclass is too feature-rich and because of that
     # cause troubles. For example, dataclass is not straightly
     # incorpolated with abstract property.
