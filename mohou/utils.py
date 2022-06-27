@@ -1,10 +1,36 @@
 import queue
-from typing import Any, Iterator, List, Type, TypeVar, Union
+from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast
 
 import numpy as np
 import PIL
 import torch
 from torch.utils.data import Dataset, random_split
+
+
+class DataclassInitMixin:
+    # sometimes, dataclass is too feature-rich and because of that
+    # cause troubles. For example, dataclass is not straightly
+    # incorpolated with abstract property.
+    # To avoid this, this class provides minimalistic dataclass
+    # implementation.
+    def __init__(self, *args):
+        assert len(args) == len(self.__annotations__)
+        for key, arg in zip(self.__annotations__.keys(), args):
+            setattr(self, key, arg)
+
+
+R = TypeVar("R")
+
+
+def abstract_attribute(obj: Callable[[Any], R] = None) -> R:
+    class DummyAttribute:
+        pass
+
+    _obj = cast(Any, obj)
+    if obj is None:
+        _obj = DummyAttribute()
+    _obj.__is_abstract_attribute__ = True
+    return cast(R, _obj)
 
 
 def get_all_concrete_leaftypes(root: Type) -> List[Type]:

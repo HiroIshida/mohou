@@ -1,3 +1,4 @@
+import copy
 from itertools import permutations
 from typing import Tuple
 
@@ -7,7 +8,7 @@ import torch
 from test_types import image_av_chunk  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import ElemCovMatchPostProcessor, EncodingRule
+from mohou.encoding_rule import CovarianceBalancer, EncodingRule
 from mohou.types import (
     AngleVector,
     ImageBase,
@@ -27,7 +28,7 @@ class Vector2(VectorBase):
 
 
 @pytest.fixture(scope="session")
-def sample_elem_covmatch_post_processor():
+def sample_covariance_balancer():
 
     dim1 = 2
     dim2 = 3
@@ -38,36 +39,49 @@ def sample_elem_covmatch_post_processor():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    type_dim_table = {Vector1: dim1, Vector2: dim2}
-    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, type_dim_table)
-    return normalizer
+    balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
+    return balancer
 
 
-def test_elem_covmatch_post_processor(sample_elem_covmatch_post_processor):
-    normalizer = sample_elem_covmatch_post_processor
-    assert normalizer.dimension == 5
+def test_covariance_balancer(sample_covariance_balancer):
+    balancer: CovarianceBalancer = sample_covariance_balancer
+
     inp = np.random.randn(5)
-    normalized = normalizer.apply(inp)
-    denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
-
-    scaled_cstds = [
-        local_proc.scaled_primary_std for local_proc in normalizer.type_local_proc_table.values()
-    ]
-    np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced, decimal=2)
+    sp_stds = [val.scaled_primary_std for val in balancer.type_balancer_table.values()]  # type: ignore
+    np.testing.assert_almost_equal(sp_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_elem_covmatch_post_processor_delete(sample_elem_covmatch_post_processor):
-    normalizer: ElemCovMatchPostProcessor = sample_elem_covmatch_post_processor
-    normalizer.delete(Vector1)
-    assert normalizer.dimension == 3
+def test_covariance_balancer_delete(sample_covariance_balancer):
+    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
+    balancer.delete(Vector1)
     inp = np.random.randn(3)
-    normalized = normalizer.apply(inp)
-    denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced)
 
 
-def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
+def test_covariance_balancer_marknull(sample_covariance_balancer):
+    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
+    balancer.mark_null(Vector1)
+
+    # test input output match
+    inp = np.random.randn(5)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced)
+
+    # test null part will not change
+    np.testing.assert_almost_equal(balanced[:2], inp[:2])
+
+    # and vice-versa
+    with pytest.raises(AssertionError):
+        np.testing.assert_almost_equal(balanced[3:], inp[3:])
+
+
+def create_encoding_rule(chunk: MultiEpisodeChunk, balance: bool = True) -> EncodingRule:
     dim_image_encoded = 5
     dim_av = chunk.get_element_shape(AngleVector)[0]
     image_type = [t for t in chunk.types() if issubclass(t, ImageBase)].pop()
@@ -82,7 +96,7 @@ def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> En
     )
     f2 = VectorIdenticalEncoder(AngleVector, dim_av)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
-    optional_chunk = chunk if normalize else None
+    optional_chunk = chunk if balance else None
     rule = EncodingRule.from_encoders([f1, f2, f3], chunk=optional_chunk)
     return rule
 
@@ -111,6 +125,29 @@ def test_encoding_rule_delete(image_av_chunk):  # noqa
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+
+
+def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):  # noqa
+    # these two will be used togather. For example, as for chimera model, in the training
+    # we will use delete, and for testing (propagation) we will use marknull.
+    # The following test simulate how these two methods are used in train/test the chimera
+    # model
+    chunk: MultiEpisodeChunk = image_av_chunk
+    rule_for_train = create_encoding_rule(chunk)
+    rule_for_test = copy.deepcopy(rule_for_train)
+
+    rule_for_train.delete(RGBImage)
+    rule_for_test.covariance_balancer.mark_null(RGBImage)
+
+    for episode in chunk:
+        seq_train = rule_for_train.apply_to_episode_data(episode)
+
+        seq_test = rule_for_test.apply_to_episode_data(episode)
+        img_feature_size = rule_for_test[RGBImage].output_size
+        seq_test_without_image = seq_test[:, img_feature_size:]
+
+        assert seq_train.shape == seq_test_without_image.shape
+        np.testing.assert_almost_equal(seq_train, seq_test_without_image)
 
 
 def test_encoding_rule_order(image_av_chunk):  # noqa
