@@ -15,18 +15,18 @@ from mohou.types import (
     MultiEpisodeChunk,
     PrimitiveElementBase,
 )
-from mohou.utils import abstract_attribute, assert_equal_with_message, get_bound_list
+from mohou.utils import (
+    DataclassInitMixin,
+    abstract_attribute,
+    assert_equal_with_message,
+    get_bound_list,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class LocalBalancer(ABC):
     bound: slice = abstract_attribute()
-
-    def __init__(self, **kwargs):
-        assert self.__annotations__.keys() == kwargs.keys()
-        for key, val in kwargs.items():
-            setattr(self, key, val)
 
     @property
     def dim(self) -> int:
@@ -41,7 +41,7 @@ class LocalBalancer(ABC):
         pass
 
 
-class NullLocalBalancer(LocalBalancer):
+class NullLocalBalancer(LocalBalancer, DataclassInitMixin):
     bound: slice
 
     def apply(self, vec: np.ndarray) -> None:
@@ -51,7 +51,7 @@ class NullLocalBalancer(LocalBalancer):
         pass
 
 
-class ActiveLocalBalancer(LocalBalancer):
+class ActiveLocalBalancer(LocalBalancer, DataclassInitMixin):
     bound: slice
     mean: np.ndarray
     cov: np.ndarray
@@ -103,7 +103,7 @@ class CovarianceBalancer:
 
     def mark_null(self, elem_type: Type[ElementBase]) -> None:
         balancer = self.type_balancer_table[elem_type]
-        new_balancer = NullLocalBalancer(bound=balancer.bound)
+        new_balancer = NullLocalBalancer(balancer.bound)
         self.type_balancer_table[elem_type] = new_balancer
         self.update()
 
@@ -114,7 +114,7 @@ class CovarianceBalancer:
         type_balancer_table: Dict[Type[ElementBase], LocalBalancer] = {}
         bounds = get_bound_list(list(type_dim_table.values()))
         for key, bound in zip(type_dim_table.keys(), bounds):
-            type_balancer_table[key] = NullLocalBalancer(bound=bound)
+            type_balancer_table[key] = NullLocalBalancer(bound)
         return type_balancer_table
 
     @classmethod
@@ -159,7 +159,7 @@ class CovarianceBalancer:
                 mean = means.pop(0)
                 cov = covs.pop(0)
                 std = scaled_primary_stds.pop(0)
-                lb = ActiveLocalBalancer(bound=bound, mean=mean, cov=cov, scaled_primary_std=std)
+                lb = ActiveLocalBalancer(bound, mean, cov, std)
                 type_balancer_table[key] = lb
         assert len(means) == len(covs) == len(scaled_primary_stds) == len(active_bounds) == 0
 
@@ -222,10 +222,6 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     covariance_balancer: CovarianceBalancer
 
     def pop(self, *args):
-        # As we have delete function, it is bit confusing
-        raise NotImplementedError  # delete this method if Dict
-
-    def __setitem__(self, *args):
         # As we have delete function, it is bit confusing
         raise NotImplementedError  # delete this method if Dict
 

@@ -6,6 +6,19 @@ import PIL
 import torch
 from torch.utils.data import Dataset, random_split
 
+
+class DataclassInitMixin:
+    # sometimes, dataclass is too feature-rich and because of that
+    # cause troubles. For example, dataclass is not straightly 
+    # incorpolated with abstract property.
+    # To avoid this, this class provides minimalistic dataclass
+    # implementation.
+    def __init__(self, *args):
+        assert len(args) == len(self.__annotations__)
+        for key, arg in zip(self.__annotations__.keys(), args):
+            setattr(self, key, arg)
+
+
 R = TypeVar("R")
 
 
