@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset, random_split
 
 
-class DataclassInitMixin:
+class DataclassLigntMixin:
     # sometimes, dataclass is too feature-rich and because of that
     # cause troubles. For example, dataclass is not straightly
     # incorpolated with abstract property.
@@ -17,6 +17,16 @@ class DataclassInitMixin:
         assert len(args) == len(self.__annotations__)
         for key, arg in zip(self.__annotations__.keys(), args):
             setattr(self, key, arg)
+
+    def __repr__(self) -> str:
+        out = ""
+        for key in self.__annotations__.keys():
+            val = getattr(self, key)
+            out += "{}: {} \n".format(key, repr(val))
+        return out
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
 
 R = TypeVar("R")
