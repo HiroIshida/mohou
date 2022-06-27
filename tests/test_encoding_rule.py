@@ -39,49 +39,49 @@ def sample_covariance_balancer():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    normalizer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
-    return normalizer
+    balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
+    return balancer
 
 
-def test_elem_covmatch_post_processor(sample_covariance_balancer):
+def test_covariance_balancer(sample_covariance_balancer):
     balancer: CovarianceBalancer = sample_covariance_balancer
 
     inp = np.random.randn(5)
-    normalized = balancer.apply(inp)
-    denormalized = balancer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced, decimal=2)
     sp_stds = [val.scaled_primary_std for val in balancer.type_balancer_table.values()]  # type: ignore
     np.testing.assert_almost_equal(sp_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_elem_covmatch_post_processor_delete(sample_covariance_balancer):
-    normalizer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
-    normalizer.delete(Vector1)
+def test_covariance_balancer_delete(sample_covariance_balancer):
+    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
+    balancer.delete(Vector1)
     inp = np.random.randn(3)
-    normalized = normalizer.apply(inp)
-    denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced)
 
 
-def test_elem_covmatch_post_processor_marknull(sample_covariance_balancer):
-    normalizer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
-    normalizer.mark_null(Vector1)
+def test_covariance_balancer_marknull(sample_covariance_balancer):
+    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
+    balancer.mark_null(Vector1)
 
     # test input output match
     inp = np.random.randn(5)
-    normalized = normalizer.apply(inp)
-    denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced)
 
     # test null part will not change
-    np.testing.assert_almost_equal(normalized[:2], inp[:2])
+    np.testing.assert_almost_equal(balanced[:2], inp[:2])
 
     # and vice-versa
     with pytest.raises(AssertionError):
-        np.testing.assert_almost_equal(normalized[3:], inp[3:])
+        np.testing.assert_almost_equal(balanced[3:], inp[3:])
 
 
-def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
+def create_encoding_rule(chunk: MultiEpisodeChunk, balance: bool = True) -> EncodingRule:
     dim_image_encoded = 5
     dim_av = chunk.get_element_shape(AngleVector)[0]
     image_type = [t for t in chunk.types() if issubclass(t, ImageBase)].pop()
@@ -96,7 +96,7 @@ def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> En
     )
     f2 = VectorIdenticalEncoder(AngleVector, dim_av)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
-    optional_chunk = chunk if normalize else None
+    optional_chunk = chunk if balance else None
     rule = EncodingRule.from_encoders([f1, f2, f3], chunk=optional_chunk)
     return rule
 

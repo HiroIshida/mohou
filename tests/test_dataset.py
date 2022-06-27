@@ -60,7 +60,7 @@ def test_make_same_length():
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
-    rule = create_encoding_rule(chunk, normalize=False)
+    rule = create_encoding_rule(chunk, balance=False)
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
@@ -76,7 +76,7 @@ def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
 
 def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk_uneven
-    default_rule = create_encoding_rule(chunk, normalize=False)
+    default_rule = create_encoding_rule(chunk, balance=False)
     f1 = default_rule[RGBImage]
     f2 = default_rule[AngleVector]
     control_encode_rule = EncodingRule.from_encoders([f2])

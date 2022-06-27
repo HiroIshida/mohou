@@ -12,7 +12,7 @@ from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
 @pytest.fixture(scope="session")
 def chimera_dataset(image_av_chunk_uneven):  # noqa
     chunk = image_av_chunk_uneven
-    rule = create_encoding_rule(chunk, normalize=False)
+    rule = create_encoding_rule(chunk, balance=False)
     dataset = ChimeraDataset.from_chunk(chunk, rule)
     return dataset
 
@@ -33,7 +33,7 @@ def test_chimera_dataset(image_av_chunk_uneven, chimera_dataset):  # noqa
 
 def test_chimera_model(image_av_chunk_uneven, chimera_dataset):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk_uneven
-    rule = create_encoding_rule(chunk, normalize=False)
+    rule = create_encoding_rule(chunk, balance=False)
 
     # create config using rule info
     lstm_config = LSTMConfig(rule.dimension)
