@@ -63,7 +63,7 @@ class ScalingLocalProcessor(LocalProcessor):
     bound: slice
     mean: np.ndarray
     cov: np.ndarray
-    scaled_primary_std: Optional[float] = None
+    scaled_primary_std: Optional[float] = None  # take float except before initialization
 
     def __post_init__(self) -> None:
         dim = len(self.mean)
@@ -88,7 +88,6 @@ class ScalingLocalProcessor(LocalProcessor):
 class ElemCovMatchPostProcessor(PostProcessor):
     type_dim_table: Dict[Type[ElementBase], int]
     type_local_proc_table: Dict[Type[ElementBase], LocalProcessor]
-    is_cached: bool = False
 
     def __post_init__(self) -> None:
         self.udpate()
@@ -96,11 +95,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
     def delete(self, elem_type: Type[ElementBase]) -> None:
         self.type_dim_table.pop(elem_type)
         self.type_local_proc_table.pop(elem_type)
-
-        for local_proc in self.type_local_proc_table.values():
-            if isinstance(local_proc, ScalingLocalProcessor):
-                local_proc.scaled_primary_std = None
-        self.is_cached = False
+        self.udpate()
 
     @property
     def dimension(self) -> int:
@@ -115,11 +110,8 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return active_local_proc_list
 
     def udpate(self) -> None:
-        if self.is_cached:
-            return
         self._update_primal_stds()
         self._update_bounds()
-        self.is_cached = True
 
     def _update_primal_stds(self):
         def get_max_std(cov) -> float:
@@ -175,7 +167,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
                     cov = np.array([[cov.item()]])
 
             type_local_proc_table[elem_type] = ScalingLocalProcessor(elem_type, bound, mean, cov)
-        return cls(type_dim_table, type_local_proc_table, False)
+        return cls(type_dim_table, type_local_proc_table)
 
     def check_input_vector(self, vec: np.ndarray) -> None:
         assert_equal_with_message(vec.ndim, 1, "vector dim")
