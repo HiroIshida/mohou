@@ -127,7 +127,7 @@ def test_encoding_rule_delete(image_av_chunk):  # noqa
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)
 
 
-def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):
+def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):  # noqa
     # these two will be used togather. For example, as for chimera model, in the training
     # we will use delete, and for testing (propagation) we will use marknull.
     # The following test simulate how these two methods are used in train/test the chimera
