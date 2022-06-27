@@ -56,8 +56,13 @@ def test_covariance_balancer(sample_covariance_balancer):
 
 def test_covariance_balancer_delete(sample_covariance_balancer):
     balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
-    balancer.delete(Vector1)
-    inp = np.random.randn(3)
+
+    std_vec1_original = balancer.type_balancer_table[Vector1].scaled_primary_std  # type: ignore
+    balancer.delete(Vector2)
+    std_vec1_after = balancer.type_balancer_table[Vector1].scaled_primary_std  # type: ignore
+    assert std_vec1_original < std_vec1_after
+
+    inp = np.random.randn(2)
     balanced = balancer.apply(inp)
     debalanced = balancer.inverse_apply(balanced)
     np.testing.assert_almost_equal(inp, debalanced)
