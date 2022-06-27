@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Generator, List, Optional, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 
@@ -15,7 +15,7 @@ from mohou.types import (
     MultiEpisodeChunk,
     PrimitiveElementBase,
 )
-from mohou.utils import assert_equal_with_message
+from mohou.utils import assert_equal_with_message, get_bound_list
 
 logger = logging.getLogger(__name__)
 
@@ -38,68 +38,103 @@ class IdenticalPostProcessor(PostProcessor):
         return vec
 
 
+class LocalProcessor(ABC):
+    @abstractmethod
+    def apply_inplace(self, vec: np.ndarray) -> None:
+        pass
+
+    @abstractmethod
+    def inverse_apply_inplace(self, vec: np.ndarray) -> None:
+        pass
+
+
+@dataclass
+class InactiveLocalProcessor(LocalProcessor):
+    def apply_inplace(self, vec: np.ndarray) -> None:
+        return
+
+    def inverse_apply_inplace(self, vec: np.ndarray) -> None:
+        return
+
+
+@dataclass
+class ActiveLocalProcessor(LocalProcessor):
+    elem_type: Type[ElementBase]
+    bound: slice
+    mean: np.ndarray
+    cov: np.ndarray
+    scaled_primary_std: Optional[float] = None  # take float except before initialization
+
+    def __post_init__(self) -> None:
+        dim = len(self.mean)
+        assert_equal_with_message(
+            self.mean.shape, (dim,), "mean shape of {}".format(self.elem_type)
+        )
+        assert_equal_with_message(
+            self.cov.shape, (dim, dim), "cov shape of {}".format(self.elem_type)
+        )
+
+    def apply_inplace(self, vec: np.ndarray) -> None:
+        assert self.scaled_primary_std is not None
+        vec_new = (vec[self.bound] - self.mean) / self.scaled_primary_std  # type: ignore
+        vec[self.bound] = vec_new
+
+    def inverse_apply_inplace(self, vec: np.ndarray) -> None:
+        vec_new = (vec[self.bound] * self.scaled_primary_std) + self.mean
+        vec[self.bound] = vec_new
+
+
 @dataclass
 class ElemCovMatchPostProcessor(PostProcessor):
-    @dataclass
-    class NormalizationSpec:
-        dim: int
-        mean: np.ndarray
-        cov: np.ndarray
+    type_dim_table: Dict[Type[ElementBase], int]
+    type_local_proc_table: Dict[Type[ElementBase], LocalProcessor]
 
-    type_spec_table: Dict[Type[ElementBase], NormalizationSpec]
-    _scaled_charc_stds: Optional[np.ndarray] = None
-
-    def __post_init__(self):
-        for key, spec in self.type_spec_table.items():
-            dim = spec.dim
-            mean = spec.mean
-            cov = spec.cov
-            type_name = key.__name__
-            assert_equal_with_message(mean.shape, (dim,), "mean shape of {}".format(type_name))
-            assert_equal_with_message(cov.shape, (dim, dim), "cov shape of {}".format(type_name))
+    def __post_init__(self) -> None:
+        self.udpate()
 
     def delete(self, elem_type: Type[ElementBase]) -> None:
-        self.type_spec_table.pop(elem_type)
-        self._scaled_charc_stds = None  # delete cache
+        self.type_dim_table.pop(elem_type)
+        self.type_local_proc_table.pop(elem_type)
+        self.udpate()
 
     @property
-    def dims(self) -> List[int]:
-        return [val.dim for val in self.type_spec_table.values()]
+    def dimension(self) -> int:
+        return sum(self.type_dim_table.values())
 
     @property
-    def means(self) -> List[np.ndarray]:
-        return [val.mean for val in self.type_spec_table.values()]
+    def active_local_processors(self) -> List[ActiveLocalProcessor]:
+        active_local_proc_list: List[ActiveLocalProcessor] = []
+        for local_proc in self.type_local_proc_table.values():
+            if isinstance(local_proc, ActiveLocalProcessor):
+                active_local_proc_list.append(local_proc)
+        return active_local_proc_list
 
-    @property
-    def covs(self) -> List[np.ndarray]:
-        return [val.cov for val in self.type_spec_table.values()]
+    def udpate(self) -> None:
+        self._update_primal_stds()
+        self._update_bounds()
 
-    @staticmethod
-    def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
-        head = 0
-        for dim in dims:
-            yield slice(head, head + dim)
-            head += dim
-
-    def get_characteristic_stds(self) -> np.ndarray:
+    def _update_primal_stds(self):
         def get_max_std(cov) -> float:
             eig_values, _ = np.linalg.eig(cov)
             max_eig_cov = max(eig_values)
             return np.sqrt(max_eig_cov)
 
-        charc_stds = np.array(list(map(get_max_std, self.covs)))
-        logger.info("char stds: {}".format(charc_stds))
-        return charc_stds
+        n_active = len(self.active_local_processors)
 
-    def get_scaled_characteristic_stds(self) -> np.ndarray:
-        # use cache if exists
-        if self._scaled_charc_stds is not None:
-            return self._scaled_charc_stds
+        primal_std_list = [
+            get_max_std(local_proc.cov) for local_proc in self.active_local_processors
+        ]
+        max_primal_std = max(primal_std_list)
+        scaled_pirmal_std_list = [std / max_primal_std for std in primal_std_list]
 
-        charc_stds = self.get_characteristic_stds()
-        scaled_charc_stds = charc_stds / np.max(charc_stds)
-        self._scaled_charc_stds = scaled_charc_stds  # caching
-        return scaled_charc_stds
+        # assign
+        for i in range(n_active):
+            self.active_local_processors[i].scaled_primary_std = scaled_pirmal_std_list[i]
+
+    def _update_bounds(self):
+        dims = list(self.type_dim_table.values())
+        for local_proc, bound in zip(self.active_local_processors, get_bound_list(dims)):
+            local_proc.bound = bound
 
     @staticmethod
     def is_binary_sequence(partial_feature_seq: np.ndarray):
@@ -109,16 +144,13 @@ class ElemCovMatchPostProcessor(PostProcessor):
     def from_feature_seqs(
         cls, feature_seq: np.ndarray, type_dim_table: Dict[Type[ElementBase], int]
     ):
-
-        Spec = ElemCovMatchPostProcessor.NormalizationSpec
-
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         dims = list(type_dim_table.values())
 
-        type_spec_table = {}
+        type_local_proc_table: Dict[Type[ElementBase], LocalProcessor] = {}
 
-        for typee, rangee in zip(type_dim_table.keys(), cls.get_ranges(dims)):
-            feature_seq_partial = feature_seq[:, rangee]
+        for elem_type, bound in zip(type_dim_table.keys(), get_bound_list(dims)):
+            feature_seq_partial = feature_seq[:, bound]
             dim = feature_seq_partial.shape[1]
             if cls.is_binary_sequence(feature_seq_partial):
                 # because it's strange to compute covariance for binary sequence
@@ -133,28 +165,30 @@ class ElemCovMatchPostProcessor(PostProcessor):
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
-            type_spec_table[typee] = Spec(dim, mean, cov)
-        return cls(type_spec_table)
+
+            type_local_proc_table[elem_type] = ActiveLocalProcessor(elem_type, bound, mean, cov)
+        return cls(type_dim_table, type_local_proc_table)
+
+    def check_input_vector(self, vec: np.ndarray) -> None:
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), self.dimension, "vector total dim")
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+        self.check_input_vector(vec)
+        self.udpate()
 
         vec_out = copy.deepcopy(vec)
-        charc_stds = self.get_scaled_characteristic_stds()
-        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / charc_stds[idx_elem]  # type: ignore
-            vec_out[rangee] = vec_out_new
+        for local_proc in self.type_local_proc_table.values():
+            local_proc.apply_inplace(vec_out)
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+        self.check_input_vector(vec)
+        self.udpate()
+
         vec_out = copy.deepcopy(vec)
-        char_stds = self.get_scaled_characteristic_stds()
-        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
-            vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
-            vec_out[rangee] = vec_out_new
+        for local_proc in self.type_local_proc_table.values():
+            local_proc.inverse_apply_inplace(vec_out)
         return vec_out
 
 

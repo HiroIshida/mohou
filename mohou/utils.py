@@ -21,6 +21,15 @@ def get_all_concrete_leaftypes(root: Type) -> List[Type]:
     return list(set(concrete_types))
 
 
+def get_bound_list(dims: List[int]) -> List[slice]:
+    bound_list = []
+    head = 0
+    for dim in dims:
+        bound_list.append(slice(head, head + dim))
+        head += dim
+    return bound_list
+
+
 def splitting_slices(n_elem_list: List[int]) -> Iterator[slice]:
     head = 0
     for n_elem in n_elem_list:
