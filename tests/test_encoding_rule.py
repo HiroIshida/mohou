@@ -63,7 +63,7 @@ def test_elem_covmatch_post_processor_delete(sample_covariance_balancer):
     np.testing.assert_almost_equal(inp, denormalized)
 
 
-def test_elem_covmatch_post_processor_mark_null(sample_covariance_balancer):
+def test_elem_covmatch_post_processor_marknull(sample_covariance_balancer):
     normalizer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
     normalizer.mark_null(Vector1)
 
@@ -125,6 +125,29 @@ def test_encoding_rule_delete(image_av_chunk):  # noqa
     vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
     vector_seq = vector_seq_list[0]
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+
+
+def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):
+    # these two will be used togather. For example, as for chimera model, in the training
+    # we will use delete, and for testing (propagation) we will use marknull.
+    # The following test simulate how these two methods are used in train/test the chimera
+    # model
+    chunk: MultiEpisodeChunk = image_av_chunk
+    rule_for_train = create_encoding_rule(chunk)
+    rule_for_test = copy.deepcopy(rule_for_train)
+
+    rule_for_train.delete(RGBImage)
+    rule_for_test.covariance_balancer.mark_null(RGBImage)
+
+    for episode in chunk:
+        seq_train = rule_for_train.apply_to_episode_data(episode)
+
+        seq_test = rule_for_test.apply_to_episode_data(episode)
+        img_feature_size = rule_for_test[RGBImage].output_size
+        seq_test_without_image = seq_test[:, img_feature_size:]
+
+        assert seq_train.shape == seq_test_without_image.shape
+        np.testing.assert_almost_equal(seq_train, seq_test_without_image)
 
 
 def test_encoding_rule_order(image_av_chunk):  # noqa
