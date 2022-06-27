@@ -97,6 +97,11 @@ class ElemCovMatchPostProcessor(PostProcessor):
         self.type_local_proc_table.pop(elem_type)
         self.udpate()
 
+    def add(self, elem_type: Type[ElementBase], dim: int, is_active: bool = False) -> None:
+        assert not is_active, "under construction"
+        self.type_dim_table[elem_type] = dim
+        self.type_local_proc_table[elem_type] = InactiveLocalProcessor()
+
     @property
     def dimension(self) -> int:
         return sum(self.type_dim_table.values())
