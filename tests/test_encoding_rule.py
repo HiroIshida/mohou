@@ -7,7 +7,7 @@ import torch
 from test_types import image_av_chunk  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import ElemCovMatchPostProcessor, EncodingRule
+from mohou.encoding_rule import CovarianceBalancer, EncodingRule
 from mohou.types import (
     AngleVector,
     ImageBase,
@@ -27,7 +27,7 @@ class Vector2(VectorBase):
 
 
 @pytest.fixture(scope="session")
-def sample_elem_covmatch_post_processor():
+def sample_covariance_balancer():
 
     dim1 = 2
     dim2 = 3
@@ -38,29 +38,24 @@ def sample_elem_covmatch_post_processor():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    type_dim_table = {Vector1: dim1, Vector2: dim2}
-    normalizer = ElemCovMatchPostProcessor.from_feature_seqs(c, type_dim_table)
+    normalizer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
     return normalizer
 
 
-def test_elem_covmatch_post_processor(sample_elem_covmatch_post_processor):
-    normalizer = sample_elem_covmatch_post_processor
-    assert normalizer.dimension == 5
+def test_elem_covmatch_post_processor(sample_covariance_balancer):
+    balancer: CovarianceBalancer = sample_covariance_balancer
+
     inp = np.random.randn(5)
-    normalized = normalizer.apply(inp)
-    denormalized = normalizer.inverse_apply(normalized)
+    normalized = balancer.apply(inp)
+    denormalized = balancer.inverse_apply(normalized)
     np.testing.assert_almost_equal(inp, denormalized, decimal=2)
-
-    scaled_cstds = [
-        local_proc.scaled_primary_std for local_proc in normalizer.type_local_proc_table.values()
-    ]
-    np.testing.assert_almost_equal(scaled_cstds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+    sp_stds = [val.scaled_primary_std for val in balancer.type_balancer_table.values()]  # type: ignore
+    np.testing.assert_almost_equal(sp_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_elem_covmatch_post_processor_delete(sample_elem_covmatch_post_processor):
-    normalizer: ElemCovMatchPostProcessor = sample_elem_covmatch_post_processor
+def test_elem_covmatch_post_processor_delete(sample_covariance_balancer):
+    normalizer: CovarianceBalancer = sample_covariance_balancer
     normalizer.delete(Vector1)
-    assert normalizer.dimension == 3
     inp = np.random.randn(3)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
