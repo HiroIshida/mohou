@@ -1,3 +1,4 @@
+import copy
 from itertools import permutations
 from typing import Tuple
 
@@ -54,12 +55,30 @@ def test_elem_covmatch_post_processor(sample_covariance_balancer):
 
 
 def test_elem_covmatch_post_processor_delete(sample_covariance_balancer):
-    normalizer: CovarianceBalancer = sample_covariance_balancer
+    normalizer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
     normalizer.delete(Vector1)
     inp = np.random.randn(3)
     normalized = normalizer.apply(inp)
     denormalized = normalizer.inverse_apply(normalized)
-    np.testing.assert_almost_equal(inp, denormalized, decimal=2)
+    np.testing.assert_almost_equal(inp, denormalized)
+
+
+def test_elem_covmatch_post_processor_mark_null(sample_covariance_balancer):
+    normalizer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
+    normalizer.mark_null(Vector1)
+
+    # test input output match
+    inp = np.random.randn(5)
+    normalized = normalizer.apply(inp)
+    denormalized = normalizer.inverse_apply(normalized)
+    np.testing.assert_almost_equal(inp, denormalized)
+
+    # test null part will not change
+    np.testing.assert_almost_equal(normalized[:2], inp[:2])
+
+    # and vice-versa
+    with pytest.raises(AssertionError):
+        np.testing.assert_almost_equal(normalized[3:], inp[3:])
 
 
 def create_encoding_rule(chunk: MultiEpisodeChunk, normalize: bool = True) -> EncodingRule:
