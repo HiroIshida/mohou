@@ -265,7 +265,7 @@ def image_chunk():
 def image_av_chunk():
     def create_edata(n_length):
         image_seq = ElementSequence([RGBImage.dummy_from_shape((28, 28)) for _ in range(n_length)])
-        av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
+        av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(n_length)])
         data = EpisodeData.from_seq_list([image_seq, av_seq])
         return data
 
