@@ -49,7 +49,7 @@ class LocalProcessor(ABC):
 
 
 @dataclass
-class PassThroughLocalProcessor(LocalProcessor):
+class InactiveLocalProcessor(LocalProcessor):
     def apply_inplace(self, vec: np.ndarray) -> None:
         return
 
@@ -58,7 +58,7 @@ class PassThroughLocalProcessor(LocalProcessor):
 
 
 @dataclass
-class ScalingLocalProcessor(LocalProcessor):
+class ActiveLocalProcessor(LocalProcessor):
     elem_type: Type[ElementBase]
     bound: slice
     mean: np.ndarray
@@ -102,10 +102,10 @@ class ElemCovMatchPostProcessor(PostProcessor):
         return sum(self.type_dim_table.values())
 
     @property
-    def active_local_processors(self) -> List[ScalingLocalProcessor]:
-        active_local_proc_list: List[ScalingLocalProcessor] = []
+    def active_local_processors(self) -> List[ActiveLocalProcessor]:
+        active_local_proc_list: List[ActiveLocalProcessor] = []
         for local_proc in self.type_local_proc_table.values():
-            if isinstance(local_proc, ScalingLocalProcessor):
+            if isinstance(local_proc, ActiveLocalProcessor):
                 active_local_proc_list.append(local_proc)
         return active_local_proc_list
 
@@ -166,7 +166,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
 
-            type_local_proc_table[elem_type] = ScalingLocalProcessor(elem_type, bound, mean, cov)
+            type_local_proc_table[elem_type] = ActiveLocalProcessor(elem_type, bound, mean, cov)
         return cls(type_dim_table, type_local_proc_table)
 
     def check_input_vector(self, vec: np.ndarray) -> None:
