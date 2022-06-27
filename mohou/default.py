@@ -90,7 +90,11 @@ def create_chimera_encoding_rule(project_name: Optional[str] = None) -> Encoding
     image_encoder_new = chimera.get_encoder()
     assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
     assert encoding_rule[image_type].output_size == image_encoder_new.output_size
+
+    # TODO: probably we should create a method grouning the following two
     encoding_rule[image_type] = image_encoder_new
+    encoding_rule.covariance_balancer.mark_null(image_type)
+
     return encoding_rule
 
 
