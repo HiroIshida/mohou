@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, random_split
 
 class DataclassInitMixin:
     # sometimes, dataclass is too feature-rich and because of that
-    # cause troubles. For example, dataclass is not straightly 
+    # cause troubles. For example, dataclass is not straightly
     # incorpolated with abstract property.
     # To avoid this, this class provides minimalistic dataclass
     # implementation.

@@ -236,13 +236,6 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             vector_list.append(vector)
         return self.covariance_balancer.apply(np.hstack(vector_list))
 
-    def reset(self, elem_type: Type[ElementBase], encoder: EncoderBase) -> None:
-        super().__setitem__(elem_type, encoder)
-        # TODO: currently resetted elem_type balancer will be mark_null-ed
-        # In the future, we should have option to pass mean and cov (or features)
-        # and update all the balancer. (but I don't have time)
-        self.covariance_balancer.mark_null(elem_type)
-
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
         def split_vector(vector: np.ndarray, size_list: List[int]):
             head = 0
