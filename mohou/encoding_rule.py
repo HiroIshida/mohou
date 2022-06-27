@@ -101,6 +101,12 @@ class CovarianceBalancer:
         self.type_balancer_table.pop(elem_type)
         self.update()
 
+    def mark_null(self, elem_type: Type[ElementBase]) -> None:
+        balancer = self.type_balancer_table[elem_type]
+        new_balancer = NullLocalBalancer(bound=balancer.bound)
+        self.type_balancer_table[elem_type] = new_balancer
+        self.update()
+
     @staticmethod
     def get_null_only_table(
         type_dim_table: Dict[Type[ElementBase], int]
@@ -215,7 +221,11 @@ class CovarianceBalancer:
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     covariance_balancer: CovarianceBalancer
 
-    def pop(self, args):
+    def pop(self, *args):
+        # As we have delete function, it is bit confusing
+        raise NotImplementedError  # delete this method if Dict
+
+    def __setitem__(self, *args):
         # As we have delete function, it is bit confusing
         raise NotImplementedError  # delete this method if Dict
 
@@ -229,6 +239,13 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             vector = encoder.forward(elem_dict[elem_type])
             vector_list.append(vector)
         return self.covariance_balancer.apply(np.hstack(vector_list))
+
+    def reset(self, elem_type: Type[ElementBase], encoder: EncoderBase) -> None:
+        super().__setitem__(elem_type, encoder)
+        # TODO: currently resetted elem_type balancer will be mark_null-ed
+        # In the future, we should have option to pass mean and cov (or features)
+        # and update all the balancer. (but I don't have time)
+        self.covariance_balancer.mark_null(elem_type)
 
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
         def split_vector(vector: np.ndarray, size_list: List[int]):
