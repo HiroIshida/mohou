@@ -37,8 +37,23 @@ class SequenceDatasetConfig:
 
 @dataclass
 class SequenceDataAugmentor:  # functor
+    covmat: np.ndarray
     config: SequenceDatasetConfig
-    take_diff: bool = True
+
+    @classmethod
+    def from_seqs(
+        cls, seq_list: List[np.ndarray], config: SequenceDatasetConfig, take_diff: bool = True
+    ):
+        """construct augmentor.
+        seq_list: sequence list used to compute covariance matrix
+        take_diff: if True, covaraince is computed using state difference (e.g. {s[t] - s[t-1]}_{1:T})
+        otherwise covariance is computed using s[t]_{1:T} sequence.
+        """
+        if take_diff:
+            covmat = cls.compute_diff_covariance(seq_list)
+        else:
+            covmat = cls.compute_covariance(seq_list)
+        return cls(covmat, config)
 
     @staticmethod
     def compute_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
@@ -48,7 +63,6 @@ class SequenceDataAugmentor:  # functor
 
     @staticmethod
     def compute_diff_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
-
         state_diff_list = []
         for state_seq in state_seq_list:
             diff = state_seq[1:, :] - state_seq[:-1, :]
@@ -63,11 +77,8 @@ class SequenceDataAugmentor:  # functor
         each seq_list in other_seq_list_list will not be randomized. But just augmented so that they are
         compatible with augmented state_seq_list.
         """
-        if self.take_diff:
-            cov_mat = self.compute_diff_covariance(seq_list)
-        else:
-            cov_mat = self.compute_covariance(seq_list)
-        cov_mat_scaled = cov_mat * self.config.cov_scale**2
+
+        covmat_scaled = self.covmat * self.config.cov_scale**2
 
         # each auged_seq_list: List[np.ndarray] in auged_seq_list_list contrains
         # set of randomized sequence which originated from the same sequence
@@ -79,7 +90,7 @@ class SequenceDataAugmentor:  # functor
             for _ in range(self.config.n_aug):
                 n_seqlen, n_dim = seq_original.shape
                 mean = np.zeros(n_dim)
-                noises = np.random.multivariate_normal(mean, cov_mat_scaled, n_seqlen)
+                noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
                 noised_seq = seq_original + noises
                 auged_seq_list.append(noised_seq)
 
@@ -222,7 +233,7 @@ class AutoRegressiveDataset(Dataset):
         )
 
         # augmentation
-        augmentor = SequenceDataAugmentor(augconfig, take_diff=True)
+        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
         state_seq_list_auged = flatten_lists(augmentor.apply(state_seq_list))
         weight_seq_list_auged = flatten_lists(augmentor.apply_norand(weight_seq_list))
         static_context_list_auged = flatten_lists(augmentor.apply_norand(static_context_list))
@@ -277,8 +288,8 @@ class MarkovControlSystemDataset(Dataset):
         obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
         assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
-        ctrl_augmentor = SequenceDataAugmentor(config, take_diff=False)
-        obs_augmentor = SequenceDataAugmentor(config, take_diff=True)
+        ctrl_augmentor = SequenceDataAugmentor.from_seqs(ctrl_seq_list, config, take_diff=False)
+        obs_augmentor = SequenceDataAugmentor.from_seqs(obs_seq_list, config, take_diff=True)
 
         ctrl_seq_list_auged = flatten_lists(ctrl_augmentor.apply(ctrl_seq_list))
         obs_seq_list_auged = flatten_lists(obs_augmentor.apply(obs_seq_list))
