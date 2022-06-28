@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from typing import Generic, List, Tuple, Type, Union
 
@@ -126,10 +127,11 @@ class ChimeraDataset(Dataset):
             image_seqs.append(tmp.elem_list)
 
         # data augmentation
-        augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, SequenceDatasetConfig())
+        config = SequenceDatasetConfig()
+        augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, config)
         vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
         image_seqs_auged: List[List[ImageBase]] = flatten_lists(
-            [augmentor.apply_norand(seq) for seq in image_seqs]
+            [[copy.deepcopy(seq) for _ in range(config.n_aug)] for seq in image_seqs]
         )
 
         for image_seq in image_seqs_auged:

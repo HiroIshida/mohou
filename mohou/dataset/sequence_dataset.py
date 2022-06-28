@@ -11,7 +11,6 @@ from torch.utils.data import Dataset
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
 from mohou.utils import (
-    AnyT,
     assert_equal_with_message,
     assert_seq_list_list_compatible,
     flatten_lists,
@@ -87,16 +86,6 @@ class SequenceDataAugmentor:  # functor
             noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
             noised_seq = seq_original + noises
             auged_seq_list.append(noised_seq)
-
-        return auged_seq_list
-
-    def apply_norand(self, seq: AnyT) -> List[AnyT]:
-        """data augmentation with the same order as apply but without any randomization"""
-
-        seq_original = copy.deepcopy(seq)
-        auged_seq_list: List[AnyT] = [seq_original]
-        for _ in range(self.config.n_aug):
-            auged_seq_list.append(copy.deepcopy(seq_original))
 
         return auged_seq_list
 
@@ -221,10 +210,10 @@ class AutoRegressiveDataset(Dataset):
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
         state_seq_list_auged = flatten_lists([augmentor.apply(seq) for seq in state_seq_list])
         weight_seq_list_auged = flatten_lists(
-            [augmentor.apply_norand(seq) for seq in weight_seq_list]
+            [[copy.deepcopy(seq) for _ in range(augconfig.n_aug)] for seq in weight_seq_list]
         )
         static_context_list_auged = flatten_lists(
-            [augmentor.apply_norand(c) for c in static_context_list]
+            [[copy.deepcopy(c) for _ in range(augconfig.n_aug)] for c in static_context_list]
         )
 
         # make all sequence to the same length due to torch batch computation requirement
