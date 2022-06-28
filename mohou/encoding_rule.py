@@ -16,7 +16,7 @@ from mohou.types import (
     PrimitiveElementBase,
 )
 from mohou.utils import (
-    DataclassLigntMixin,
+    DataclassLightMixin,
     abstract_attribute,
     assert_equal_with_message,
     get_bound_list,
@@ -41,7 +41,7 @@ class LocalBalancer(ABC):
         pass
 
 
-class NullLocalBalancer(LocalBalancer, DataclassLigntMixin):
+class NullLocalBalancer(LocalBalancer, DataclassLightMixin):
     bound: slice
 
     def apply(self, vec: np.ndarray) -> None:
@@ -51,7 +51,7 @@ class NullLocalBalancer(LocalBalancer, DataclassLigntMixin):
         pass
 
 
-class ActiveLocalBalancer(LocalBalancer, DataclassLigntMixin):
+class ActiveLocalBalancer(LocalBalancer, DataclassLightMixin):
     bound: slice
     mean: np.ndarray
     cov: np.ndarray
