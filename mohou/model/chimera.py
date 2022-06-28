@@ -8,9 +8,9 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 
 from mohou.dataset.sequence_dataset import (
+    PaddingSequenceAligner,
     SequenceDataAugmentor,
     SequenceDatasetConfig,
-    make_same_length,
 )
 from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule
@@ -141,6 +141,7 @@ class ChimeraDataset(Dataset):
         # align seq list
         n_after_termination = 20  # TODO(HiroIshida) from config
         assert_seq_list_list_compatible([image_seqs_auged, vector_seqs_auged])
-        image_seqs_aligned = make_same_length(image_seqs_auged, n_after_termination)
-        vector_seqs_aligned = make_same_length(vector_seqs_auged, n_after_termination)
+        aligner = PaddingSequenceAligner.from_seqs(image_seqs_auged, n_after_termination)
+        image_seqs_aligned = [aligner.apply(seq) for seq in image_seqs_auged]
+        vector_seqs_aligned = [aligner.apply(seq) for seq in vector_seqs_auged]
         return cls(image_type, image_seqs_aligned, vector_seqs_aligned)  # type: ignore

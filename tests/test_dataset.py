@@ -10,9 +10,8 @@ from mohou.dataset import (
     AutoRegressiveDatasetConfig,
     MarkovControlSystemDataset,
     SequenceDatasetConfig,
-    make_same_length,
 )
-from mohou.dataset.sequence_dataset import SequenceDataAugmentor
+from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
 from mohou.utils import assert_seq_list_list_compatible
@@ -70,7 +69,7 @@ def test_sequence_data_augmentor():
         assert np.max(diff) < 1.0
 
 
-def test_make_same_length():
+def test_padding_sequnece_alginer():
     n_seq = 5
     n_seqlen_max = -1
     seq_0dim_list = []
@@ -87,10 +86,12 @@ def test_make_same_length():
     conf = AutoRegressiveDatasetConfig()
 
     seq_llist = [seq_0dim_list, seq_1dim_list, seq_2dim_list, seq_3dim_list]
+    assert_seq_list_list_compatible(seq_llist)
 
+    aligner = PaddingSequenceAligner.from_seqs(seq_0dim_list, conf.n_dummy_after_termination)
     n_seqlen_gt = n_seqlen_max + conf.n_dummy_after_termination
     for seq_list in seq_llist:
-        seq_list_modified = make_same_length(seq_list, conf.n_dummy_after_termination)
+        seq_list_modified = [aligner.apply(seq) for seq in seq_list]
         for seq in seq_list_modified:
             assert len(seq) == n_seqlen_gt
 
