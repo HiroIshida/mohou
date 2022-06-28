@@ -131,7 +131,7 @@ class ChimeraDataset(Dataset):
         augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, config)
         vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
         image_seqs_auged: List[List[ImageBase]] = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(config.n_aug)] for seq in image_seqs]
+            [[copy.deepcopy(seq) for _ in range(config.n_aug + 1)] for seq in image_seqs]
         )
 
         for image_seq in image_seqs_auged:

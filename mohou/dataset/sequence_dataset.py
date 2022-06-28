@@ -35,7 +35,7 @@ class SequenceDatasetConfig:
 
 
 @dataclass
-class SequenceDataAugmentor:  # functor
+class SequenceDataAugmentor:
     covmat: np.ndarray
     config: SequenceDatasetConfig
 
@@ -210,11 +210,11 @@ class AutoRegressiveDataset(Dataset):
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
         state_seq_list_auged = flatten_lists([augmentor.apply(seq) for seq in state_seq_list])
         weight_seq_list_auged = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(augconfig.n_aug)] for seq in weight_seq_list]
-        )
+            [[copy.deepcopy(seq) for _ in range(augconfig.n_aug + 1)] for seq in weight_seq_list]
+        )  # +1 for original data
         static_context_list_auged = flatten_lists(
-            [[copy.deepcopy(c) for _ in range(augconfig.n_aug)] for c in static_context_list]
-        )
+            [[copy.deepcopy(c) for _ in range(augconfig.n_aug + 1)] for c in static_context_list]
+        )  # +1 for original data
 
         # make all sequence to the same length due to torch batch computation requirement
         assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])
@@ -268,8 +268,8 @@ class MarkovControlSystemDataset(Dataset):
         ctrl_augmentor = SequenceDataAugmentor.from_seqs(ctrl_seq_list, config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor.from_seqs(obs_seq_list, config, take_diff=True)
 
-        ctrl_seq_list_auged = flatten_lists(ctrl_augmentor.apply(ctrl_seq_list))
-        obs_seq_list_auged = flatten_lists(obs_augmentor.apply(obs_seq_list))
+        ctrl_seq_list_auged = flatten_lists([ctrl_augmentor.apply(seq) for seq in ctrl_seq_list])
+        obs_seq_list_auged = flatten_lists([obs_augmentor.apply(seq) for seq in obs_seq_list])
 
         inp_ctrl_seq = []
         inp_obs_seq = []
