@@ -71,49 +71,34 @@ class SequenceDataAugmentor:  # functor
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    def apply(self, seq_list: List[np.ndarray]) -> List[List[np.ndarray]]:
+    def apply(self, seq: np.ndarray) -> List[np.ndarray]:
         """apply augmentation
-        state_seq_list will be randomized.
-        each seq_list in other_seq_list_list will not be randomized. But just augmented so that they are
-        compatible with augmented state_seq_list.
+        seq: 2dim array (n_seqlen, n_dim)
         """
+        assert seq.ndim == 2
 
         covmat_scaled = self.covmat * self.config.cov_scale**2
 
-        # each auged_seq_list: List[np.ndarray] in auged_seq_list_list contrains
-        # set of randomized sequence which originated from the same sequence
-        auged_seq_list_list: List[List[np.ndarray]] = []
-        for seq in seq_list:
+        seq_original = copy.deepcopy(seq)
+        auged_seq_list: List[np.ndarray] = [seq_original]
+        for _ in range(self.config.n_aug):
+            n_seqlen, n_dim = seq_original.shape
+            mean = np.zeros(n_dim)
+            noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
+            noised_seq = seq_original + noises
+            auged_seq_list.append(noised_seq)
 
-            seq_original = copy.deepcopy(seq)
-            auged_seq_list: List[np.ndarray] = [seq_original]
-            for _ in range(self.config.n_aug):
-                n_seqlen, n_dim = seq_original.shape
-                mean = np.zeros(n_dim)
-                noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
-                noised_seq = seq_original + noises
-                auged_seq_list.append(noised_seq)
+        return auged_seq_list
 
-            auged_seq_list_list.append(auged_seq_list)
-
-        return auged_seq_list_list
-
-    def apply_norand(
-        self, seq_list: List[AnyT]
-    ) -> List[List[AnyT]]:  # AnyT is type of the sequence
+    def apply_norand(self, seq: AnyT) -> List[AnyT]:
         """data augmentation with the same order as apply but without any randomization"""
 
-        auged_seq_list_list: List[List[AnyT]] = []
-        for seq in seq_list:
-            seq_original = copy.deepcopy(seq)
+        seq_original = copy.deepcopy(seq)
+        auged_seq_list: List[AnyT] = [seq_original]
+        for _ in range(self.config.n_aug):
+            auged_seq_list.append(copy.deepcopy(seq_original))
 
-            auged_seq_list: List[AnyT] = [seq_original]
-            for _ in range(self.config.n_aug):
-                auged_seq_list.append(copy.deepcopy(seq_original))
-
-            auged_seq_list_list.append(auged_seq_list)
-
-        return auged_seq_list_list
+        return auged_seq_list
 
 
 ArrayOrListT = TypeVar("ArrayOrListT", bound=Union[np.ndarray, List])
@@ -234,10 +219,13 @@ class AutoRegressiveDataset(Dataset):
 
         # augmentation
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
-        state_seq_list_auged = flatten_lists(augmentor.apply(state_seq_list))
-        weight_seq_list_auged = flatten_lists(augmentor.apply_norand(weight_seq_list))
-        static_context_list_auged = flatten_lists(augmentor.apply_norand(static_context_list))
-        assert weight_seq_list_auged is not None  # for mypy
+        state_seq_list_auged = flatten_lists([augmentor.apply(seq) for seq in state_seq_list])
+        weight_seq_list_auged = flatten_lists(
+            [augmentor.apply_norand(seq) for seq in weight_seq_list]
+        )
+        static_context_list_auged = flatten_lists(
+            [augmentor.apply_norand(c) for c in static_context_list]
+        )
 
         # make all sequence to the same length due to torch batch computation requirement
         assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])

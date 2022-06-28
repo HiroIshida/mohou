@@ -127,8 +127,10 @@ class ChimeraDataset(Dataset):
 
         # data augmentation
         augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, SequenceDatasetConfig())
-        vector_seqs_auged = flatten_lists(augmentor.apply(vector_seqs))
-        image_seqs_auged: List[List[ImageBase]] = flatten_lists(augmentor.apply_norand(image_seqs))
+        vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
+        image_seqs_auged: List[List[ImageBase]] = flatten_lists(
+            [augmentor.apply_norand(seq) for seq in image_seqs]
+        )
 
         for image_seq in image_seqs_auged:
             for i in range(len(image_seq)):
