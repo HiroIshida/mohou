@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, TypeVar, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 from mohou.encoding_rule import EncodingRule
 from mohou.types import MultiEpisodeChunk, TerminateFlag
 from mohou.utils import (
+    AnyT,
     assert_equal_with_message,
     assert_seq_list_list_compatible,
     flatten_lists,
@@ -91,18 +92,27 @@ class SequenceDataAugmentor:
         return auged_seq_list
 
 
-ArrayOrListT = TypeVar("ArrayOrListT", bound=Union[np.ndarray, List])
+@dataclass
+class PaddingSequenceAligner:
+    n_seqlen_target: int
 
+    @classmethod
+    def from_seqs(
+        cls, seqs: Union[List[np.ndarray], List[List]], n_after_termination: int
+    ) -> "PaddingSequenceAligner":
+        n_seqlen_max = max([len(seq) for seq in seqs])
+        n_seqlen_target = n_seqlen_max + n_after_termination
+        return cls(n_seqlen_target)
 
-def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> List[ArrayOrListT]:
-    n_seqlen_max = max([len(seq) for seq in seq_list])
-    n_seqlen_target = n_seqlen_max + n_after_termination
-
-    seq_list = copy.deepcopy(seq_list)
-    padded_seq_list: List[ArrayOrListT] = []
-    for seq in seq_list:
+    def apply(self, seq: AnyT) -> AnyT:  # TODO: specify type
+        """get padded sequence based on seq.
+        seq: np.ndarray or List
+        if seq is [1, 2, 3, 4] and n_seqlen_target = 10, the output padded sequence looks like
+        [1, 2, 3, 4, 4, 4, 4, 4, 4, 4]
+        """
+        seq = copy.deepcopy(seq)
         n_seqlen = len(seq)
-        n_padding = n_seqlen_target - n_seqlen
+        n_padding = self.n_seqlen_target - n_seqlen
         assert n_padding >= 0
 
         # TODO(HiroIshida) To remove type-ignores it's better to use singledispatch .
@@ -120,9 +130,8 @@ def make_same_length(seq_list: List[ArrayOrListT], n_after_termination: int) -> 
         else:
             assert False
 
-        assert len(padded_seq) == n_seqlen_target
-        padded_seq_list.append(padded_seq)  # type: ignore
-    return padded_seq_list
+        assert len(padded_seq) == self.n_seqlen_target
+        return padded_seq  # type: ignore
 
 
 class WeightPolicy(ABC):
@@ -219,12 +228,12 @@ class AutoRegressiveDataset(Dataset):
 
         # make all sequence to the same length due to torch batch computation requirement
         assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])
-        state_seq_list_auged_adjusted = make_same_length(
+        aligner = PaddingSequenceAligner.from_seqs(
             state_seq_list_auged, augconfig.n_dummy_after_termination
         )
-        weight_seq_list_auged_adjusted = make_same_length(
-            weight_seq_list_auged, augconfig.n_dummy_after_termination
-        )
+        state_seq_list_auged_adjusted = [aligner.apply(seq) for seq in state_seq_list_auged]
+        weight_seq_list_auged_adjusted = [aligner.apply(seq) for seq in weight_seq_list_auged]
+
         return cls(
             state_seq_list_auged_adjusted,
             static_context_list_auged,
