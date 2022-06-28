@@ -1,4 +1,3 @@
-import copy
 from dataclasses import dataclass
 from typing import Generic, List, Tuple, Type, Union
 
@@ -18,11 +17,6 @@ from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
-from mohou.utils import (
-    assert_equal_with_message,
-    assert_seq_list_list_compatible,
-    flatten_lists,
-)
 
 
 @dataclass
@@ -59,45 +53,61 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         return self.ae.get_encoder()
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
-        # TODO(HiroIshida) consider weight later
-        image_seqs, vector_seqs = sample
-        assert image_seqs.ndim == 5
-        assert vector_seqs.ndim == 3
-        assert image_seqs.shape[0] == vector_seqs.shape[0]  # batch size
-        assert image_seqs.shape[1] == vector_seqs.shape[1]  # sequence length
+        """compute loss
+        sample: tuple of (image_seqs, vector_seqs_seq)
+        each image_seqs corresponds to a element of vector_seqs_seq (e.g. vector_seqs_seq[0])
+        in the sense that both are originated from the same episode.
+        In contrast to image_seqs, vector_seqs is augmented by trajectory augmentation.
+        """
 
-        n_batch, n_seqlen = image_seqs.shape[0], image_seqs.shape[1]
+        # TODO(HiroIshida) take weight as input
+        image_seqs, vector_seqs_seq = sample
+        assert image_seqs.ndim == 5
+        assert vector_seqs_seq.ndim == 4
+
+        n_batch, n_aug, n_seqlen, n_vecdim = vector_seqs_seq.shape
+        assert image_seqs.shape[0] == n_batch
+        assert image_seqs.shape[1] == n_seqlen
 
         # for efficiency we encode the image at once
         images_at_once = image_seqs.reshape((n_batch * n_seqlen, *image_seqs.shape[2:]))
         image_features_at_once = self.ae.get_encoder_module()(images_at_once)
-        image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
-
-        # TODO(HiroIshida) tmporary assume default encoding rule order (i.e. image first)
-        feature_seqs = torch.concat((image_feature_seqs, vector_seqs), dim=2)
-
-        # compute lstm loss
-        feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
-        assert self.config.lstm_config.n_static_context == 0
-        static_context = torch.empty(n_batch, 0).to(self.device)
-        feature_seq_output = self.lstm.forward(feature_seq_input, static_context)
-        pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
 
         # compute reconstruction loss
         image_reconst_at_once = self.ae.get_decoder_module()(image_features_at_once)
         reconst_loss = nn.MSELoss()(images_at_once, image_reconst_at_once)
 
-        return LossDict({"prediction": pred_loss, "reconstruction": reconst_loss})
+        # compute prediction loss
+        # note that prediction loss is done for all augmentd sequence and finally take a mean
+        pred_loss_list = []
+        image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
+
+        # NOTE: swapaxes make thing easier, because now each vector_seqs correponds to image_seqs
+        for vector_seqs in vector_seqs_seq.swapaxes(0, 1):
+            # TODO(HiroIshida) tmporary assume default encoding rule order (i.e. image first)
+            feature_seqs = torch.concat((image_feature_seqs, vector_seqs), dim=2)
+
+            feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
+            assert self.config.lstm_config.n_static_context == 0
+            static_context = torch.empty(n_batch, 0).to(self.device)
+            feature_seq_output = self.lstm.forward(feature_seq_input, static_context)
+            pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
+            pred_loss_list.append(pred_loss)
+        pred_loss_mean = torch.mean(torch.stack(pred_loss_list))
+
+        return LossDict({"prediction": pred_loss_mean, "reconstruction": reconst_loss})
 
 
 @dataclass
 class ChimeraDataset(Dataset):
     image_type: Type[ImageBase]
     image_seqs: List[List[ImageBase]]
-    vector_seqs: List[np.ndarray]
+    vector_seqs_list: List[List[np.ndarray]]
 
     def __post_init__(self):
-        assert_equal_with_message(len(self.image_seqs), len(self.vector_seqs), "length of seq")
+        for image_seq, vector_seqs in zip(self.image_seqs, self.vector_seqs_list):
+            for vector_seq in vector_seqs:
+                assert len(image_seq) == len(vector_seq)
 
     def __len__(self) -> int:
         return len(self.image_seqs)
@@ -106,9 +116,11 @@ class ChimeraDataset(Dataset):
         image_seq = self.image_seqs[idx]
         image_seq_tensor = torch.stack([img.to_tensor() for img in image_seq], dim=0)
 
-        vector_seq = self.vector_seqs[idx]
-        vector_seq_tensor = torch.from_numpy(vector_seq).float()
-        return image_seq_tensor, vector_seq_tensor
+        vector_seqs = self.vector_seqs_list[
+            idx
+        ]  # list of randomized vector originated from the same vector
+        vector_seqs_tensor = torch.from_numpy(np.array(vector_seqs)).float()
+        return image_seq_tensor, vector_seqs_tensor
 
     @classmethod
     def from_chunk(cls, chunk: MultiEpisodeChunk, encoding_rule: EncodingRule) -> "ChimeraDataset":
@@ -129,19 +141,15 @@ class ChimeraDataset(Dataset):
         # data augmentation
         config = SequenceDatasetConfig()
         augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, config)
-        vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
-        image_seqs_auged: List[List[ImageBase]] = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(config.n_aug + 1)] for seq in image_seqs]
-        )
-
-        for image_seq in image_seqs_auged:
-            for i in range(len(image_seq)):
-                image_seq[i] = image_seq[i].randomize()
+        auged_vector_seqs_list = [augmentor.apply(seq) for seq in vector_seqs]
 
         # align seq list
         n_after_termination = 20  # TODO(HiroIshida) from config
-        assert_seq_list_list_compatible([image_seqs_auged, vector_seqs_auged])
-        aligner = PaddingSequenceAligner.from_seqs(image_seqs_auged, n_after_termination)
-        image_seqs_aligned = [aligner.apply(seq) for seq in image_seqs_auged]
-        vector_seqs_aligned = [aligner.apply(seq) for seq in vector_seqs_auged]
-        return cls(image_type, image_seqs_aligned, vector_seqs_aligned)  # type: ignore
+        aligner = PaddingSequenceAligner.from_seqs(image_seqs, n_after_termination)
+
+        image_seqs_aligned = [aligner.apply(seq) for seq in image_seqs]
+
+        alinged_vector_seqs_list: List[List[np.ndarray]] = []
+        for auged_vector_seq in auged_vector_seqs_list:
+            alinged_vector_seqs_list.append([aligner.apply(seq) for seq in auged_vector_seq])
+        return cls(image_type, image_seqs_aligned, alinged_vector_seqs_list)  # type: ignore
