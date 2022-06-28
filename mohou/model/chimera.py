@@ -136,7 +136,7 @@ class ChimeraDataset(Dataset):
         image_seqs: List[List[ImageBase]] = []
         for episode_data in chunk:
             tmp = episode_data.get_sequence_by_type(image_type)
-            image_seqs.append(tmp.elem_list)
+            image_seqs.append([img.randomize() for img in tmp.elem_list])
 
         # data augmentation
         config = SequenceDatasetConfig()
