@@ -75,6 +75,7 @@ class SequenceDataAugmentor:
         seq: 2dim array (n_seqlen, n_dim)
         """
         assert seq.ndim == 2
+        assert seq.shape[1] == self.covmat.shape[0]
 
         covmat_scaled = self.covmat * self.config.cov_scale**2
 

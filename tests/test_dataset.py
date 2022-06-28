@@ -12,6 +12,7 @@ from mohou.dataset import (
     SequenceDatasetConfig,
     make_same_length,
 )
+from mohou.dataset.sequence_dataset import SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
 from mohou.utils import assert_seq_list_list_compatible
@@ -31,6 +32,42 @@ def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
     for samples in train_loader:
         n_sample_total += samples.shape[0]
     assert n_sample_total == n_image_original * (config.batch_augment_factor + 1)
+
+
+def test_sequence_data_augmentor():
+    cov_scale = 0.9
+    config = SequenceDatasetConfig(n_aug=1, cov_scale=cov_scale)
+
+    cov_grount_truth = np.diag([1**2, 3**2])
+
+    def creat_random_walk(n_seqlen: int) -> np.ndarray:
+        x = np.random.randn(2)
+        x_list = [x]
+        for i in range(n_seqlen):
+            mean = np.zeros(2)
+            noise = np.random.multivariate_normal(mean, cov_grount_truth, 1)
+            x_list.append(x_list[-1] + noise.flatten())
+        return np.array(x_list)
+
+    random_walks = []
+    for _ in range(50):
+        n_seqlen = 100 + np.random.randint(10)  # real data length is different from seq to seq
+        random_walks.append(creat_random_walk(n_seqlen))
+
+    augmentor = SequenceDataAugmentor.from_seqs(random_walks, config)
+
+    # check if cov computed from seqs matches with the original
+    diff = np.abs(augmentor.covmat - cov_grount_truth)
+    assert np.max(diff) < 0.5
+
+    auged_seqs = augmentor.apply(np.zeros((1000, 2)))
+    auged_seqs.pop(0)
+
+    cov_scaled_ground_trugh = cov_grount_truth * cov_scale**2
+    for seq in auged_seqs:
+        covmat = np.cov(seq.T)
+        diff = np.abs(covmat - cov_scaled_ground_trugh)
+        assert np.max(diff) < 0.5
 
 
 def test_make_same_length():
