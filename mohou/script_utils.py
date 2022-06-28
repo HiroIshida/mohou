@@ -66,6 +66,7 @@ def create_default_logger(project_name: str, prefix: str) -> Logger:
     if log_sym_path.is_symlink():
         log_sym_path.unlink()
     log_sym_path.symlink_to(log_file_path)
+
     return logger
 
 

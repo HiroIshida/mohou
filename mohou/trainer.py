@@ -11,9 +11,10 @@ import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
+import mohou
 from mohou.file import dump_object, load_objects
 from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
-from mohou.utils import split_with_ratio
+from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -109,30 +110,6 @@ class TrainCache(Generic[ModelT]):
         idx_min_validate = np.argmin(min_validate_loss_list)
         return tcache_list[idx_min_validate]
 
-    """
-    @classmethod
-    def load(cls: Type[TrainCacheT], project_name: str, model_type: type,
-            cache_postfix: Optional[str]=None) -> TrainCacheT:
-        # requiring "model_type" seems redundant but there is no way to
-        # use info of ModelT from @classmethod
-
-        # If multiple caches are found, choose best one respect to valid loss
-        tcache_list = load_pickled_data(project_name, cls, model_type.__name__, cache_postfix)
-        loss_list = [tcache.validate_loss_dict_seq[-1]['total'] for tcache in tcache_list]
-        idx = np.argmin(loss_list)
-        return tcache_list[idx]
-
-    # TODO: probably has better design ...
-    @classmethod
-    def load_multiple(cls: Type[TrainCacheT], project_name: str, model_type: type,
-            cache_postfix: Optional[str]=None) -> List[TrainCacheT]:
-        # requiring "model_type" seems redundant but there is no way to
-        # use info of ModelT from @classmethod
-        data_list = load_pickled_data(project_name, cls, model_type.__name__, cache_postfix)
-        assert len(data_list) > 1, "data_list has {} elements.".format(len(data_list))
-        return data_list
-    """
-
 
 def train(
     tcache: TrainCache,
@@ -141,6 +118,8 @@ def train(
     config: TrainConfig = TrainConfig(),
 ) -> None:
 
+    log_package_version_info(logger, mohou)
+    log_text_with_box(logger, "train log")
     logger.info("train start with config: {}".format(config))
 
     if model is None:
