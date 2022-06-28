@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from typing import Generic, List, Tuple, Type, Union
 
@@ -17,7 +18,11 @@ from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
-from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
+from mohou.utils import (
+    assert_equal_with_message,
+    assert_seq_list_list_compatible,
+    flatten_lists,
+)
 
 
 @dataclass
@@ -122,9 +127,12 @@ class ChimeraDataset(Dataset):
             image_seqs.append(tmp.elem_list)
 
         # data augmentation
-        augmentor = SequenceDataAugmentor(SequenceDatasetConfig())
-        vector_seqs_auged = augmentor.apply(vector_seqs)
-        image_seqs_auged: List[List[ImageBase]] = augmentor.apply_norand(image_seqs)
+        config = SequenceDatasetConfig()
+        augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, config)
+        vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
+        image_seqs_auged: List[List[ImageBase]] = flatten_lists(
+            [[copy.deepcopy(seq) for _ in range(config.n_aug + 1)] for seq in image_seqs]
+        )
 
         for image_seq in image_seqs_auged:
             for i in range(len(image_seq)):
