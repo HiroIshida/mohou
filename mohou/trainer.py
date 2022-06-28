@@ -136,12 +136,9 @@ def train(
 
     dataset_train, dataset_validate = split_with_ratio(dataset, config.valid_data_ratio)
 
-    n_worker = 1
-    train_loader = DataLoader(
-        dataset=dataset_train, batch_size=config.batch_size, shuffle=True, num_workers=n_worker
-    )
+    train_loader = DataLoader(dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
     validate_loader = DataLoader(
-        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True, num_workers=n_worker
+        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True
     )
     optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
