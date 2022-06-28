@@ -1,3 +1,4 @@
+import functools
 import pathlib
 import queue
 import subprocess
@@ -8,6 +9,8 @@ import numpy as np
 import PIL
 import torch
 from torch.utils.data import Dataset, random_split
+
+AnyT = TypeVar("AnyT", bound=Any)
 
 
 class DataclassLightMixin:
@@ -32,10 +35,7 @@ class DataclassLightMixin:
         return self.__repr__()
 
 
-R = TypeVar("R")
-
-
-def abstract_attribute(obj: Callable[[Any], R] = None) -> R:
+def abstract_attribute(obj: Callable[[Any], AnyT] = None) -> AnyT:
     class DummyAttribute:
         pass
 
@@ -43,7 +43,7 @@ def abstract_attribute(obj: Callable[[Any], R] = None) -> R:
     if obj is None:
         _obj = DummyAttribute()
     _obj.__is_abstract_attribute__ = True
-    return cast(R, _obj)
+    return cast(AnyT, _obj)
 
 
 def get_all_concrete_leaftypes(root: Type) -> List[Type]:
@@ -58,6 +58,10 @@ def get_all_concrete_leaftypes(root: Type) -> List[Type]:
         for st in t.__subclasses__():
             q.put(st)
     return list(set(concrete_types))
+
+
+def flatten_lists(list_list: List[List[AnyT]]) -> List[AnyT]:
+    return functools.reduce(lambda xs, ys: xs + ys, list_list)
 
 
 def get_bound_list(dims: List[int]) -> List[slice]:
@@ -97,9 +101,6 @@ def split_with_ratio(dataset: Dataset, valid_ratio: float = 0.1):
     n_validate = int(valid_ratio * n_total)
     ds_train, ds_validate = random_split(dataset, [n_total - n_validate, n_validate])
     return ds_train, ds_validate
-
-
-AnyT = TypeVar("AnyT", bound=Any)
 
 
 def assert_equal_with_message(given: AnyT, expected: Union[AnyT, List[Any]], elem_name: str):

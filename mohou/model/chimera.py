@@ -17,7 +17,11 @@ from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
-from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
+from mohou.utils import (
+    assert_equal_with_message,
+    assert_seq_list_list_compatible,
+    flatten_lists,
+)
 
 
 @dataclass
@@ -123,8 +127,8 @@ class ChimeraDataset(Dataset):
 
         # data augmentation
         augmentor = SequenceDataAugmentor(SequenceDatasetConfig())
-        vector_seqs_auged = augmentor.apply(vector_seqs)
-        image_seqs_auged: List[List[ImageBase]] = augmentor.apply_norand(image_seqs)
+        vector_seqs_auged = flatten_lists(augmentor.apply(vector_seqs))
+        image_seqs_auged: List[List[ImageBase]] = flatten_lists(augmentor.apply_norand(image_seqs))
 
         for image_seq in image_seqs_auged:
             for i in range(len(image_seq)):
