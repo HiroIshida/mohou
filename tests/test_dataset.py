@@ -70,30 +70,50 @@ def test_sequence_data_augmentor():
 
 
 def test_padding_sequnece_alginer():
+    # simple test
+    aligner = PaddingSequenceAligner(10)
+    assert aligner.apply([1, 2, 3, 4]) == [1, 2, 3, 4, 4, 4, 4, 4, 4, 4]
+
+    # automatic test
+    def test_inner(seq):
+        is_numpy = isinstance(seq[0], np.ndarray)
+
+        n_seqlen = len(seq)
+        n_seqlen_target = 10
+        aligner = PaddingSequenceAligner(n_seqlen_target)
+        seq_padded = aligner.apply(seq)
+
+        for i in range(n_seqlen_target):
+            if i < n_seqlen:
+                if is_numpy:
+                    np.testing.assert_almost_equal(seq_padded[i], seq[i])
+                else:
+                    assert seq_padded[i] == seq[i]
+            else:
+                if is_numpy:
+                    np.testing.assert_almost_equal(seq_padded[i], seq[n_seqlen - 1])
+                else:
+                    assert seq_padded[i] == seq[n_seqlen - 1]
+
+    test_inner([1, 2, 3, 4])
+    test_inner([np.random.randn() for _ in range(4)])
+    test_inner([np.random.randn(3) for _ in range(4)])
+    test_inner([np.random.randn(3, 3) for _ in range(4)])
+    test_inner([np.random.randn(3, 3, 3) for _ in range(4)])
+
+
+def test_padding_sequnece_alginer_creation():
     n_seq = 5
     n_seqlen_max = -1
-    seq_0dim_list = []
-    seq_1dim_list = []
-    seq_2dim_list = []
-    seq_3dim_list = []
+    seqs = []
     for i in range(n_seq):
         n_seqlen = 10 + np.random.randint(10)
         n_seqlen_max = max(n_seqlen, n_seqlen_max)
-        seq_0dim_list.append(np.array([np.random.randn() for _ in range(n_seqlen)]))
-        seq_1dim_list.append(np.array([np.random.randn(5) for _ in range(n_seqlen)]))
-        seq_2dim_list.append(np.array([np.random.randn(5, 5) for _ in range(n_seqlen)]))
-        seq_3dim_list.append(np.array([np.random.randn(5, 5, 5) for _ in range(n_seqlen)]))
-    conf = AutoRegressiveDatasetConfig()
+        seqs.append(np.array([np.random.randn() for _ in range(n_seqlen)]))
 
-    seq_llist = [seq_0dim_list, seq_1dim_list, seq_2dim_list, seq_3dim_list]
-    assert_seq_list_list_compatible(seq_llist)
-
-    aligner = PaddingSequenceAligner.from_seqs(seq_0dim_list, conf.n_dummy_after_termination)
-    n_seqlen_gt = n_seqlen_max + conf.n_dummy_after_termination
-    for seq_list in seq_llist:
-        seq_list_modified = [aligner.apply(seq) for seq in seq_list]
-        for seq in seq_list_modified:
-            assert len(seq) == n_seqlen_gt
+    n_after = 2
+    aligner = PaddingSequenceAligner.from_seqs(seqs, n_after)
+    aligner.n_seqlen_target == n_seqlen_max + n_after
 
 
 def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
