@@ -38,7 +38,7 @@ def test_sequence_data_augmentor():
     cov_scale = 0.9
     config = SequenceDatasetConfig(n_aug=1, cov_scale=cov_scale)
 
-    cov_grount_truth = np.diag([1**2, 3**2])
+    cov_grount_truth = np.diag([2**2, 3**2])
 
     def creat_random_walk(n_seqlen: int) -> np.ndarray:
         x = np.random.randn(2)
@@ -58,7 +58,7 @@ def test_sequence_data_augmentor():
 
     # check if cov computed from seqs matches with the original
     diff = np.abs(augmentor.covmat - cov_grount_truth)
-    assert np.max(diff) < 0.5
+    assert np.max(diff) < 1.0
 
     auged_seqs = augmentor.apply(np.zeros((1000, 2)))
     auged_seqs.pop(0)
@@ -67,7 +67,7 @@ def test_sequence_data_augmentor():
     for seq in auged_seqs:
         covmat = np.cov(seq.T)
         diff = np.abs(covmat - cov_scaled_ground_trugh)
-        assert np.max(diff) < 0.5
+        assert np.max(diff) < 1.0
 
 
 def test_make_same_length():
