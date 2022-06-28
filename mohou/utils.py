@@ -1,4 +1,7 @@
+import pathlib
 import queue
+import subprocess
+import types
 from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast
 
 import numpy as np
@@ -131,3 +134,42 @@ def canvas_to_ndarray(fig, resize_pixel=None) -> np.ndarray:
     img_resized = img.resize(resize_pixel)
     data_resized = np.asarray(img_resized, dtype=np.uint8)
     return data_resized
+
+
+def log_text_with_box(logger, text: str) -> None:
+    box_width = max(40, len(text) * 3)
+    inner_text = "=" * 10 + " " + text.capitalize() + " "
+    inner_text += "=" * (box_width - len(inner_text))
+
+    logger.info("=" * box_width)
+    logger.info(inner_text)
+    logger.info("=" * box_width)
+
+
+def log_package_version_info(logger, module: types.ModuleType) -> None:
+    def log_line_by_line(multiline_text: str):
+        for line in multiline_text.splitlines():
+            logger.info(line)
+
+    init_file_name = module.__file__
+    is_site_package = "site-packages" in init_file_name
+    log_text_with_box(logger, "version check")
+    if is_site_package:
+        logger.info("version: {}".format(module.__version__))  # type: ignore
+    else:
+        git_path = pathlib.Path(init_file_name).parent.parent / ".git"
+
+        command_git_log = "git --git-dir {} --no-pager log --oneline | head -20".format(
+            str(git_path)
+        )
+        proc = subprocess.run(command_git_log, stdout=subprocess.PIPE, shell=True)
+        git_log_stdout = proc.stdout.decode("utf8")
+        logger.info(command_git_log)
+        log_line_by_line(git_log_stdout)
+
+        log_text_with_box(logger, "git diff check")
+
+        command_git_log = "git --git-dir {} --no-pager diff".format(str(git_path))
+        proc = subprocess.run(command_git_log, stdout=subprocess.PIPE, shell=True)
+        git_log_stdout = proc.stdout.decode("utf8")
+        log_line_by_line(git_log_stdout)
