@@ -157,19 +157,19 @@ def log_package_version_info(logger, module: types.ModuleType) -> None:
     if is_site_package:
         logger.info("version: {}".format(module.__version__))  # type: ignore
     else:
-        git_path = pathlib.Path(init_file_name).parent.parent / ".git"
+        repo_path = pathlib.Path(init_file_name).parent.parent
 
-        command_git_log = "git --git-dir {} --no-pager log --oneline | head -20".format(
-            str(git_path)
-        )
+        # git log
+        command_git_log = "cd {}; git --no-pager log --oneline | head -20".format(str(repo_path))
         proc = subprocess.run(command_git_log, stdout=subprocess.PIPE, shell=True)
         git_log_stdout = proc.stdout.decode("utf8")
         logger.info(command_git_log)
         log_line_by_line(git_log_stdout)
 
+        # git diff
         log_text_with_box(logger, "git diff check")
-
-        command_git_log = "git --git-dir {} --no-pager diff".format(str(git_path))
-        proc = subprocess.run(command_git_log, stdout=subprocess.PIPE, shell=True)
-        git_log_stdout = proc.stdout.decode("utf8")
-        log_line_by_line(git_log_stdout)
+        command_git_diff = "cd {}; git --no-pager diff".format(str(repo_path))
+        proc = subprocess.run(command_git_diff, stdout=subprocess.PIPE, shell=True)
+        git_diff_stdout = proc.stdout.decode("utf8")
+        logger.info(command_git_diff)
+        log_line_by_line(git_diff_stdout)
