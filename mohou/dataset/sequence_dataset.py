@@ -105,6 +105,11 @@ class PaddingSequenceAligner:
         return cls(n_seqlen_target)
 
     def apply(self, seq: AnyT) -> AnyT:  # TODO: specify type
+        """get padded sequence based on seq.
+        seq: np.ndarray or List
+        if seq is [1, 2, 3, 4] and n_seqlen_target = 10, the output padded sequence looks like
+        [1, 2, 3, 4, 4, 4, 4, 4, 4, 4]
+        """
         seq = copy.deepcopy(seq)
         n_seqlen = len(seq)
         n_padding = self.n_seqlen_target - n_seqlen
