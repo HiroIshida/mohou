@@ -16,6 +16,7 @@ class Propagator:
     n_init_duplicate: int
     is_initialized: bool
     static_context: Optional[np.ndarray] = None
+    hidden: Optional[torch.Tensor] = None  # hidden state of lstm
 
     def __init__(self, lstm: LSTM, encoding_rule: EncodingRule, n_init_duplicate: int = 0):
         self.lstm = lstm
@@ -71,7 +72,8 @@ class Propagator:
             states = np.vstack(self.fed_state_list + pred_state_list)
             states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
 
-            out, hidden = self.lstm.forward(states_torch, context_torch)
+            out, hidden = self.lstm.forward(states_torch, context_torch, self.hidden)
+            self.hidden = hidden
             state_pred_torch = out[0, -1, :]
             state_pred = state_pred_torch.detach().numpy()
 
