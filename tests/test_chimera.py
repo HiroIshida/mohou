@@ -18,17 +18,16 @@ def chimera_dataset(image_av_chunk_uneven):  # noqa
 
 
 def test_chimera_dataset(image_av_chunk_uneven, chimera_dataset):  # noqa
-    chunk = image_av_chunk_uneven
     dataset = chimera_dataset
     item = dataset[0]
-    image_seq, vector_seq = item
+    image_seq, vector_seqs = item
 
     assert image_seq.ndim == 4
-    assert vector_seq.ndim == 2
-    assert image_seq.shape[0] == vector_seq.shape[0]  # n_seqlen equal
+    assert vector_seqs.ndim == 3
+    assert image_seq.shape[0] == vector_seqs.shape[1]  # n_seqlen equal
 
     n_aug = 20
-    assert len(dataset) == len(chunk) * (n_aug + 1)
+    assert vector_seqs.shape[0] == (n_aug + 1)
 
 
 def test_chimera_model(image_av_chunk_uneven, chimera_dataset):  # noqa
@@ -54,12 +53,13 @@ def test_chimera_model(image_av_chunk_uneven, chimera_dataset):  # noqa
     for model in models:
         n_batch = 8
         n_seqlen = 12
+        n_aug = 10
         image_tensor_shape = tuple(reversed(chunk.get_element_shape(RGBImage)))
         av_dim = chunk.get_element_shape(AngleVector)[0]
         image_seqs = torch.randn((n_batch, n_seqlen, *image_tensor_shape))
-        vector_seqs = torch.randn((n_batch, n_seqlen, av_dim + 1))  # 1 for terminal flag
+        vector_seqs_seq = torch.randn((n_batch, n_aug, n_seqlen, av_dim + 1))  # 1 for terminal flag
 
-        loss_dict = model.loss((image_seqs, vector_seqs))
+        loss_dict = model.loss((image_seqs, vector_seqs_seq))
         keys = ["prediction", "reconstruction"]
         for key in keys:
             assert key in loss_dict
