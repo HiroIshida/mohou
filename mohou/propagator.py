@@ -70,8 +70,10 @@ class Propagator:
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
             states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-            state_pred_torch: torch.Tensor = self.lstm(states_torch, context_torch)[:, -1]
-            state_pred = state_pred_torch.squeeze().detach().numpy()
+
+            out, hidden = self.lstm.forward(states_torch, context_torch)
+            state_pred_torch = out[0, -1, :]
+            state_pred = state_pred_torch.detach().numpy()
 
             if force_continue:
                 state_pred[-1] = CONTINUE_FLAG_VALUE
