@@ -4,6 +4,7 @@ from typing import Generic, List, Tuple, Type, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.utils.data import Dataset
 
 from mohou.dataset.sequence_dataset import (
@@ -52,6 +53,20 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
     def get_encoder(self) -> ImageEncoder[ImageT]:
         return self.ae.get_encoder()
 
+    def compute_covariance(self, seqs: torch.Tensor) -> torch.Tensor:
+        n_seq, n_seqlen, n_dim = seqs.shape
+        diffseqs = seqs[:, 1:] - seqs[:, :-1]
+        flat_diffseq = diffseqs.reshape(-1, n_dim)
+        cov = torch.cov(flat_diffseq.detach().T).detach()
+        return cov + torch.eye(n_dim).to(self.device) * 1e-5  # to keep positive definite
+
+    def randomize(self, seqs: torch.Tensor, cov: torch.Tensor) -> torch.Tensor:
+        # maybe there is torch version of pdf
+        n_seq, n_seqlen, n_dim = seqs.shape
+        distrib = MultivariateNormal(torch.zeros(n_dim).to(self.device), covariance_matrix=cov)
+        noise = distrib.sample((n_seq, n_seqlen))
+        return seqs + noise
+
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
         """compute loss
         sample: tuple of (image_seqs, vector_seqs_seq)
@@ -79,10 +94,13 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
 
         # compute prediction loss
         image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
-        image_feature_seqs_repeated = image_feature_seqs.repeat_interleave(n_aug, dim=0)
+        cov_image_feature = self.compute_covariance(image_feature_seqs)
+        image_feature_seqs_rep = image_feature_seqs.repeat_interleave(n_aug, dim=0)
+        image_feature_seqs_augmented = self.randomize(image_feature_seqs_rep, cov_image_feature)
+
         flat_vector_seqs = vector_seqs_seq.reshape(n_batch * n_aug, n_seqlen, n_vecdim)
 
-        flat_feature_seqs = torch.concat((image_feature_seqs_repeated, flat_vector_seqs), dim=2)
+        flat_feature_seqs = torch.concat((image_feature_seqs_augmented, flat_vector_seqs), dim=2)
 
         feature_seq_input, feature_seq_output_gt = (
             flat_feature_seqs[:, :-1],
