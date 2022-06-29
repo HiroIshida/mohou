@@ -78,24 +78,27 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         reconst_loss = nn.MSELoss()(images_at_once, image_reconst_at_once)
 
         # compute prediction loss
-        # note that prediction loss is done for all augmentd sequence and finally take a mean
-        pred_loss_list = []
         image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
+        image_feature_seqs_repeated = image_feature_seqs.repeat_interleave(n_aug, dim=0)
+        flat_vector_seqs = vector_seqs_seq.reshape(n_batch * n_aug, n_seqlen, n_vecdim)
 
-        # NOTE: swapaxes make thing easier, because now each vector_seqs correponds to image_seqs
-        for vector_seqs in vector_seqs_seq.swapaxes(0, 1):
-            # TODO(HiroIshida) tmporary assume default encoding rule order (i.e. image first)
-            feature_seqs = torch.concat((image_feature_seqs, vector_seqs), dim=2)
+        flat_feature_seqs = torch.concat((image_feature_seqs_repeated, flat_vector_seqs), dim=2)
 
-            feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
-            assert self.config.lstm_config.n_static_context == 0
-            static_context = torch.empty(n_batch, 0).to(self.device)
-            feature_seq_output = self.lstm.forward(feature_seq_input, static_context)
-            pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
-            pred_loss_list.append(pred_loss)
-        pred_loss_mean = torch.mean(torch.stack(pred_loss_list))
+        feature_seq_input, feature_seq_output_gt = (
+            flat_feature_seqs[:, :-1],
+            flat_feature_seqs[:, 1:],
+        )
+        assert self.config.lstm_config.n_static_context == 0
+        static_context = torch.empty(n_aug * n_batch, 0).to(self.device)
+        feature_seq_output = self.lstm.forward(feature_seq_input, static_context)
+        pred_loss_sum = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
 
-        return LossDict({"prediction": pred_loss_mean, "reconstruction": reconst_loss})
+        # pred_loss_sum is computed over flat_vector_seqs, which means it is the sum of
+        # each augmented sequence. To be comparable with reconstruction loss, we must
+        # devide by n_aug
+        pred_loss = pred_loss_sum / n_aug
+
+        return LossDict({"prediction": pred_loss, "reconstruction": reconst_loss})
 
 
 @dataclass
