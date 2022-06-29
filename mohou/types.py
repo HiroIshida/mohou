@@ -630,12 +630,10 @@ class EpisodeData(TypeShapeTableMixin):
     @overload
     def __getitem__(self, indices: List[int]) -> "EpisodeData":
         """remove TerminateFlag"""
-        pass
 
     @overload
     def __getitem__(self, slicee: slice) -> "EpisodeData":
         """remove TerminateFlag"""
-        pass
 
     def __getitem__(self, index_like):
         if isinstance(index_like, int):

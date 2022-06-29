@@ -152,7 +152,7 @@ def log_package_version_info(logger, module: types.ModuleType) -> None:
         for line in multiline_text.splitlines():
             logger.info(line)
 
-    init_file_name = module.__file__
+    init_file_name: str = module.__file__  # type: ignore
     is_site_package = "site-packages" in init_file_name
     log_text_with_box(logger, "version check")
     if is_site_package:
