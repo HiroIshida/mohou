@@ -16,12 +16,22 @@ class Propagator:
     n_init_duplicate: int
     is_initialized: bool
     static_context: Optional[np.ndarray] = None
+    prop_hidden: bool = False
+    _hidden: Optional[torch.Tensor] = None  # hidden state of lstm
 
-    def __init__(self, lstm: LSTM, encoding_rule: EncodingRule, n_init_duplicate: int = 0):
+    def __init__(
+        self,
+        lstm: LSTM,
+        encoding_rule: EncodingRule,
+        n_init_duplicate: int = 0,
+        prop_hidden: bool = False,
+    ):
         self.lstm = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
         self.n_init_duplicate = n_init_duplicate
+        self.prop_hidden = prop_hidden
+
         self.is_initialized = False
 
         require_static_context = lstm.config.n_static_context > 0
@@ -70,8 +80,18 @@ class Propagator:
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
             states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-            state_pred_torch: torch.Tensor = self.lstm(states_torch, context_torch)[:, -1]
-            state_pred = state_pred_torch.squeeze().detach().numpy()
+
+            out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+
+            if self.prop_hidden:
+                # From the definition, propagating also hidden with the state is supporsed to
+                # yield better prediction. But, from my experiment, it seems that performance
+                # is actually slight worse than not doing it.
+                # But need more experiment.
+                self._hidden = hidden
+
+            state_pred_torch = out[0, -1, :]
+            state_pred = state_pred_torch.detach().numpy()
 
             if force_continue:
                 state_pred[-1] = CONTINUE_FLAG_VALUE

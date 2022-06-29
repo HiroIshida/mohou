@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -52,13 +52,18 @@ class LSTM(ModelBase[LSTMConfig]):
 
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
-        pred_output = self.forward(state_sample_input, static_context_sample)
+        pred_output, _ = self.forward(state_sample_input, static_context_sample)
 
         weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
         loss_value = torch.mean(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
         return LossDict({"prediction": loss_value})
 
-    def forward(self, state_sample: torch.Tensor, static_context: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        state_sample: torch.Tensor,
+        static_context: torch.Tensor,
+        hidden: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         # arrange bais_sample and create concat state_sample
         _, n_seq_len, _ = state_sample.shape
         context_unsqueezed = static_context.unsqueeze(dim=1)
@@ -66,6 +71,7 @@ class LSTM(ModelBase[LSTMConfig]):
         context_auged_state_sample = torch.cat((state_sample, context_sequenced), dim=2)
 
         # propagation
-        tmp, _ = self.lstm_layer(context_auged_state_sample)
-        out = self.output_layer(tmp)
-        return out
+        preout, hidden = self.lstm_layer(context_auged_state_sample, hidden)
+        out = self.output_layer(preout)
+        assert hidden is not None
+        return out, hidden

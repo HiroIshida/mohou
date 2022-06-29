@@ -16,7 +16,7 @@ def test_lstm():
     ti_inputs = torch.randn(n_sample, n_dim_static_context).float()
 
     # test forward
-    state_prop = model.forward(state_sample, ti_inputs)
+    state_prop, _ = model.forward(state_sample, ti_inputs)
     assert state_prop.shape == (n_sample, n_seq_len, n_dim_with_flag)
 
     # test loss
