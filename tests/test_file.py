@@ -51,6 +51,21 @@ def test_load_objects(tmp_project_name):
     remove_project(tmp_project_name)
 
 
+def test_load_objects_partial_match(tmp_project_name):
+    a = SampleClass(np.random.randn(10, 10))
+    b = SampleClass(np.random.randn(10, 10))
+    common_uuid = str(uuid.uuid4())
+    dump_object(a, tmp_project_name, common_uuid + str(uuid.uuid4()))
+    dump_object(b, tmp_project_name, common_uuid + str(uuid.uuid4()))
+
+    objects = load_objects(SampleClass, tmp_project_name, postfix=common_uuid)
+    assert len(objects) == 2
+
+    with pytest.raises(FileNotFoundError):
+        wrong_uuid = str(uuid.uuid4())
+        objects = load_objects(SampleClass, tmp_project_name, postfix=wrong_uuid)
+
+
 def test_load_objects_subdir(tmp_project_name):
     subpath_list = [pathlib.Path("hoge/hoge"), "fuga/fuga"]
     for subpath in subpath_list:
