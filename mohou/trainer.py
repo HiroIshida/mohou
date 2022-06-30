@@ -39,14 +39,12 @@ class TrainCache(Generic[ModelT]):
     best_model: Optional[ModelT]
     latest_model: ModelT
     file_uuid: str
-    dump_always: bool
 
-    def __init__(self, project_name: str, dump_always: bool = False):
+    def __init__(self, project_name: str):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.file_uuid = str(uuid.uuid4())[-6:]
-        self.dump_always = dump_always
         self.best_model = None
 
     def on_startof_epoch(self, epoch: int, dataset: Dataset):
@@ -84,10 +82,12 @@ class TrainCache(Generic[ModelT]):
             self.min_validate_loss = min_loss_sofar
             self.best_model = model
             logger.info("model is updated")
+            self.dump()
 
-        if update_model or self.dump_always:
-            postfix = self.get_file_postfix(model, self.file_uuid)
-            dump_object(self, self.project_name, postfix)
+    def dump(self):
+        assert self.best_model is not None
+        postfix = self.get_file_postfix(self.best_model, self.file_uuid)
+        dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
