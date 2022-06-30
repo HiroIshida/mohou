@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 
 import mohou
 from mohou.file import dump_object, load_objects
-from mohou.model import LossDict, ModelBase, ModelT, average_loss_dict
+from mohou.model import LossDict, ModelBase, ModelConfigBase, ModelT, average_loss_dict
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
@@ -39,14 +39,12 @@ class TrainCache(Generic[ModelT]):
     best_model: Optional[ModelT]
     latest_model: ModelT
     file_uuid: str
-    dump_always: bool
 
-    def __init__(self, project_name: str, dump_always: bool = False):
+    def __init__(self, project_name: str):
         self.project_name = project_name
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.file_uuid = str(uuid.uuid4())[-6:]
-        self.dump_always = dump_always
         self.best_model = None
 
     def on_startof_epoch(self, epoch: int, dataset: Dataset):
@@ -61,6 +59,16 @@ class TrainCache(Generic[ModelT]):
         self.validate_loss_dict_seq.append(loss_dict)
         logger.info("validate loss => {}".format(loss_dict))
 
+    @staticmethod
+    def get_file_postfix(model: ModelT, file_uuid: Optional[str]) -> str:
+        class_name = model.__class__.__name__
+        config_hash = model.hash_value
+
+        postfix = "{}-{}".format(class_name, config_hash)
+        if file_uuid is not None:
+            postfix += "-{}".format(file_uuid)
+        return postfix
+
     def on_endof_epoch(self, model: ModelT, epoch: int):
         model = copy.deepcopy(model)
         model.to(torch.device("cpu"))
@@ -74,11 +82,12 @@ class TrainCache(Generic[ModelT]):
             self.min_validate_loss = min_loss_sofar
             self.best_model = model
             logger.info("model is updated")
+            self.dump()
 
-        postfix = self.best_model.__class__.__name__ + "-" + self.file_uuid
-
-        if update_model or self.dump_always:
-            dump_object(self, self.project_name, postfix)
+    def dump(self):
+        assert self.best_model is not None
+        postfix = self.get_file_postfix(self.best_model, self.file_uuid)
+        dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
@@ -90,13 +99,11 @@ class TrainCache(Generic[ModelT]):
         ax.set_yscale("log")
         ax.legend(["train", "valid"])
 
-    @classmethod
-    def load(cls, project_name: Optional[str], model_type: Type[ModelT]) -> "TrainCache[ModelT]":
-        postfix = model_type.__name__
-        tcache_list = load_objects(TrainCache, project_name, postfix)
-        assert len(tcache_list) > 0, "No train cache found for {}".format(model_type.__name__)
+    @staticmethod
+    def _choose_lowest_validation_loss(
+        tcache_list: List["TrainCache[ModelT]"],
+    ) -> "TrainCache[ModelT]":
         min_validate_loss_list = []
-
         for tcache in tcache_list:
             if hasattr(tcache, "min_validate_loss"):
                 min_validate_loss_list.append(tcache.min_validate_loss)
@@ -109,6 +116,22 @@ class TrainCache(Generic[ModelT]):
 
         idx_min_validate = np.argmin(min_validate_loss_list)
         return tcache_list[idx_min_validate]
+
+    @classmethod
+    def load(
+        cls,
+        project_name: Optional[str],
+        model_type: Type[ModelT],
+        model_config: Optional[ModelConfigBase] = None,
+    ) -> "TrainCache[ModelT]":
+
+        # TODO(HiroIshida): get_file_postfix function ????
+        postfix = model_type.__name__
+        if model_config is not None:
+            postfix += "-{}".format(model_config.hash_value)
+
+        tcache_list = load_objects(TrainCache, project_name, postfix)
+        return cls._choose_lowest_validation_loss(tcache_list)
 
 
 def train(

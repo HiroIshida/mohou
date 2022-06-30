@@ -76,6 +76,7 @@ def load_object(
     postfix: Optional[str] = None,
     subpath: Optional[Union[Path, str]] = None,
 ) -> DataT:
+    """load single pickle object"""
 
     file_path = resolve_file_path(obj_type, project_name, postfix=postfix, subpath=subpath)
     time_stamp = os.path.getmtime(str(file_path))
@@ -97,6 +98,16 @@ def load_objects(
     postfix: Optional[str] = None,
     subpath: Optional[Union[Path, str]] = None,
 ) -> List[DataT]:
+    """load multiple pickle objects (or could be single object)
+    If postfix is specified, all the objects filename of which starts with the postfix will be loaded.
+
+    For example, if obj_type = SomeClass and postfix is "12345", file names
+    path_to_project/Someclass-12345.pkl
+    path_to_project/Someclass-12345-jfoiwfjoi.pkl
+    will be loaded but
+    path_to_project/Someclass-54321.pkl
+    will not be loaded.
+    """
 
     file_path = resolve_file_path(obj_type, project_name, postfix=postfix, subpath=subpath)
     file_name_common = str(file_path)
