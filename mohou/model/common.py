@@ -67,6 +67,7 @@ class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
         self.config = config
         logger.info("model name: {}".format(self.__class__.__name__))
         logger.info("model config: {}".format(config))
+        logger.info("hash value of config: {}".format(self.hash_value))
         logger.info("model is initialized")
 
     def put_on_device(self):

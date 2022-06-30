@@ -2,6 +2,7 @@ import copy
 import os
 import pathlib
 import pickle
+from dataclasses import dataclass
 from typing import Type
 
 import numpy as np
@@ -17,6 +18,7 @@ from mohou.types import (
     EpisodeData,
     GrayImage,
     GripperState,
+    HashableMixin,
     MetaData,
     MultiEpisodeChunk,
     PrimitiveImageBase,
@@ -33,6 +35,26 @@ from mohou.types import (
 @pytest.fixture(scope="session")
 def sample_image_path():
     return os.path.join(pathlib.Path(__file__).resolve().parent, "data", "sample.png")
+
+
+@dataclass
+class Hoge(HashableMixin):
+    a: int
+
+
+@dataclass
+class Fuga(HashableMixin):
+    b: int
+
+
+def test_hashable_mixin():
+
+    h = Hoge(1)
+    f = Fuga(1)
+    assert f.hash_value != h.hash_value
+
+    h2 = Hoge(1)
+    assert h.hash_value == h2.hash_value
 
 
 def test_metadata():

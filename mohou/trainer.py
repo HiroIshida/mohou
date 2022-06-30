@@ -61,6 +61,13 @@ class TrainCache(Generic[ModelT]):
         self.validate_loss_dict_seq.append(loss_dict)
         logger.info("validate loss => {}".format(loss_dict))
 
+    @staticmethod
+    def get_file_postfix(model: ModelT, file_uuid: str) -> str:
+        class_name = model.__class__.__name__
+        config_hash = model.hash_value
+        postfix = "{}-{}-{}".format(class_name, config_hash, file_uuid)
+        return postfix
+
     def on_endof_epoch(self, model: ModelT, epoch: int):
         model = copy.deepcopy(model)
         model.to(torch.device("cpu"))
@@ -75,9 +82,8 @@ class TrainCache(Generic[ModelT]):
             self.best_model = model
             logger.info("model is updated")
 
-        postfix = self.best_model.__class__.__name__ + "-" + self.file_uuid
-
         if update_model or self.dump_always:
+            postfix = self.get_file_postfix(model, self.file_uuid)
             dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
