@@ -9,6 +9,7 @@ import yaml
 class Setting:
     root_path: Path = Path("~/.mohou")
     primary_project_name: Optional[str] = None
+    n_data_intact = 5
 
     @classmethod
     def construct(cls) -> "Setting":
