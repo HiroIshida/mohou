@@ -30,7 +30,7 @@ import torch
 import torchvision
 import yaml
 
-from mohou.constant import CONTINUE_FLAG_VALUE, N_DATA_INTACT, TERMINATE_FLAG_VALUE
+from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.file import dump_object, get_project_path, load_object
 from mohou.image_randomizer import (
     _f_randomize_depth_image,
@@ -767,9 +767,10 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         data_list_intact = []
         if with_intact_data:
-            assert N_DATA_INTACT > 0
-            interval = len(data_list) // N_DATA_INTACT
-            indices_intact = [interval * i for i in range(N_DATA_INTACT)]
+            n_data_intact = setting.n_data_intact
+            assert n_data_intact > 0
+            interval = len(data_list) // n_data_intact
+            indices_intact = [interval * i for i in range(n_data_intact)]
             # sorted is necessary because pop changes index
             for idx in sorted(indices_intact, reverse=True):
                 data_list_intact.append(data_list.pop(idx))
