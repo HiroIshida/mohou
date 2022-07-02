@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -32,9 +33,12 @@ class LossDict(Dict[str, torch.Tensor]):
             self[key] = val
 
     def __str__(self) -> str:
-        string = "total: {}".format(self.total().item())
+        def to_exp_notation(val: float) -> str:
+            return np.format_float_scientific(val, precision=3, exp_digits=2)
+
+        string = "total: {}".format(to_exp_notation(self.total().item()))
         for k, v in self.items():
-            string += ", {}: {}".format(k, v.item())
+            string += ", {}: {}".format(k, to_exp_notation(v.item()))
         return string
 
 
