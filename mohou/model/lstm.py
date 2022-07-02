@@ -78,17 +78,14 @@ class LSTM(ModelBase[LSTMConfig]):
                 state_sample_output_partial = state_sample_output[:, :, bound]
                 weight_seqs_partial = weight_seqs_expaneded[:, :, bound]
                 loss_value_partial = torch.mean(
-                    torch.sqrt(
-                        weight_seqs_partial
-                        * (pred_output_partial - state_sample_output_partial) ** 2
-                    )
+                    weight_seqs_partial * (pred_output_partial - state_sample_output_partial) ** 2
                 )
-                key = "loss_value-" + str(elem_type)
+                key = "loss_value-" + elem_type.__name__
                 d[key] = loss_value_partial
             return LossDict(d)
         else:
             loss_value = torch.mean(
-                torch.sqrt(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
+                weight_seqs_expaneded * (pred_output - state_sample_output) ** 2
             )
             return LossDict({"prediction": loss_value})
 
