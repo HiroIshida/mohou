@@ -1,5 +1,6 @@
 import torch
 from test_encoding_rule import create_encoding_rule
+from test_types import image_av_chunk  # noqa
 
 from mohou.model import LSTM, LSTMConfig
 
