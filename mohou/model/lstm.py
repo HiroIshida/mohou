@@ -10,11 +10,23 @@ from mohou.types import ElementBase
 
 @dataclass
 class LSTMConfig(ModelConfigBase):
+    """
+    type_wise_loss: if True, loss is computed for each type (following type_bound_table) and
+    each loss is stored in the LossDict
+
+    NOTE: loss.total() with type_wise = True end False will not match in general.
+    By type_wise = True, loss of each type is equaly treated regardless of its dimension
+    If type_wise = False, if, say the state is composed of 1dim vector and 16dim vector
+    1dim vector's relative importance is too small because, the loss will take the average
+    over the loss of entire state
+    """
+
     n_state_with_flag: int
     n_static_context: int = 0
     n_hidden: int = 200
     n_layer: int = 4
     n_output_layer: int = 1
+    type_wise_loss: bool = False
     type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
 
 
@@ -39,19 +51,7 @@ class LSTM(ModelBase[LSTMConfig]):
         output_layers.append(nn.Linear(config.n_hidden, n_state))
         self.output_layer = nn.Sequential(*output_layers)
 
-    def loss(
-        self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], type_wise: bool = False
-    ) -> LossDict:
-        """compute loss
-        type_wise: if True, loss is computed for each type (following type_bound_table) and
-        each loss is stored in the LossDict
-
-        NOTE: loss.total() with type_wise = True end False will not match in general.
-        By type_wise = True, loss of each type is equaly treated regardless of its dimension
-        If type_wise = False, if, say the state is composed of 1dim vector and 16dim vector
-        1dim vector's relative importance is too small because, the loss will take the average
-        over the loss of entire state
-        """
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
 
         state_sample, static_context_sample, weight_seqs = sample
 
@@ -70,7 +70,7 @@ class LSTM(ModelBase[LSTMConfig]):
         pred_output, _ = self.forward(state_sample_input, static_context_sample)
         weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
 
-        if type_wise:
+        if self.config.type_wise_loss:
             assert self.config.type_bound_table is not None
             d = {}
             for elem_type, bound in self.config.type_bound_table.items():

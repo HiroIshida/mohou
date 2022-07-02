@@ -31,5 +31,10 @@ def test_lstm(image_av_chunk):  # noqa
     weight_sample = torch.rand(n_sample, n_seq_len)
     sample = (state_sample, ti_inputs, weight_sample)
     loss_dict = model.loss(sample)
-    loss_dict_detaild = model.loss(sample, type_wise=True)
-    assert loss_dict.total().item() > loss_dict_detaild.total().item()
+    assert len(loss_dict.keys()) == 1
+
+    # test type_wise_loss
+    config.type_wise_loss = True
+    model2: LSTM = LSTM(config)
+    loss_dict_detailed = model2.loss(sample)
+    assert len(loss_dict_detailed.keys()) == len(rule.keys())
