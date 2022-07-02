@@ -207,7 +207,7 @@ def test_episode_data():
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     ts_seq = TimeStampSequence([i for i in range(10)])
     episode = EpisodeData.from_seq_list(
-        [image_seq, av_seq], timestamp_seq=ts_seq, metadata={"id": "hogehoge"}
+        [image_seq, av_seq], timestamp_seq=ts_seq, metadata=MetaData({"id": "hogehoge"})
     )
 
     assert set(episode.types()) == set([AngleVector, RGBImage, TerminateFlag])
@@ -223,6 +223,7 @@ def test_episode_data():
     assert isinstance(episode_partial, EpisodeData)  # access by slice
     assert episode_partial[0][RGBImage] == image_seq[i_start]
     assert episode_partial[-1][RGBImage] == image_seq[i_end - 1]
+    assert episode_partial.metadata.hash_value == episode.metadata.hash_value
 
     episode_partial = episode[[2, 6]]
     assert isinstance(episode_partial, EpisodeData)  # access by indices
@@ -231,6 +232,7 @@ def test_episode_data():
 
     # test slice_by_time
     episode_partial = episode.slice_by_time(1.2, 9.0, 5.0)
+    assert episode_partial.metadata.hash_value == episode.metadata.hash_value
     assert len(episode_partial) == 8
     flag_seq = episode_partial.get_sequence_by_type(TerminateFlag)
 

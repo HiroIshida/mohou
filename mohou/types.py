@@ -651,7 +651,9 @@ class EpisodeData(TypeShapeTableMixin):
                 if seq.elem_type != TerminateFlag:
                     # TODO(HiroIshida): remove type ignore
                     partial_seq_list.append(ElementSequence(seq[index_like]))  # type: ignore
-            return EpisodeData.from_seq_list(partial_seq_list, timestamp_seq=partial_ts_seq)
+            return EpisodeData.from_seq_list(
+                partial_seq_list, timestamp_seq=partial_ts_seq, metadata=self.metadata
+            )
         else:
             assert False
 
@@ -695,7 +697,9 @@ class EpisodeData(TypeShapeTableMixin):
             seq_dict = copy.deepcopy(partial_episode.sequence_dict)
             # TODO(HiroIshida) remove type-ignore (generic dict..?)
             seq_dict[TerminateFlag] = flag_seq  # type: ignore
-            return EpisodeData.from_seq_list(list(seq_dict.values()), timestamp_seq=time_seq)
+            return EpisodeData.from_seq_list(
+                list(seq_dict.values()), timestamp_seq=time_seq, metadata=self.metadata
+            )
 
     def save_debug_gif(self, filename: str, fps: int = 20):
         t: Type[ImageBase]
