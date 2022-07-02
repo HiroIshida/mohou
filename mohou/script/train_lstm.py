@@ -40,7 +40,13 @@ if __name__ == "__main__":
     logger = create_default_logger(project_name, "lstm")  # noqa
 
     encoding_rule = create_default_encoding_rule(project_name)
-    model_config = LSTMConfig(encoding_rule.dimension, n_hidden=n_hidden, n_layer=n_layer)
+    model_config = LSTMConfig(
+        encoding_rule.dimension,
+        n_hidden=n_hidden,
+        n_layer=n_layer,
+        type_wise_loss=True,
+        type_bound_table=encoding_rule.type_bound_table,
+    )
     dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
 
