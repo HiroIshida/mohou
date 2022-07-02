@@ -21,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
+    parser.add_argument("--type_wise_loss", action="store_true", help="use type_wise_loss")
     parser.add_argument("--warm", action="store_true", help="warm start")
     parser.add_argument(
         "--use_image_context", action="store_true", help="initial image as context input"
@@ -40,7 +41,13 @@ if __name__ == "__main__":
     logger = create_default_logger(project_name, "lstm")  # noqa
 
     encoding_rule = create_default_encoding_rule(project_name)
-    model_config = LSTMConfig(encoding_rule.dimension, n_hidden=n_hidden, n_layer=n_layer)
+    model_config = LSTMConfig(
+        encoding_rule.dimension,
+        n_hidden=n_hidden,
+        n_layer=n_layer,
+        type_wise_loss=args.type_wise_loss,
+        type_bound_table=encoding_rule.type_bound_table,
+    )
     dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
 
