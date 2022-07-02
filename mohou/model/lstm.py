@@ -43,7 +43,10 @@ class LSTM(ModelBase[LSTMConfig]):
         self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], type_wise: bool = False
     ) -> LossDict:
         """compute loss
-        type_wise: loss.total() with type_wise = True end False will not match in general.
+        type_wise: if True, loss is computed for each type (following type_bound_table) and
+        each loss is stored in the LossDict
+
+        NOTE: loss.total() with type_wise = True end False will not match in general.
         By type_wise = True, loss of each type is equaly treated regardless of its dimension
         If type_wise = False, if, say the state is composed of 1dim vector and 16dim vector
         1dim vector's relative importance is too small because, the loss will take the average
