@@ -1,15 +1,22 @@
 import torch
+from test_encoding_rule import create_encoding_rule
 
 from mohou.model import LSTM, LSTMConfig
 
 
-def test_lstm():
+def test_lstm(image_av_chunk):  # noqa
+    rule = create_encoding_rule(image_av_chunk)
+
     n_sample = 10
     n_seq_len = 100
-    n_dim_with_flag = 7
+    n_dim_with_flag = rule.dimension
     n_dim_static_context = 4
 
-    config = LSTMConfig(n_dim_with_flag, n_static_context=n_dim_static_context)
+    config = LSTMConfig(
+        n_dim_with_flag,
+        n_static_context=n_dim_static_context,
+        type_bound_table=rule.type_bound_table,
+    )
     model: LSTM = LSTM(config)
 
     state_sample = torch.randn(n_sample, n_seq_len, n_dim_with_flag).float()
@@ -23,5 +30,5 @@ def test_lstm():
     weight_sample = torch.rand(n_sample, n_seq_len)
     sample = (state_sample, ti_inputs, weight_sample)
     loss_dict = model.loss(sample)
-    assert "prediction" in loss_dict
-    assert loss_dict.total() == loss_dict["prediction"]
+    loss_dict_detaild = model.loss(sample, type_wise=True)
+    assert loss_dict.total().item() > loss_dict_detaild.total().item()

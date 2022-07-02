@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
 
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
+from mohou.types import ElementBase
 
 
 @dataclass
@@ -14,6 +15,7 @@ class LSTMConfig(ModelConfigBase):
     n_hidden: int = 200
     n_layer: int = 4
     n_output_layer: int = 1
+    type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
 
 
 class LSTM(ModelBase[LSTMConfig]):
@@ -37,7 +39,17 @@ class LSTM(ModelBase[LSTMConfig]):
         output_layers.append(nn.Linear(config.n_hidden, n_state))
         self.output_layer = nn.Sequential(*output_layers)
 
-    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+    def loss(
+        self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], type_wise: bool = False
+    ) -> LossDict:
+        """compute loss
+        type_wise: loss.total() with type_wise = True end False will not match in general.
+        By type_wise = True, loss of each type is equaly treated regardless of its dimension
+        If type_wise = False, if, say the state is composed of 1dim vector and 16dim vector
+        1dim vector's relative importance is too small because, the loss will take the average
+        over the loss of entire state
+        """
+
         state_sample, static_context_sample, weight_seqs = sample
 
         # sanity check
@@ -53,10 +65,29 @@ class LSTM(ModelBase[LSTMConfig]):
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
         pred_output, _ = self.forward(state_sample_input, static_context_sample)
-
         weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
-        loss_value = torch.mean(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
-        return LossDict({"prediction": loss_value})
+
+        if type_wise:
+            assert self.config.type_bound_table is not None
+            d = {}
+            for elem_type, bound in self.config.type_bound_table.items():
+                pred_output_partial = pred_output[:, :, bound]
+                state_sample_output_partial = state_sample_output[:, :, bound]
+                weight_seqs_partial = weight_seqs_expaneded[:, :, bound]
+                loss_value_partial = torch.mean(
+                    torch.sqrt(
+                        weight_seqs_partial
+                        * (pred_output_partial - state_sample_output_partial) ** 2
+                    )
+                )
+                key = "loss_value-" + str(elem_type)
+                d[key] = loss_value_partial
+            return LossDict(d)
+        else:
+            loss_value = torch.mean(
+                torch.sqrt(weight_seqs_expaneded * (pred_output - state_sample_output) ** 2)
+            )
+            return LossDict({"prediction": loss_value})
 
     def forward(
         self,

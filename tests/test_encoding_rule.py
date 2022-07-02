@@ -114,6 +114,18 @@ def test_encoding_rule(image_av_chunk):  # noqa
     assert vector_seq.shape == (len(chunk[0]), rule.dimension)
 
 
+def test_encoding_rule_type_bound_table(image_av_chunk):  # noqa
+    chunk: MultiEpisodeChunk = image_av_chunk
+    rule = create_encoding_rule(chunk)
+
+    last_end_idx = 0
+    for elem_type, bound in rule.type_bound_table.items():
+        assert bound.start == last_end_idx
+        assert rule[elem_type].output_size == bound.stop - bound.start
+        last_end_idx = bound.stop
+    assert last_end_idx == rule.dimension
+
+
 def test_encoding_rule_delete(image_av_chunk):  # noqa
     chunk: MultiEpisodeChunk = image_av_chunk
     rule = create_encoding_rule(chunk)
