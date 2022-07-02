@@ -295,6 +295,16 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     def encode_order(self) -> List[Type[ElementBase]]:
         return list(self.keys())
 
+    @property
+    def type_bound_table(self) -> Dict[Type[ElementBase], slice]:
+        dims = [encoder.output_size for encoder in self.values()]
+        bounds = get_bound_list(dims)
+
+        table = {}
+        for encoder, bound in zip(self.values(), bounds):
+            table[encoder.elem_type] = bound
+        return table
+
     def __str__(self) -> str:
         string = "total dim: {}".format(self.dimension)
         for elem_type, encoder in self.items():
