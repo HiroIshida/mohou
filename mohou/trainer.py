@@ -15,7 +15,6 @@ import mohou
 from mohou.file import dump_object, load_objects
 from mohou.model import (
     FloatLossDict,
-    LossDict,
     ModelBase,
     ModelConfigBase,
     ModelT,
