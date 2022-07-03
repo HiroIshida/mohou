@@ -118,7 +118,7 @@ class TrainCache(Generic[ModelT]):
                 from warnings import warn
 
                 warn("for backward compatibility. will be removed", DeprecationWarning)
-                totals = [dic.total().item() for dic in tcache.validate_loss_dict_seq]
+                totals = [dic.total() for dic in tcache.validate_loss_dict_seq]
                 min_validate_loss_list.append(min(totals))
 
         idx_min_validate = np.argmin(min_validate_loss_list)
@@ -177,7 +177,7 @@ def train(
         tcache.on_startof_epoch(epoch, dataset)
 
         model.train()
-        train_ld_list: List[LossDict] = []
+        train_ld_list: List[FloatLossDict] = []
         for samples in train_loader:
             optimizer.zero_grad()
             samples = move_to_device(samples)
@@ -192,7 +192,7 @@ def train(
         tcache.on_train_loss(train_ld_mean, epoch)
 
         model.eval()
-        validate_ld_list: List[LossDict] = []
+        validate_ld_list: List[FloatLossDict] = []
         for samples in validate_loader:
             samples = move_to_device(samples)
             loss_dict = model.loss(samples)
