@@ -8,19 +8,39 @@ from mohou.model.common import FloatLossDict
 from mohou.trainer import TrainCache
 
 
+def dump_train_cache(conf, loss_value, project_name):
+    model = LSTM(conf)
+    tcache = TrainCache(project_name)
+    tcache.validate_loss_dict_seq = [FloatLossDict({"loss": loss_value})]  # dummy
+    tcache.best_model = model
+    tcache.dump()
+
+
+def test_traincache_load_all(tmp_project_name):  # noqa
+    remove_project(tmp_project_name)
+    get_project_path(tmp_project_name)
+
+    conf = LSTMConfig(7, 7, 777, 2)  # whatever
+    for _ in range(10):
+        dump_train_cache(conf, np.random.rand(), tmp_project_name)
+
+    conf2 = LSTMConfig(3, 3, 3, 2)  # whatever
+    for _ in range(10):
+        dump_train_cache(conf2, np.random.rand(), tmp_project_name)
+
+    assert len(TrainCache.load_all(tmp_project_name, LSTM)) == 20
+    assert len(TrainCache.load_all(tmp_project_name, LSTM, conf)) == 10
+    assert len(TrainCache.load_all(tmp_project_name, LSTM, conf2)) == 10
+
+
 def test_traincache_load(tmp_project_name):  # noqa
     remove_project(tmp_project_name)
     get_project_path(tmp_project_name)
 
     conf = LSTMConfig(7, 7, 777, 2)
-    model = LSTM(conf)
+    dump_train_cache(conf, 1.0, tmp_project_name)
 
-    tcache = TrainCache(tmp_project_name)
-    tcache.validate_loss_dict_seq = [FloatLossDict({"loss": 1.0})]  # dummy
-    tcache.best_model = model
-    tcache.dump()
-
-    # test loadnig
+    # test loading
     TrainCache.load(tmp_project_name, LSTM)
     TrainCache.load(tmp_project_name, LSTM, conf)
 
@@ -34,16 +54,9 @@ def test_traincache_load_best_one(tmp_project_name):  # noqa
     get_project_path(tmp_project_name)
 
     conf = LSTMConfig(7, 7, 777, 2)
-    model = LSTM(conf)
-
-    def dump_tcache(loss_val):
-        tcache = TrainCache(tmp_project_name)
-        tcache.validate_loss_dict_seq = [FloatLossDict({"loss": loss_val})]
-        tcache.best_model = model
-        tcache.dump()
 
     for loss_value in np.linspace(3, 10, 5):
-        dump_tcache(loss_value)
+        dump_train_cache(conf, loss_value, tmp_project_name)
 
     tcache = TrainCache.load(tmp_project_name, LSTM)
     # must pick up the one with lowest loss

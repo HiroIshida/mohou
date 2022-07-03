@@ -124,12 +124,12 @@ class TrainCache(Generic[ModelT]):
         return tcache_list[idx_min_validate]
 
     @classmethod
-    def load(
+    def load_all(
         cls,
         project_name: Optional[str],
         model_type: Type[ModelT],
         model_config: Optional[ModelConfigBase] = None,
-    ) -> "TrainCache[ModelT]":
+    ) -> "List[TrainCache[ModelT]]":
 
         # TODO(HiroIshida): get_file_postfix function ????
         postfix = model_type.__name__
@@ -137,6 +137,16 @@ class TrainCache(Generic[ModelT]):
             postfix += "-{}".format(model_config.hash_value)
 
         tcache_list = load_objects(TrainCache, project_name, postfix)
+        return tcache_list
+
+    @classmethod
+    def load(
+        cls,
+        project_name: Optional[str],
+        model_type: Type[ModelT],
+        model_config: Optional[ModelConfigBase] = None,
+    ) -> "TrainCache[ModelT]":
+        tcache_list = cls.load_all(project_name, model_type, model_config)
         return cls._choose_lowest_validation_loss(tcache_list)
 
 
