@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from test_file import tmp_project_name  # noqa
 
+from mohou.file import remove_project
 from mohou.types import (
     AngleVector,
     ChunkSpec,
@@ -342,6 +343,8 @@ def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # 
 
     extra_chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name, postfix)
     assert pickle.dumps(extra_chunk.spec) == pickle.dumps(extra_chunk_spec_loaded)
+
+    remove_project(tmp_project_name)
 
 
 def test_multi_episode_chunk_assertion_type_inconsitency():
