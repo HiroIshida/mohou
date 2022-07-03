@@ -7,12 +7,13 @@ from mohou.model.autoencoder import (
     VariationalAutoEncoder,
 )
 from mohou.model.common import (
+    FloatLossDict,
     LossDict,
     ModelBase,
     ModelConfigBase,
     ModelConfigT,
     ModelT,
-    average_loss_dict,
+    average_float_loss_dict,
 )
 from mohou.model.lstm import LSTM, LSTMConfig
 from mohou.model.markov import ControlModel, MarkoveModelConfig

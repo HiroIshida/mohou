@@ -15,6 +15,27 @@ from mohou.utils import detect_device
 logger = logging.getLogger(__name__)
 
 
+class FloatLossDict(Dict[str, float]):
+    def total(self) -> float:
+        return reduce(operator.add, self.values())
+
+    def __str__(self) -> str:
+        def to_exp_notation(val: float) -> str:
+            return np.format_float_scientific(val, precision=3, exp_digits=2)
+
+        string = "total: {}".format(to_exp_notation(self.total()))
+        for k, v in self.items():
+            string += ", {}: {}".format(k, to_exp_notation(v))
+        return string
+
+
+def average_float_loss_dict(dicts: List[FloatLossDict]) -> FloatLossDict:
+    dict_new = copy.deepcopy(dicts[0])
+    for key in dict_new.keys():
+        dict_new[key] = np.mean([d[key] for d in dicts]).item()
+    return dict_new
+
+
 class LossDict(Dict[str, torch.Tensor]):
     """A dictionary containing loss info.
 
@@ -27,26 +48,11 @@ class LossDict(Dict[str, torch.Tensor]):
     def total(self) -> torch.Tensor:
         return reduce(operator.add, self.values())
 
-    def detach_clone(self) -> None:
+    def to_float_lossdict(self) -> FloatLossDict:
+        fld = FloatLossDict()
         for key in self.keys():
-            val = self[key].detach().clone().cpu()
-            self[key] = val
-
-    def __str__(self) -> str:
-        def to_exp_notation(val: float) -> str:
-            return np.format_float_scientific(val, precision=3, exp_digits=2)
-
-        string = "total: {}".format(to_exp_notation(self.total().item()))
-        for k, v in self.items():
-            string += ", {}: {}".format(k, to_exp_notation(v.item()))
-        return string
-
-
-def average_loss_dict(dicts: List[LossDict]):
-    dict_new = copy.deepcopy(dicts[0])
-    for key in dict_new.keys():
-        dict_new[key] = torch.mean(torch.stack([d[key] for d in dicts]))
-    return dict_new
+            fld[key] = self[key].detach().clone().cpu().item()
+        return fld
 
 
 class ModelConfigBase(HashableMixin):
