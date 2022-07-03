@@ -13,7 +13,14 @@ from torch.utils.data import DataLoader, Dataset
 
 import mohou
 from mohou.file import dump_object, load_objects
-from mohou.model import LossDict, ModelBase, ModelConfigBase, ModelT, average_loss_dict
+from mohou.model import (
+    FloatLossDict,
+    LossDict,
+    ModelBase,
+    ModelConfigBase,
+    ModelT,
+    average_float_loss_dict,
+)
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
@@ -33,8 +40,8 @@ TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 class TrainCache(Generic[ModelT]):
     project_name: str
     epoch: int
-    train_loss_dict_seq: List[LossDict]
-    validate_loss_dict_seq: List[LossDict]
+    train_loss_dict_seq: List[FloatLossDict]
+    validate_loss_dict_seq: List[FloatLossDict]
     min_validate_loss: float
     best_model: Optional[ModelT]
     latest_model: ModelT
@@ -51,11 +58,11 @@ class TrainCache(Generic[ModelT]):
         logger.info("new epoch: {}".format(epoch))
         self.epoch = epoch
 
-    def on_train_loss(self, loss_dict: LossDict, epoch: int):
+    def on_train_loss(self, loss_dict: FloatLossDict, epoch: int):
         self.train_loss_dict_seq.append(loss_dict)
         logger.info("train loss => {}".format(loss_dict))
 
-    def on_validate_loss(self, loss_dict: LossDict, epoch: int):
+    def on_validate_loss(self, loss_dict: FloatLossDict, epoch: int):
         self.validate_loss_dict_seq.append(loss_dict)
         logger.info("validate loss => {}".format(loss_dict))
 
@@ -74,7 +81,7 @@ class TrainCache(Generic[ModelT]):
         model.to(torch.device("cpu"))
         self.latest_model = model
 
-        totals = [dic.total().item() for dic in self.validate_loss_dict_seq]
+        totals = [dic.total() for dic in self.validate_loss_dict_seq]
         min_loss_sofar = min(totals)
 
         update_model = totals[-1] == min_loss_sofar
@@ -177,11 +184,11 @@ def train(
             loss_dict = model.loss(samples)
             loss_dict.total().backward()
 
-            loss_dict.detach_clone()
-            train_ld_list.append(loss_dict)
+            fld = loss_dict.to_float_lossdict()
+            train_ld_list.append(fld)
             optimizer.step()
 
-        train_ld_mean = average_loss_dict(train_ld_list)
+        train_ld_mean = average_float_loss_dict(train_ld_list)
         tcache.on_train_loss(train_ld_mean, epoch)
 
         model.eval()
@@ -189,10 +196,10 @@ def train(
         for samples in validate_loader:
             samples = move_to_device(samples)
             loss_dict = model.loss(samples)
-            loss_dict.detach_clone()
-            validate_ld_list.append(loss_dict)
+            fld = loss_dict.to_float_lossdict()
+            validate_ld_list.append(fld)
 
-        validate_ld_mean = average_loss_dict(validate_ld_list)
+        validate_ld_mean = average_float_loss_dict(validate_ld_list)
         tcache.on_validate_loss(validate_ld_mean, epoch)
 
         tcache.on_endof_epoch(model, epoch)
