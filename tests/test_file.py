@@ -65,6 +65,8 @@ def test_load_objects_partial_match(tmp_project_name):
         wrong_uuid = str(uuid.uuid4())
         objects = load_objects(SampleClass, tmp_project_name, postfix=wrong_uuid)
 
+    remove_project(tmp_project_name)
+
 
 def test_load_objects_subdir(tmp_project_name):
     subpath_list = [pathlib.Path("hoge/hoge"), "fuga/fuga"]
@@ -90,6 +92,8 @@ def test_load_objects_with_postfix(tmp_project_name):
     objects = load_objects(SampleClass, tmp_project_name, postfix)
     np.testing.assert_almost_equal(a.data + b.data, objects[0].data + objects[1].data)
 
+    remove_project(tmp_project_name)
+
 
 def test_filenotfounderrro_in_loading(tmp_project_name):
     class HogeHoge:
@@ -100,3 +104,5 @@ def test_filenotfounderrro_in_loading(tmp_project_name):
 
     with pytest.raises(FileNotFoundError):
         load_objects(HogeHoge, tmp_project_name)
+
+    remove_project(tmp_project_name)
