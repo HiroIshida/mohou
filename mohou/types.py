@@ -743,14 +743,18 @@ _bundle_cache: Dict[Tuple[str, Optional[str]], "EpisodeBundle"] = {}  # used Epi
 
 @dataclass
 class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
-    data_list: List[EpisodeData]
-    data_list_intact: List[EpisodeData]
+    """ Bundle of episode
+    The collection of episodes. 
+    we call it 'bundle' because 'Dataset' is already used by pytorch
+    """
+    _episode_list: List[EpisodeData]
+    _untouched_episode_list: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     spec: BundleSpec
     _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
-        return self.data_list
+        return self._episode_list
 
     @classmethod
     def from_data_list(
@@ -841,11 +845,11 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     def get_untouched_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
-        return EpisodeBundle(self.data_list_intact, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._untouched_episode_list, [], self.type_shape_table, self.spec)
 
     def get_touched_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is used for training"""
-        return EpisodeBundle(self.data_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._episode_list, [], self.type_shape_table, self.spec)
 
     def plot_vector_histories(
         self,
@@ -863,7 +867,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
             y_min, y_max = +np.inf, -np.inf  # will be updated in the following loop
 
-            for data in self.data_list:
+            for data in self._episode_list:
                 seq = data.get_sequence_by_type(AngleVector)
                 single_seq = np.array([e.numpy()[i_dim] for e in seq])
                 y_min = min(y_min, np.min(single_seq))
@@ -895,3 +899,16 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         file_name = str(file_path)
         fig.savefig(file_name, format="png", dpi=300)
         print("saved to {}".format(file_name))
+
+
+class MultiEpisodeChunk(EpisodeBundle):
+
+    def get_intact_chunk(self, *args, **kwargs):
+        return self.get_untouched_bundle(*args, **kwargs)
+
+    def get_not_intact_chunk(self, *args, **kwargs):
+        return get_touched_bundle(*args, **kwargs)
+
+
+class ChunkSpec(BundleSpec):
+    pass
