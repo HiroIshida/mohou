@@ -70,8 +70,9 @@ if __name__ == "__main__":
     )
     env.launch()
 
-    av_init = bundle._untouched_episode_listact[0].get_sequence_by_type(AngleVector)[0]
-    gs_init = bundle._untouched_episode_listact[0].get_sequence_by_type(GripperState)[0]
+    untouch_bundle = bundle.get_untouch_bundle()
+    av_init = untouch_bundle[0].get_sequence_by_type(AngleVector)[0]
+    gs_init = untouch_bundle[0].get_sequence_by_type(GripperState)[0]
     edict_init = ElementDict([av_init, gs_init])
 
     assert hasattr(rlbench.tasks, task_name)

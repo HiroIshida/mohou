@@ -749,7 +749,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     """
 
     _episode_list: List[EpisodeData]
-    _untouched_episode_list: List[EpisodeData]
+    _untouch_episode_list: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     spec: BundleSpec
     _postfix: Optional[str] = None
@@ -844,11 +844,11 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         with yaml_file_path.open(mode="w") as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
-    def get_untouched_bundle(self) -> "EpisodeBundle":
+    def get_untouch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
-        return EpisodeBundle(self._untouched_episode_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._untouch_episode_list, [], self.type_shape_table, self.spec)
 
-    def get_touched_bundle(self) -> "EpisodeBundle":
+    def get_touch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is used for training"""
         return EpisodeBundle(self._episode_list, [], self.type_shape_table, self.spec)
 
@@ -904,10 +904,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
 class MultiEpisodeChunk(EpisodeBundle):
     def get_intact_bundle(self, *args, **kwargs):
-        return self.get_untouched_bundle(*args, **kwargs)
+        return self.get_untouch_bundle(*args, **kwargs)
 
     def get_not_intact_bundle(self, *args, **kwargs):
-        return get_touched_bundle(*args, **kwargs)
+        return self.get_touch_bundle(*args, **kwargs)
 
 
 class ChunkSpec(BundleSpec):

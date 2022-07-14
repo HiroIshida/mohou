@@ -181,8 +181,8 @@ def visualize_image_reconstruction(
     prefix: Optional[str] = None,
 ):
 
-    bundle_intact = bundle.get_untouched_bundle()
-    bundle_not_intact = bundle.get_touched_bundle()
+    bundle_intact = bundle.get_untouch_bundle()
+    bundle_not_intact = bundle.get_touch_bundle()
 
     image_type = autoencoder.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
@@ -245,7 +245,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
-    bundle = EpisodeBundle.load(project_name).get_untouched_bundle()
+    bundle = EpisodeBundle.load(project_name).get_untouch_bundle()
     save_dir_path = get_subproject_path(project_name, "lstm_result")
     image_encoder = load_default_image_encoder(project_name)
 

@@ -117,13 +117,13 @@ def test_padding_sequnece_alginer_creation():
 
 
 def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
-    bundle = image_av_bundle_uneven
+    bundle: EpisodeBundle = image_av_bundle_uneven
     rule = create_encoding_rule(bundle, balance=False)
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
     dataset = AutoRegressiveDataset.from_bundle(bundle, rule, config)
-    assert len(dataset.state_seq_list) == len(bundle.data_list) * (n_aug + 1)
+    assert len(dataset.state_seq_list) == len(bundle.get_touch_bundle()) * (n_aug + 1)
     assert_seq_list_list_compatible([dataset.state_seq_list, dataset.weight_seq_list])
 
     for state_seq in dataset.state_seq_list:
