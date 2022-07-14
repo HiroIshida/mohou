@@ -110,11 +110,11 @@ if __name__ == "__main__":
     print("n_episode assigned to each process: {}".format(n_process_list_assign))
     p.map(generate_demo, n_process_list_assign)
 
-    # load demos in temporary files and create chunks
+    # load demos in temporary files and create bundles
     demos = load_objects(Demo, project_name, subpath="temp")
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
-    chunk = EpisodeBundle.from_data_list(episodes)
-    chunk.dump(project_name)
+    bundle = EpisodeBundle.from_data_list(episodes)
+    bundle.dump(project_name)
 
     # dump images
     gif_dir_path = get_subproject_path(project_name, "train_data_gif")

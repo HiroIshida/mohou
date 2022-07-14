@@ -60,24 +60,24 @@ def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncod
 
 def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
 
-    chunk = EpisodeBundle.load(project_name)
-    chunk_spec = chunk.spec
-    av_dim = chunk_spec.type_shape_table[AngleVector][0]
+    bundle = EpisodeBundle.load(project_name)
+    bundle_spec = bundle.spec
+    av_dim = bundle_spec.type_shape_table[AngleVector][0]
     image_encoder = load_default_image_encoder(project_name)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
 
     encoders = [image_encoder, av_idendical_encoder]
 
-    if GripperState in chunk_spec.type_shape_table:
+    if GripperState in bundle_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(
-            GripperState, chunk_spec.type_shape_table[GripperState][0]
+            GripperState, bundle_spec.type_shape_table[GripperState][0]
         )
         encoders.append(gs_identital_func)
 
     tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
     encoders.append(tf_identical_func)
 
-    encoding_rule = EncodingRule.from_encoders(encoders, chunk)
+    encoding_rule = EncodingRule.from_encoders(encoders, bundle)
     return encoding_rule
 
 
@@ -121,14 +121,14 @@ def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
 
 
 def create_default_image_context_list(
-    project_name: Optional[str] = None, chunk: Optional[EpisodeBundle] = None
+    project_name: Optional[str] = None, bundle: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
-    if chunk is None:
-        chunk = EpisodeBundle.load(project_name)
+    if bundle is None:
+        bundle = EpisodeBundle.load(project_name)
     image_encoder = load_default_image_encoder(project_name)
 
     context_list = []
-    for episode in chunk:
+    for episode in bundle:
         seq = episode.get_sequence_by_type(image_encoder.elem_type)
         context = image_encoder.forward(seq[0])
         context_list.append(context)

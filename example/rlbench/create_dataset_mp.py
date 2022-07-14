@@ -77,7 +77,7 @@ if __name__ == "__main__":
             with open(os.path.join(td, filename), "rb") as f:
                 demos.append(pickle.load(f))
 
-        # data conversion from rlbench demos to mohou chunk
+        # data conversion from rlbench demos to mohou bundle
         data_list = []
         for demo in demos:
             seq_av = ElementSequence[AngleVector]()
@@ -98,11 +98,11 @@ if __name__ == "__main__":
 
             data_list.append(EpisodeData((seq_rgb, seq_depth)))
 
-        chunk = EpisodeBundle(data_list)
-        chunk.dump(project_name)
+        bundle = EpisodeBundle(data_list)
+        bundle.dump(project_name)
 
         # create debug image
         filename = os.path.join(get_project_dir(project_name), "sample.gif")
-        rgb_seq = chunk[0].get_sequence_by_type(RGBImage)
+        rgb_seq = bundle[0].get_sequence_by_type(RGBImage)
         clip = ImageSequenceClip([img.numpy() for img in rgb_seq], fps=50)
         clip.write_gif(filename, fps=50)

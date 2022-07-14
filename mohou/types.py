@@ -743,10 +743,11 @@ _bundle_cache: Dict[Tuple[str, Optional[str]], "EpisodeBundle"] = {}  # used Epi
 
 @dataclass
 class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
-    """ Bundle of episode
-    The collection of episodes. 
+    """Bundle of episode
+    The collection of episodes.
     we call it 'bundle' because 'Dataset' is already used by pytorch
     """
+
     _episode_list: List[EpisodeData]
     _untouched_episode_list: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
@@ -902,11 +903,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
 
 class MultiEpisodeChunk(EpisodeBundle):
-
-    def get_intact_chunk(self, *args, **kwargs):
+    def get_intact_bundle(self, *args, **kwargs):
         return self.get_untouched_bundle(*args, **kwargs)
 
-    def get_not_intact_chunk(self, *args, **kwargs):
+    def get_not_intact_bundle(self, *args, **kwargs):
         return get_touched_bundle(*args, **kwargs)
 
 

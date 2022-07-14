@@ -266,9 +266,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
-    def apply_to_multi_episode_chunk(self, chunk: EpisodeBundle) -> List[np.ndarray]:
-
-        # TODO(HiroIshida) check chunk compatibility
+    def apply_to_episode_bundle(self, bundle: EpisodeBundle) -> List[np.ndarray]:
         def elem_types_to_primitive_elem_set(elem_type_list: List[Type[ElementBase]]):
             primitve_elem_type_list = []
             for elem_type in elem_type_list:
@@ -278,11 +276,11 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
                     primitve_elem_type_list.extend(elem_type.image_types)
             return set(primitve_elem_type_list)
 
-        chunk_elem_types = elem_types_to_primitive_elem_set(list(chunk.types()))
+        bundle_elem_types = elem_types_to_primitive_elem_set(list(bundle.types()))
         required_elem_types = elem_types_to_primitive_elem_set(list(self.keys()))
-        assert required_elem_types <= chunk_elem_types
+        assert required_elem_types <= bundle_elem_types
 
-        vector_seq_list = [self.apply_to_episode_data(data) for data in chunk]
+        vector_seq_list = [self.apply_to_episode_data(data) for data in bundle]
 
         assert vector_seq_list[0].ndim == 2
         return vector_seq_list
@@ -313,7 +311,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
 
     @classmethod
     def from_encoders(
-        cls, encoder_list: List[EncoderBase], chunk: Optional[EpisodeBundle] = None
+        cls, encoder_list: List[EncoderBase], bundle: Optional[EpisodeBundle] = None
     ) -> "EncodingRule":
         rule: EncodingRule = cls()
         for encoder in encoder_list:
@@ -322,9 +320,9 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         type_dim_table = {t: rule[t].output_size for t in rule.keys()}
         rule.covariance_balancer = CovarianceBalancer.null(type_dim_table)
 
-        if chunk is not None:
+        if bundle is not None:
             # compute normalizer and set to encoder
-            vector_seqs = rule.apply_to_multi_episode_chunk(chunk)
+            vector_seqs = rule.apply_to_episode_bundle(bundle)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
             normalizer = CovarianceBalancer.from_feature_seqs(vector_seq_concated, type_dim_table)
             rule.covariance_balancer = normalizer

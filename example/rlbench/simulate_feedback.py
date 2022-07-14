@@ -57,8 +57,8 @@ if __name__ == "__main__":
     n_step = args.n
     n_sim = args.m
 
-    chunk = EpisodeBundle.load(project_name)
-    resolution = chunk.spec.type_shape_table[RGBImage][0]
+    bundle = EpisodeBundle.load(project_name)
+    resolution = bundle.spec.type_shape_table[RGBImage][0]
 
     obs_config = setup_observation_config(camera_name, resolution)
     env = Environment(
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     )
     env.launch()
 
-    av_init = chunk._untouched_episode_listact[0].get_sequence_by_type(AngleVector)[0]
-    gs_init = chunk._untouched_episode_listact[0].get_sequence_by_type(GripperState)[0]
+    av_init = bundle._untouched_episode_listact[0].get_sequence_by_type(AngleVector)[0]
+    gs_init = bundle._untouched_episode_listact[0].get_sequence_by_type(GripperState)[0]
     edict_init = ElementDict([av_init, gs_init])
 
     assert hasattr(rlbench.tasks, task_name)

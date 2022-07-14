@@ -182,9 +182,9 @@ class AutoRegressiveDataset(Dataset):
         )
 
     @classmethod
-    def from_chunk(
+    def from_bundle(
         cls,
-        chunk: EpisodeBundle,
+        bundle: EpisodeBundle,
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
         static_context_list: Optional[List[np.ndarray]] = None,
@@ -196,7 +196,7 @@ class AutoRegressiveDataset(Dataset):
         if augconfig is None:
             augconfig = AutoRegressiveDatasetConfig()
 
-        state_seq_list = encoding_rule.apply_to_multi_episode_chunk(chunk)
+        state_seq_list = encoding_rule.apply_to_episode_bundle(bundle)
 
         # setting up weighting
         if weighting is None:
@@ -260,9 +260,9 @@ class MarkovControlSystemDataset(Dataset):
         return inp_ctrl, inp_obs, out_obs
 
     @classmethod
-    def from_chunk(
+    def from_bundle(
         cls,
-        chunk: EpisodeBundle,
+        bundle: EpisodeBundle,
         control_encoding_rule: EncodingRule,
         observation_encoding_rule: EncodingRule,
         config: Optional[SequenceDatasetConfig] = None,
@@ -271,8 +271,8 @@ class MarkovControlSystemDataset(Dataset):
         if config is None:
             config = SequenceDatasetConfig()
 
-        ctrl_seq_list = control_encoding_rule.apply_to_multi_episode_chunk(chunk)
-        obs_seq_list = observation_encoding_rule.apply_to_multi_episode_chunk(chunk)
+        ctrl_seq_list = control_encoding_rule.apply_to_episode_bundle(bundle)
+        obs_seq_list = observation_encoding_rule.apply_to_episode_bundle(bundle)
         assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
         ctrl_augmentor = SequenceDataAugmentor.from_seqs(ctrl_seq_list, config, take_diff=False)

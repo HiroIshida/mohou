@@ -128,11 +128,11 @@ class VectorPCAEncoder(EncoderBase[VectorT]):
         return self.elem_type(out.flatten())
 
     @classmethod
-    def from_chunk(
-        cls, chunk: EpisodeBundle, vector_type: Type[VectorT], n_out: int
+    def from_bundle(
+        cls, bundle: EpisodeBundle, vector_type: Type[VectorT], n_out: int
     ) -> "VectorPCAEncoder[VectorT]":
         elem_list: List[VectorT] = []
-        for data in chunk.episode_list:
+        for data in bundle.episode_list:
             elem_seq = data.get_sequence_by_type(vector_type)
             elem_list.extend(elem_seq.elem_list)
         mat = np.array([e.numpy() for e in elem_list])

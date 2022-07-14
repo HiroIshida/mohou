@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 import pytest
 import torch
-from test_types import image_av_chunk  # noqa
+from test_types import image_av_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import CovarianceBalancer, EncodingRule
@@ -86,11 +86,11 @@ def test_covariance_balancer_marknull(sample_covariance_balancer):
         np.testing.assert_almost_equal(balanced[3:], inp[3:])
 
 
-def create_encoding_rule(chunk: EpisodeBundle, balance: bool = True) -> EncodingRule:
+def create_encoding_rule(bundle: EpisodeBundle, balance: bool = True) -> EncodingRule:
     dim_image_encoded = 5
-    dim_av = chunk.get_element_shape(AngleVector)[0]
-    image_type = [t for t in chunk.types() if issubclass(t, ImageBase)].pop()
-    dims_image: Tuple[int, int, int] = chunk.get_element_shape(image_type)  # type: ignore
+    dim_av = bundle.get_element_shape(AngleVector)[0]
+    image_type = [t for t in bundle.types() if issubclass(t, ImageBase)].pop()
+    dims_image: Tuple[int, int, int] = bundle.get_element_shape(image_type)  # type: ignore
 
     f1 = ImageEncoder(
         image_type,
@@ -101,22 +101,22 @@ def create_encoding_rule(chunk: EpisodeBundle, balance: bool = True) -> Encoding
     )
     f2 = VectorIdenticalEncoder(AngleVector, dim_av)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
-    optional_chunk = chunk if balance else None
-    rule = EncodingRule.from_encoders([f1, f2, f3], chunk=optional_chunk)
+    optional_bundle = bundle if balance else None
+    rule = EncodingRule.from_encoders([f1, f2, f3], bundle=optional_bundle)
     return rule
 
 
-def test_encoding_rule(image_av_chunk):  # noqa
-    chunk = image_av_chunk
-    rule = create_encoding_rule(chunk)
-    vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
+def test_encoding_rule(image_av_bundle):  # noqa
+    bundle = image_av_bundle
+    rule = create_encoding_rule(bundle)
+    vector_seq_list = rule.apply_to_episode_bundle(bundle)
     vector_seq = vector_seq_list[0]
-    assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+    assert vector_seq.shape == (len(bundle[0]), rule.dimension)
 
 
-def test_encoding_rule_type_bound_table(image_av_chunk):  # noqa
-    chunk: EpisodeBundle = image_av_chunk
-    rule = create_encoding_rule(chunk)
+def test_encoding_rule_type_bound_table(image_av_bundle):  # noqa
+    bundle: EpisodeBundle = image_av_bundle
+    rule = create_encoding_rule(bundle)
 
     last_end_idx = 0
     for elem_type, bound in rule.type_bound_table.items():
@@ -126,9 +126,9 @@ def test_encoding_rule_type_bound_table(image_av_chunk):  # noqa
     assert last_end_idx == rule.dimension
 
 
-def test_encoding_rule_delete(image_av_chunk):  # noqa
-    chunk: EpisodeBundle = image_av_chunk
-    rule = create_encoding_rule(chunk)
+def test_encoding_rule_delete(image_av_bundle):  # noqa
+    bundle: EpisodeBundle = image_av_bundle
+    rule = create_encoding_rule(bundle)
     rule_dimension_pre = rule.dimension
 
     delete_key = AngleVector
@@ -139,24 +139,24 @@ def test_encoding_rule_delete(image_av_chunk):  # noqa
     assert rule.dimension == rule[RGBImage].output_size + rule[TerminateFlag].output_size
     assert rule.dimension == rule_dimension_pre - delete_size
 
-    vector_seq_list = rule.apply_to_multi_episode_chunk(chunk)
+    vector_seq_list = rule.apply_to_episode_bundle(bundle)
     vector_seq = vector_seq_list[0]
-    assert vector_seq.shape == (len(chunk[0]), rule.dimension)
+    assert vector_seq.shape == (len(bundle[0]), rule.dimension)
 
 
-def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):  # noqa
+def test_encode_rule_delete_and_balancer_marknull(image_av_bundle):  # noqa
     # these two will be used togather. For example, as for chimera model, in the training
     # we will use delete, and for testing (propagation) we will use marknull.
     # The following test simulate how these two methods are used in train/test the chimera
     # model
-    chunk: EpisodeBundle = image_av_chunk
-    rule_for_train = create_encoding_rule(chunk)
+    bundle: EpisodeBundle = image_av_bundle
+    rule_for_train = create_encoding_rule(bundle)
     rule_for_test = copy.deepcopy(rule_for_train)
 
     rule_for_train.delete(RGBImage)
     rule_for_test.covariance_balancer.mark_null(RGBImage)
 
-    for episode in chunk:
+    for episode in bundle:
         seq_train = rule_for_train.apply_to_episode_data(episode)
 
         seq_test = rule_for_test.apply_to_episode_data(episode)
@@ -167,12 +167,12 @@ def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):  # noqa
         np.testing.assert_almost_equal(seq_train, seq_test_without_image)
 
 
-def test_encoding_rule_order(image_av_chunk):  # noqa
+def test_encoding_rule_order(image_av_bundle):  # noqa
     class Dummy(VectorBase):
         pass
 
-    chunk = image_av_chunk
-    rule = create_encoding_rule(chunk)
+    bundle = image_av_bundle
+    rule = create_encoding_rule(bundle)
 
     # Check dict insertion oreder is preserved
     # NOTE: from 3.7, order is preserved as lang. spec.
@@ -187,11 +187,11 @@ def test_encoding_rule_order(image_av_chunk):  # noqa
         assert rule.encode_order == types
 
 
-def test_encoding_rule_assertion(image_av_chunk):  # noqa
-    chunk = image_av_chunk
-    rule = create_encoding_rule(chunk)
+def test_encoding_rule_assertion(image_av_bundle):  # noqa
+    bundle = image_av_bundle
+    rule = create_encoding_rule(bundle)
     # add wrong dimension encoder
     rule[AngleVector] = VectorIdenticalEncoder(AngleVector, 1000)
 
     with pytest.raises(AssertionError):
-        rule.apply_to_multi_episode_chunk(chunk)
+        rule.apply_to_episode_bundle(bundle)
