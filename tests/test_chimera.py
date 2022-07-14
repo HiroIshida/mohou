@@ -6,7 +6,7 @@ from test_types import image_av_chunk_uneven  # noqa
 from mohou.model import AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
-from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
+from mohou.types import AngleVector, EpisodeBundle, RGBImage
 
 
 @pytest.fixture(scope="session")
@@ -32,7 +32,7 @@ def test_chimera_dataset(image_av_chunk_uneven, chimera_dataset):  # noqa
 
 
 def test_chimera_model(image_av_chunk_uneven, chimera_dataset):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk_uneven
+    chunk: EpisodeBundle = image_av_chunk_uneven
     rule = create_encoding_rule(chunk, balance=False)
 
     # create config using rule info

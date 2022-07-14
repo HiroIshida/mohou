@@ -9,9 +9,9 @@ from mohou.propagator import Propagator
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
+    EpisodeBundle,
     GripperState,
     ImageBase,
-    MultiEpisodeChunk,
     TerminateFlag,
     get_all_concrete_leaftypes,
 )
@@ -60,7 +60,7 @@ def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncod
 
 def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    chunk = EpisodeBundle.load(project_name)
     chunk_spec = chunk.spec
     av_dim = chunk_spec.type_shape_table[AngleVector][0]
     image_encoder = load_default_image_encoder(project_name)
@@ -121,10 +121,10 @@ def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
 
 
 def create_default_image_context_list(
-    project_name: Optional[str] = None, chunk: Optional[MultiEpisodeChunk] = None
+    project_name: Optional[str] = None, chunk: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
     if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+        chunk = EpisodeBundle.load(project_name)
     image_encoder = load_default_image_encoder(project_name)
 
     context_list = []

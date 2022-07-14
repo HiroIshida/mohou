@@ -22,9 +22,9 @@ from mohou.types import (
     AngleVector,
     DepthImage,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
     GripperState,
-    MultiEpisodeChunk,
     RGBImage,
 )
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     # load demos in temporary files and create chunks
     demos = load_objects(Demo, project_name, subpath="temp")
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
-    chunk = MultiEpisodeChunk.from_data_list(episodes)
+    chunk = EpisodeBundle.from_data_list(episodes)
     chunk.dump(project_name)
 
     # dump images

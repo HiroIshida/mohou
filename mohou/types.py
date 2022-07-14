@@ -718,7 +718,7 @@ class EpisodeData(TypeShapeTableMixin):
 
 
 @dataclass(frozen=True)
-class ChunkSpec(TypeShapeTableMixin):
+class BundleSpec(TypeShapeTableMixin):
     n_episode: int
     n_episode_intact: int
     n_average: int
@@ -731,24 +731,22 @@ class ChunkSpec(TypeShapeTableMixin):
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "ChunkSpec":
+    def from_dict(cls, d: Dict) -> "BundleSpec":
         d["type_shape_table"] = {
             get_element_type(k): tuple(v) for k, v in d["type_shape_table"].items()
         }
         return cls(**d)
 
 
-_chunk_cache: Dict[
-    Tuple[str, Optional[str]], "MultiEpisodeChunk"
-] = {}  # used MultiEpisodeChunk.load
+_bundle_cache: Dict[Tuple[str, Optional[str]], "EpisodeBundle"] = {}  # used EpisodeBundle.load
 
 
 @dataclass
-class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
+class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     data_list: List[EpisodeData]
     data_list_intact: List[EpisodeData]
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    spec: ChunkSpec
+    spec: BundleSpec
     _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
@@ -761,13 +759,13 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         extra_info: Optional[MetaData] = None,
         shuffle: bool = True,
         with_intact_data: bool = True,
-    ) -> "MultiEpisodeChunk":
+    ) -> "EpisodeBundle":
 
         set_types = set(functools.reduce(operator.add, [list(data.types()) for data in data_list]))
 
         n_type_appeared = len(set_types)
         n_type_expected = len(data_list[0].types())
-        assert_equal_with_message(n_type_appeared, n_type_expected, "num of element in chunk")
+        assert_equal_with_message(n_type_appeared, n_type_expected, "num of element type in bundle")
 
         data_list_intact = []
         if with_intact_data:
@@ -781,9 +779,9 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         # use fixed random seed where it's scope is only in this function
         # The reason why I used fixed seed is to keep two different shuffled
-        # chunk generated has the contents in the same order.
-        # This is particulary important say you make a chunk with 5hz and another
-        # with 20hz, and do some computation using both of chunks.
+        # bundle generated has the contents in the same order.
+        # This is particulary important say you make a bundl with 5hz and another
+        # with 20hz, and do some computation using both of bundle.
         rn = random.Random()
         rn.seed(0)
         if shuffle:
@@ -791,9 +789,9 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
 
         type_shape_table = data_list[0].type_shape_table
 
-        # chunk spec
+        # bundle spec
         n_average = int(sum([len(data) for data in data_list]) / len(data_list))
-        spec = ChunkSpec(
+        spec = BundleSpec(
             len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
         )
         return cls(data_list, data_list_intact, type_shape_table, spec)
@@ -801,37 +799,37 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
     @classmethod
     def load(
         cls, project_name: Optional[str] = None, postfix: Optional[str] = None
-    ) -> "MultiEpisodeChunk":
+    ) -> "EpisodeBundle":
 
         if project_name is None:
             project_name = setting.primary_project_name
         assert isinstance(project_name, str)  # for mypy check
 
-        if project_name not in _chunk_cache:
-            _chunk_cache[(project_name, postfix)] = load_object(cls, project_name, postfix)
-        chunk = _chunk_cache[(project_name, postfix)]
-        assert chunk._postfix == postfix
-        return chunk
+        if project_name not in _bundle_cache:
+            _bundle_cache[(project_name, postfix)] = load_object(cls, project_name, postfix)
+        bundle = _bundle_cache[(project_name, postfix)]
+        assert bundle._postfix == postfix
+        return bundle
 
     @staticmethod
     def spec_file_path(project_name: Optional[str] = None, postfix: Optional[str] = None) -> Path:
 
         project_path = get_project_path(project_name)
         if postfix is None:
-            yaml_file_path = project_path / "chunk_spec.yaml"
+            yaml_file_path = project_path / "bundle_spec.yaml"
         else:
-            yaml_file_path = project_path / "chunk_spec-{}.yaml".format(postfix)
+            yaml_file_path = project_path / "bundle_spec-{}.yaml".format(postfix)
         return yaml_file_path
 
     @classmethod
     def load_spec(
         cls, project_name: Optional[str] = None, postfix: Optional[str] = None
-    ) -> ChunkSpec:
+    ) -> BundleSpec:
 
         yaml_file_path = cls.spec_file_path(project_name, postfix)
         with yaml_file_path.open(mode="r") as f:
             d = yaml.safe_load(f)
-            spec = ChunkSpec.from_dict(d)
+            spec = BundleSpec.from_dict(d)
         return spec
 
     def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
@@ -841,11 +839,13 @@ class MultiEpisodeChunk(HasAList[EpisodeData], TypeShapeTableMixin):
         with yaml_file_path.open(mode="w") as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
-    def get_intact_chunk(self) -> "MultiEpisodeChunk":
-        return MultiEpisodeChunk(self.data_list_intact, [], self.type_shape_table, self.spec)
+    def get_untouched_bundle(self) -> "EpisodeBundle":
+        """get episode bundle which is not used for training."""
+        return EpisodeBundle(self.data_list_intact, [], self.type_shape_table, self.spec)
 
-    def get_not_intact_chunk(self) -> "MultiEpisodeChunk":
-        return MultiEpisodeChunk(self.data_list, [], self.type_shape_table, self.spec)
+    def get_touched_bundle(self) -> "EpisodeBundle":
+        """get episode bundle which is used for training"""
+        return EpisodeBundle(self.data_list, [], self.type_shape_table, self.spec)
 
     def plot_vector_histories(
         self,

@@ -17,7 +17,7 @@ from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
-from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
+from mohou.types import EpisodeBundle, ImageBase, ImageT
 from mohou.utils import (
     assert_equal_with_message,
     assert_seq_list_list_compatible,
@@ -111,7 +111,7 @@ class ChimeraDataset(Dataset):
         return image_seq_tensor, vector_seq_tensor
 
     @classmethod
-    def from_chunk(cls, chunk: MultiEpisodeChunk, encoding_rule: EncodingRule) -> "ChimeraDataset":
+    def from_chunk(cls, chunk: EpisodeBundle, encoding_rule: EncodingRule) -> "ChimeraDataset":
 
         first_elem_type = encoding_rule.encode_order[0]
         assert issubclass(

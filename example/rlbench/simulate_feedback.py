@@ -19,8 +19,8 @@ from mohou.types import (
     AngleVector,
     DepthImage,
     ElementDict,
+    EpisodeBundle,
     GripperState,
-    MultiEpisodeChunk,
     RGBImage,
 )
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     n_step = args.n
     n_sim = args.m
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    chunk = EpisodeBundle.load(project_name)
     resolution = chunk.spec.type_shape_table[RGBImage][0]
 
     obs_config = setup_observation_config(camera_name, resolution)

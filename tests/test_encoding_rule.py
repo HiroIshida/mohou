@@ -11,8 +11,8 @@ from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import CovarianceBalancer, EncodingRule
 from mohou.types import (
     AngleVector,
+    EpisodeBundle,
     ImageBase,
-    MultiEpisodeChunk,
     RGBImage,
     TerminateFlag,
     VectorBase,
@@ -86,7 +86,7 @@ def test_covariance_balancer_marknull(sample_covariance_balancer):
         np.testing.assert_almost_equal(balanced[3:], inp[3:])
 
 
-def create_encoding_rule(chunk: MultiEpisodeChunk, balance: bool = True) -> EncodingRule:
+def create_encoding_rule(chunk: EpisodeBundle, balance: bool = True) -> EncodingRule:
     dim_image_encoded = 5
     dim_av = chunk.get_element_shape(AngleVector)[0]
     image_type = [t for t in chunk.types() if issubclass(t, ImageBase)].pop()
@@ -115,7 +115,7 @@ def test_encoding_rule(image_av_chunk):  # noqa
 
 
 def test_encoding_rule_type_bound_table(image_av_chunk):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk
+    chunk: EpisodeBundle = image_av_chunk
     rule = create_encoding_rule(chunk)
 
     last_end_idx = 0
@@ -127,7 +127,7 @@ def test_encoding_rule_type_bound_table(image_av_chunk):  # noqa
 
 
 def test_encoding_rule_delete(image_av_chunk):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk
+    chunk: EpisodeBundle = image_av_chunk
     rule = create_encoding_rule(chunk)
     rule_dimension_pre = rule.dimension
 
@@ -149,7 +149,7 @@ def test_encode_rule_delete_and_balancer_marknull(image_av_chunk):  # noqa
     # we will use delete, and for testing (propagation) we will use marknull.
     # The following test simulate how these two methods are used in train/test the chimera
     # model
-    chunk: MultiEpisodeChunk = image_av_chunk
+    chunk: EpisodeBundle = image_av_chunk
     rule_for_train = create_encoding_rule(chunk)
     rule_for_test = copy.deepcopy(rule_for_train)
 

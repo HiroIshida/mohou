@@ -8,7 +8,7 @@ from mohou.script_utils import (
 )
 from mohou.setting import setting
 from mohou.trainer import TrainCache
-from mohou.types import MultiEpisodeChunk
+from mohou.types import EpisodeBundle
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     project_name = args.pn
     n_vis = args.n
 
-    chunk = MultiEpisodeChunk.load(project_name)
+    chunk = EpisodeBundle.load(project_name)
 
     if args.chimera:
         chimera = TrainCache.load(project_name, Chimera).best_model

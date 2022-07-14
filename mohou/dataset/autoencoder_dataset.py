@@ -6,7 +6,7 @@ from typing import Generic, List, Optional, Type
 import torch
 from torch.utils.data import Dataset
 
-from mohou.types import ImageT, MultiEpisodeChunk
+from mohou.types import EpisodeBundle, ImageT
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
     @classmethod
     def from_chunk(
         cls,
-        chunk: MultiEpisodeChunk,
+        chunk: EpisodeBundle,
         image_type: Type[ImageT],
         augconfig: Optional[AutoEncoderDatasetConfig] = None,
     ) -> "AutoEncoderDataset":

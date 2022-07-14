@@ -12,23 +12,23 @@ from test_file import tmp_project_name  # noqa
 from mohou.file import remove_project
 from mohou.types import (
     AngleVector,
-    ChunkSpec,
+    BundleSpec,
     DepthImage,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
     GrayImage,
     GripperState,
     HashableMixin,
     MetaData,
-    MultiEpisodeChunk,
     PrimitiveImageBase,
     RGBDImage,
     RGBImage,
     TerminateFlag,
     TimeStampSequence,
     VectorBase,
-    _chunk_cache,
+    _bundle_cache,
     extract_contour_by_laplacian,
 )
 
@@ -267,8 +267,8 @@ def test_two_chunk_consistency():
         return data
 
     lst = [create_edata(5) for _ in range(100)]
-    chunk = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
-    chunk2 = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
+    chunk = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
+    chunk2 = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
     assert pickle.dumps(chunk) == pickle.dumps(chunk2)
 
 
@@ -282,7 +282,7 @@ def image_chunk():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    chunk = MultiEpisodeChunk.from_data_list(lst)
+    chunk = EpisodeBundle.from_data_list(lst)
     return chunk
 
 
@@ -295,7 +295,7 @@ def image_av_chunk():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    chunk = MultiEpisodeChunk.from_data_list(lst)
+    chunk = EpisodeBundle.from_data_list(lst)
     return chunk
 
 
@@ -309,39 +309,39 @@ def image_av_chunk_uneven():
 
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    chunk = MultiEpisodeChunk.from_data_list(lst, shuffle=False, with_intact_data=False)
+    chunk = EpisodeBundle.from_data_list(lst, shuffle=False, with_intact_data=False)
     return chunk
 
 
 def test_chunk_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     extra_info = {"hz": 20, "author": "HiroIshida"}
-    spec = ChunkSpec(10, 5, 10, types, extra_info=extra_info)
-    spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
+    spec = BundleSpec(10, 5, 10, types, extra_info=extra_info)
+    spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
 
 def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk
+    chunk: EpisodeBundle = image_av_chunk
     assert set(chunk.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
     chunk.dump(tmp_project_name)
-    assert tmp_project_name not in _chunk_cache
+    assert tmp_project_name not in _bundle_cache
     loaded = chunk.load(tmp_project_name)
     assert pickle.dumps(chunk) == pickle.dumps(loaded)
-    assert (tmp_project_name, None) in _chunk_cache
+    assert (tmp_project_name, None) in _bundle_cache
 
-    chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name)
+    chunk_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)
     assert pickle.dumps(chunk.spec) == pickle.dumps(chunk_spec_loaded)
 
     # test having multiple chunk in one project
     postfix = "extra"
-    extra_chunk: MultiEpisodeChunk = image_chunk
+    extra_chunk: EpisodeBundle = image_chunk
     extra_chunk.dump(tmp_project_name, postfix)
-    extra_chunk_loaded = MultiEpisodeChunk.load(tmp_project_name, postfix)
+    extra_chunk_loaded = EpisodeBundle.load(tmp_project_name, postfix)
     assert pickle.dumps(extra_chunk) == pickle.dumps(extra_chunk_loaded)
 
-    extra_chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name, postfix)
+    extra_chunk_spec_loaded = EpisodeBundle.load_spec(tmp_project_name, postfix)
     assert pickle.dumps(extra_chunk.spec) == pickle.dumps(extra_chunk_spec_loaded)
 
     remove_project(tmp_project_name)
@@ -356,4 +356,4 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
     data2 = EpisodeData.from_seq_list([depth_seq, av_seq])
 
     with pytest.raises(AssertionError):
-        MultiEpisodeChunk.from_data_list([data1, data2])
+        EpisodeBundle.from_data_list([data1, data2])

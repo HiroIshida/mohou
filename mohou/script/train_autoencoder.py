@@ -7,7 +7,7 @@ from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.script_utils import create_default_logger, train_autoencoder
 from mohou.setting import setting
 from mohou.trainer import TrainConfig
-from mohou.types import ImageBase, MultiEpisodeChunk, RGBImage, get_element_type
+from mohou.types import EpisodeBundle, ImageBase, RGBImage, get_element_type
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     if chunk_postfix == "":
         chunk_postfix = None
-    chunk = MultiEpisodeChunk.load(project_name, chunk_postfix)
+    chunk = EpisodeBundle.load(project_name, chunk_postfix)
 
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
     n_pixel, _, _ = chunk.spec.type_shape_table[RGBImage]  # Assuming chunk contains rgb

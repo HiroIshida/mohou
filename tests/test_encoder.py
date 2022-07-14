@@ -2,11 +2,11 @@ import numpy as np
 from test_types import image_av_chunk  # noqa
 
 from mohou.encoder import VectorPCAEncoder
-from mohou.types import AngleVector, MultiEpisodeChunk
+from mohou.types import AngleVector, EpisodeBundle
 
 
 def test_pca_encoder(image_av_chunk):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk
+    chunk: EpisodeBundle = image_av_chunk
     pca_emb = VectorPCAEncoder.from_chunk(chunk, AngleVector, 3)
     assert pca_emb.input_shape == (10,)
     assert pca_emb.output_size == 3

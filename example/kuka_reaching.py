@@ -22,8 +22,8 @@ from mohou.types import (
     DepthImage,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     RGBImage,
 )
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
             for file_name in os.listdir(td):
                 with open(os.path.join(td, file_name), "rb") as f:
                     data_list.append(pickle.load(f))
-            chunk = MultiEpisodeChunk.from_data_list(data_list)
+            chunk = EpisodeBundle.from_data_list(data_list)
             chunk.dump(project_name)
             chunk.plot_vector_histories(AngleVector, project_name)
 

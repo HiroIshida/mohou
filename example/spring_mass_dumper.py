@@ -15,8 +15,8 @@ from mohou.types import (
     AngleVector,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     TerminateFlag,
 )
 
@@ -51,7 +51,7 @@ class SpringMassDumper:
             return False
         return True
 
-    def create_chunk(self, n_data: int = 100) -> MultiEpisodeChunk:
+    def create_chunk(self, n_data: int = 100) -> EpisodeBundle:
         edata_list = []
         for _ in range(n_data):
             state = self.sample_random_init_state()
@@ -62,7 +62,7 @@ class SpringMassDumper:
                 if self.is_termianate(state):
                     break
             edata_list.append(EpisodeData.from_seq_list([av_seq]))
-        chunk = MultiEpisodeChunk.from_data_list(edata_list)
+        chunk = EpisodeBundle.from_data_list(edata_list)
         return chunk
 
 

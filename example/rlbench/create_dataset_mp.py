@@ -21,8 +21,8 @@ from mohou.types import (
     AngleVector,
     DepthImage,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     RGBDImage,
     RGBImage,
 )
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
             data_list.append(EpisodeData((seq_rgb, seq_depth)))
 
-        chunk = MultiEpisodeChunk(data_list)
+        chunk = EpisodeBundle(data_list)
         chunk.dump(project_name)
 
         # create debug image

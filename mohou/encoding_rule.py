@@ -11,8 +11,8 @@ from mohou.types import (
     CompositeImageBase,
     ElementBase,
     ElementDict,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     PrimitiveElementBase,
 )
 from mohou.utils import (
@@ -266,7 +266,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
-    def apply_to_multi_episode_chunk(self, chunk: MultiEpisodeChunk) -> List[np.ndarray]:
+    def apply_to_multi_episode_chunk(self, chunk: EpisodeBundle) -> List[np.ndarray]:
 
         # TODO(HiroIshida) check chunk compatibility
         def elem_types_to_primitive_elem_set(elem_type_list: List[Type[ElementBase]]):
@@ -313,7 +313,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
 
     @classmethod
     def from_encoders(
-        cls, encoder_list: List[EncoderBase], chunk: Optional[MultiEpisodeChunk] = None
+        cls, encoder_list: List[EncoderBase], chunk: Optional[EpisodeBundle] = None
     ) -> "EncodingRule":
         rule: EncodingRule = cls()
         for encoder in encoder_list:

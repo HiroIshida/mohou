@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
-from mohou.types import MultiEpisodeChunk, TerminateFlag
+from mohou.types import EpisodeBundle, TerminateFlag
 from mohou.utils import (
     AnyT,
     assert_equal_with_message,
@@ -184,7 +184,7 @@ class AutoRegressiveDataset(Dataset):
     @classmethod
     def from_chunk(
         cls,
-        chunk: MultiEpisodeChunk,
+        chunk: EpisodeBundle,
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
         static_context_list: Optional[List[np.ndarray]] = None,
@@ -262,7 +262,7 @@ class MarkovControlSystemDataset(Dataset):
     @classmethod
     def from_chunk(
         cls,
-        chunk: MultiEpisodeChunk,
+        chunk: EpisodeBundle,
         control_encoding_rule: EncodingRule,
         observation_encoding_rule: EncodingRule,
         config: Optional[SequenceDatasetConfig] = None,

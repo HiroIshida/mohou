@@ -39,9 +39,9 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
     ElementDict,
+    EpisodeBundle,
     GripperState,
     ImageBase,
-    MultiEpisodeChunk,
     TerminateFlag,
 )
 from mohou.utils import canvas_to_ndarray
@@ -77,12 +77,12 @@ def train_autoencoder(
     dataset_config: AutoEncoderDatasetConfig,
     train_config: TrainConfig,
     ae_type: Type[AutoEncoderBase] = AutoEncoder,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    chunk: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
 ):
 
     if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+        chunk = EpisodeBundle.load(project_name)
 
     dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
     if warm_start:
@@ -102,13 +102,13 @@ def train_lstm(
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
     weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    chunk: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
 ):
 
     if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+        chunk = EpisodeBundle.load(project_name)
 
     if context_list is None:
         assert model_config.n_static_context == 0
@@ -139,11 +139,11 @@ def train_chimera(
     encoding_rule: EncodingRule,
     lstm_config: LSTMConfig,
     train_config: TrainConfig,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    chunk: Optional[EpisodeBundle] = None,
 ):  # TODO(HiroIshida): minimal args
 
     if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+        chunk = EpisodeBundle.load(project_name)
 
     dataset = ChimeraDataset.from_chunk(chunk, encoding_rule)
     tcache = TrainCache(project_name)  # type: ignore[var-annotated]
@@ -175,14 +175,14 @@ def visualize_train_histories(project_name: str):
 
 def visualize_image_reconstruction(
     project_name: str,
-    chunk: MultiEpisodeChunk,
+    chunk: EpisodeBundle,
     autoencoder: AutoEncoderBase,
     n_vis: int = 5,
     prefix: Optional[str] = None,
 ):
 
-    chunk_intact = chunk.get_intact_chunk()
-    chunk_not_intact = chunk.get_not_intact_chunk()
+    chunk_intact = chunk.get_untouched_bundle()
+    chunk_not_intact = chunk.get_touched_bundle()
 
     image_type = autoencoder.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
@@ -245,7 +245,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
-    chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
+    chunk = EpisodeBundle.load(project_name).get_untouched_bundle()
     save_dir_path = get_subproject_path(project_name, "lstm_result")
     image_encoder = load_default_image_encoder(project_name)
 

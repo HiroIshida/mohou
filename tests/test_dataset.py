@@ -13,7 +13,7 @@ from mohou.dataset import (
 )
 from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
-from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
+from mohou.types import AngleVector, EpisodeBundle, RGBImage
 from mohou.utils import assert_seq_list_list_compatible
 
 
@@ -133,7 +133,7 @@ def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
 
 
 def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk_uneven
+    chunk: EpisodeBundle = image_av_chunk_uneven
     default_rule = create_encoding_rule(chunk, balance=False)
     f1 = default_rule[RGBImage]
     f2 = default_rule[AngleVector]
