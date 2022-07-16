@@ -1,9 +1,12 @@
 import copy
 import functools
 import hashlib
+import json
 import operator
+import pathlib
 import pickle
 import random
+import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -31,7 +34,7 @@ import torchvision
 import yaml
 
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
-from mohou.file import dump_object, get_project_path, load_object
+from mohou.file import get_project_path
 from mohou.image_randomizer import (
     _f_randomize_depth_image,
     _f_randomize_gray_image,
@@ -501,6 +504,31 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     def append(self, *args, **kwargs):  # type: ignore
         raise NotImplementedError("deleted method")
 
+    def dump(self, episode_dir_path: pathlib.Path) -> None:
+        file_path = episode_dir_path / "sequence-{}.npy".format(self.elem_type.__name__)
+        assert issubclass(self.elem_type, PrimitiveElementBase)
+        seq = np.array([e.numpy() for e in self.elem_list])  # type: ignore
+        np.save(file_path, seq)
+
+    @classmethod
+    def load(
+        cls, episode_dir_path: pathlib.Path, elem_type: Type[ElementT]
+    ) -> "ElementSequence[ElementT]":
+        file_path = episode_dir_path / "sequence-{}.npy".format(elem_type.__name__)
+        seq = np.load(file_path)
+        elem_list = [elem_type(arr) for arr in seq]
+        return ElementSequence(elem_list)
+
+    @classmethod
+    def load_all(cls, episode_dir_path: pathlib.Path) -> "Dict[Type[ElementBase], ElementSequence]":
+        d = {}
+        for p in episode_dir_path.iterdir():
+            result = re.match(r"sequence-(\w+).npy", p.name)
+            assert result is not None
+            elem_type = get_element_type(result.group(1))
+            d[elem_type] = cls.load(episode_dir_path, elem_type)
+        return d
+
 
 def create_composite_image_sequence(
     composite_image_type: Type[CompositeImageT],
@@ -543,6 +571,19 @@ class TimeStampSequence(HasAList[float]):
         """find index greater than or equal to time"""
         eps = 1e-8
         return [i for i, t in enumerate(self._data) if t > time - eps][0]
+
+    def dump(self, episode_dir_path: pathlib.Path) -> None:
+        file_path = episode_dir_path / "time_stamp_sequence.npz"
+        np.save(file_path, np.array(self._data))
+
+    @classmethod
+    def load(cls, episode_dir_path: pathlib.Path) -> Optional["TimeStampSequence"]:
+        file_path = episode_dir_path / "time_stamp_sequence.npz"
+        if file_path.exists():
+            seq = np.load(file_path).list()
+            return TimeStampSequence(seq)
+        else:
+            return None
 
 
 @dataclass(frozen=True)
@@ -721,11 +762,38 @@ class EpisodeData(TypeShapeTableMixin):
         clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
         clip.write_gif(filename, fps=fps)
 
+    def dump(self, episode_dir_path: pathlib.Path) -> None:
+        episode_dir_path = episode_dir_path.expanduser()
+        episode_dir_path.mkdir(exist_ok=True)
+
+        for elem_type, seq in self.sequence_dict.items():
+            seq.dump(episode_dir_path)
+
+        if self.time_stamp_seq is not None:
+            self.time_stamp_seq.dump(episode_dir_path)
+
+        if self.metadata is not None:
+            with open(episode_dir_path / "metadata.json", mode="w") as f:
+                json.dump(self.metadata, f)
+
+    @classmethod
+    def load(cls, episode_dir_path: pathlib.Path) -> "EpisodeData":
+        episode_dir_path = episode_dir_path.expanduser()
+        type_seq_table = ElementSequence.load_all(episode_dir_path)
+        time_stamp_seq = TimeStampSequence.load(episode_dir_path)
+
+        metadata_path = episode_dir_path / "metadata.json"
+        metadata = None
+        if metadata_path.exists():
+            with open(episode_dir_path / "metadata.json", mode="r") as f:
+                metadata = json.load(f)
+        return cls(type_seq_table, time_stamp_seq, metadata)
+
 
 @dataclass(frozen=True)
 class BundleSpec(TypeShapeTableMixin):
     n_episode: int
-    n_episode_intact: int
+    n_untouch_episode: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     meta_data: Optional[MetaData] = None
@@ -769,8 +837,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     def spec(self) -> BundleSpec:
         n_average = int(sum([len(data) for data in self._episode_list]) / len(self._episode_list))
         spec = BundleSpec(
-            len(self._episode_list),
-            len(self._untouch_episode_list),
+            len(self._episode_list) - setting.n_data_intact,
+            setting.n_data_intact,
             n_average,
             self.type_shape_table,
             self._metadata,
@@ -814,21 +882,6 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
         return cls(data_list, data_list_intact, meta_data)
 
-    @classmethod
-    def load(
-        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
-    ) -> "EpisodeBundle":
-
-        if project_name is None:
-            project_name = setting.primary_project_name
-        assert isinstance(project_name, str)  # for mypy check
-
-        if project_name not in _bundle_cache:
-            _bundle_cache[(project_name, postfix)] = load_object(cls, project_name, postfix)
-        bundle = _bundle_cache[(project_name, postfix)]
-        assert bundle._postfix == postfix
-        return bundle
-
     @staticmethod
     def spec_file_path(project_name: Optional[str] = None, postfix: Optional[str] = None) -> Path:
 
@@ -850,11 +903,69 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             spec = BundleSpec.from_dict(d)
         return spec
 
+    @classmethod
+    def load(
+        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
+    ) -> "EpisodeBundle":
+
+        if project_name is None:
+            project_name = setting.primary_project_name
+        assert isinstance(project_name, str)  # for mypy check
+
+        if (project_name, postfix) not in _bundle_cache:
+            bundle_dir_path = get_project_path(project_name) / (
+                "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix))
+            )
+
+            # load episode
+            episode_names = sorted(
+                [p for p in bundle_dir_path.iterdir() if p.name.startswith("episode")]
+            )
+            episode_list = []
+            for episode_name in episode_names:
+                episode_dir_path = bundle_dir_path / episode_name
+                episode_list.append(EpisodeData.load(episode_dir_path))
+
+            # load untouch episode
+            episode_names = sorted(
+                [p for p in bundle_dir_path.iterdir() if p.name.startswith("untouch_episode")]
+            )
+            untouch_episode_list = []
+            for episode_name in episode_names:
+                episode_dir_path = bundle_dir_path / episode_name
+                untouch_episode_list.append(EpisodeData.load(episode_dir_path))
+
+            metadata_file_path = bundle_dir_path / "metadata.yaml"
+            with metadata_file_path.open(mode="r") as f:
+                metadata = yaml.safe_load(f)
+            bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
+            _bundle_cache[(project_name, postfix)] = bundle
+
+        bundle = _bundle_cache[(project_name, postfix)]
+        return bundle
+
     def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
         self._postfix = postfix
-        dump_object(self, project_name, postfix)
-        yaml_file_path = self.spec_file_path(project_name, postfix)
-        with yaml_file_path.open(mode="w") as f:
+        bundle_dir_path = get_project_path(project_name) / (
+            "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix))
+        )
+        bundle_dir_path.mkdir(exist_ok=True)
+
+        for i, episode in enumerate(self._episode_list):
+            episode_dir_path = bundle_dir_path / "episode{}".format(i)
+            episode.dump(episode_dir_path)
+
+        for i, episode in enumerate(self._untouch_episode_list):
+            episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
+            episode.dump(episode_dir_path)
+
+        metadata_file_path = bundle_dir_path / "metadata.yaml"
+        with metadata_file_path.open(mode="w") as f:
+            yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
+
+        # extra dump just for debugging (the following info is not requried to load bundle)
+        spec_file_path = self.spec_file_path(project_name, postfix)
+        with spec_file_path.open(mode="w") as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
     def get_untouch_bundle(self) -> "EpisodeBundle":
