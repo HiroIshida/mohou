@@ -12,23 +12,23 @@ from test_file import tmp_project_name  # noqa
 from mohou.file import remove_project
 from mohou.types import (
     AngleVector,
-    ChunkSpec,
+    BundleSpec,
     DepthImage,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
     GrayImage,
     GripperState,
     HashableMixin,
     MetaData,
-    MultiEpisodeChunk,
     PrimitiveImageBase,
     RGBDImage,
     RGBImage,
     TerminateFlag,
     TimeStampSequence,
     VectorBase,
-    _chunk_cache,
+    _bundle_cache,
     extract_contour_by_laplacian,
 )
 
@@ -260,20 +260,20 @@ def test_episode_data_assertion_type_inconsitency():
         EpisodeData.from_seq_list([image_seq, image_seq])
 
 
-def test_two_chunk_consistency():
+def test_two_bundle_consistency():
     def create_edata(n_length):
         av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(n_length)])
         data = EpisodeData.from_seq_list([av_seq])
         return data
 
     lst = [create_edata(5) for _ in range(100)]
-    chunk = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
-    chunk2 = MultiEpisodeChunk.from_data_list(copy.deepcopy(lst), shuffle=True)
-    assert pickle.dumps(chunk) == pickle.dumps(chunk2)
+    bundle = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
+    bundle2 = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
+    assert pickle.dumps(bundle) == pickle.dumps(bundle2)
 
 
 @pytest.fixture(scope="session")
-def image_chunk():
+def image_bundle():
     def create_edata(n_length):
         image_seq = ElementSequence(
             [RGBImage.dummy_from_shape((100, 100)) for _ in range(n_length)]
@@ -282,12 +282,12 @@ def image_chunk():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    chunk = MultiEpisodeChunk.from_data_list(lst)
-    return chunk
+    bundle = EpisodeBundle.from_data_list(lst)
+    return bundle
 
 
 @pytest.fixture(scope="session")
-def image_av_chunk():
+def image_av_bundle():
     def create_edata(n_length):
         image_seq = ElementSequence([RGBImage.dummy_from_shape((28, 28)) for _ in range(n_length)])
         av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(n_length)])
@@ -295,12 +295,12 @@ def image_av_chunk():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    chunk = MultiEpisodeChunk.from_data_list(lst)
-    return chunk
+    bundle = EpisodeBundle.from_data_list(lst)
+    return bundle
 
 
 @pytest.fixture(scope="session")
-def image_av_chunk_uneven():
+def image_av_bundle_uneven():
     def create_edata(n_length):
         image_seq = ElementSequence([RGBImage.dummy_from_shape((28, 28)) for _ in range(n_length)])
         av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(n_length)])
@@ -309,45 +309,45 @@ def image_av_chunk_uneven():
 
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    chunk = MultiEpisodeChunk.from_data_list(lst, shuffle=False, with_intact_data=False)
-    return chunk
+    bundle = EpisodeBundle.from_data_list(lst, shuffle=False, with_intact_data=False)
+    return bundle
 
 
-def test_chunk_spec():
+def test_bundle_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     extra_info = {"hz": 20, "author": "HiroIshida"}
-    spec = ChunkSpec(10, 5, 10, types, extra_info=extra_info)
-    spec_reconstructed = ChunkSpec.from_dict(spec.to_dict())
+    spec = BundleSpec(10, 5, 10, types, extra_info=extra_info)
+    spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
 
-def test_multi_episode_chunk(image_av_chunk, image_chunk, tmp_project_name):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk
-    assert set(chunk.types()) == set([AngleVector, RGBImage, TerminateFlag])
+def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
+    bundle: EpisodeBundle = image_av_bundle
+    assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
-    chunk.dump(tmp_project_name)
-    assert tmp_project_name not in _chunk_cache
-    loaded = chunk.load(tmp_project_name)
-    assert pickle.dumps(chunk) == pickle.dumps(loaded)
-    assert (tmp_project_name, None) in _chunk_cache
+    bundle.dump(tmp_project_name)
+    assert tmp_project_name not in _bundle_cache
+    loaded = bundle.load(tmp_project_name)
+    assert pickle.dumps(bundle) == pickle.dumps(loaded)
+    assert (tmp_project_name, None) in _bundle_cache
 
-    chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name)
-    assert pickle.dumps(chunk.spec) == pickle.dumps(chunk_spec_loaded)
+    bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)
+    assert pickle.dumps(bundle.spec) == pickle.dumps(bundle_spec_loaded)
 
-    # test having multiple chunk in one project
+    # test having multiple bundle in one project
     postfix = "extra"
-    extra_chunk: MultiEpisodeChunk = image_chunk
-    extra_chunk.dump(tmp_project_name, postfix)
-    extra_chunk_loaded = MultiEpisodeChunk.load(tmp_project_name, postfix)
-    assert pickle.dumps(extra_chunk) == pickle.dumps(extra_chunk_loaded)
+    extra_bundle: EpisodeBundle = image_bundle
+    extra_bundle.dump(tmp_project_name, postfix)
+    extra_bundle_loaded = EpisodeBundle.load(tmp_project_name, postfix)
+    assert pickle.dumps(extra_bundle) == pickle.dumps(extra_bundle_loaded)
 
-    extra_chunk_spec_loaded = MultiEpisodeChunk.load_spec(tmp_project_name, postfix)
-    assert pickle.dumps(extra_chunk.spec) == pickle.dumps(extra_chunk_spec_loaded)
+    extra_bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name, postfix)
+    assert pickle.dumps(extra_bundle.spec) == pickle.dumps(extra_bundle_spec_loaded)
 
     remove_project(tmp_project_name)
 
 
-def test_multi_episode_chunk_assertion_type_inconsitency():
+def test_multi_episode_bundle_assertion_type_inconsitency():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
@@ -356,4 +356,4 @@ def test_multi_episode_chunk_assertion_type_inconsitency():
     data2 = EpisodeData.from_seq_list([depth_seq, av_seq])
 
     with pytest.raises(AssertionError):
-        MultiEpisodeChunk.from_data_list([data1, data2])
+        EpisodeBundle.from_data_list([data1, data2])

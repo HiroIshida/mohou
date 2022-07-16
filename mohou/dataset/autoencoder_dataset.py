@@ -6,7 +6,7 @@ from typing import Generic, List, Optional, Type
 import torch
 from torch.utils.data import Dataset
 
-from mohou.types import ImageT, MultiEpisodeChunk
+from mohou.types import EpisodeBundle, ImageT
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
         return self.image_list[idx].to_tensor()
 
     @classmethod
-    def from_chunk(
+    def from_bundle(
         cls,
-        chunk: MultiEpisodeChunk,
+        bundle: EpisodeBundle,
         image_type: Type[ImageT],
         augconfig: Optional[AutoEncoderDatasetConfig] = None,
     ) -> "AutoEncoderDataset":
@@ -43,7 +43,7 @@ class AutoEncoderDataset(Dataset, Generic[ImageT]):
             augconfig = AutoEncoderDatasetConfig()
 
         image_list: List[ImageT] = []
-        for episode_data in chunk:
+        for episode_data in bundle:
             image_list.extend(episode_data.get_sequence_by_type(image_type))
 
         image_list_rand = copy.deepcopy(image_list)

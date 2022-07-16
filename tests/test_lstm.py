@@ -1,12 +1,12 @@
 import torch
 from test_encoding_rule import create_encoding_rule
-from test_types import image_av_chunk  # noqa
+from test_types import image_av_bundle  # noqa
 
 from mohou.model import LSTM, LSTMConfig
 
 
-def test_lstm(image_av_chunk):  # noqa
-    rule = create_encoding_rule(image_av_chunk)
+def test_lstm(image_av_bundle):  # noqa
+    rule = create_encoding_rule(image_av_bundle)
 
     n_sample = 10
     n_seq_len = 100

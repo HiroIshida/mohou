@@ -1,6 +1,6 @@
 import numpy as np
 from test_encoding_rule import create_encoding_rule  # noqa
-from test_types import image_av_chunk_uneven  # noqa
+from test_types import image_av_bundle_uneven  # noqa
 from torch.utils.data import DataLoader
 
 from mohou.dataset import (
@@ -13,18 +13,18 @@ from mohou.dataset import (
 )
 from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
-from mohou.types import AngleVector, MultiEpisodeChunk, RGBImage
+from mohou.types import AngleVector, EpisodeBundle, RGBImage
 from mohou.utils import assert_seq_list_list_compatible
 
 
-def test_autoencoder_dataset(image_av_chunk_uneven):  # noqa
+def test_autoencoder_dataset(image_av_bundle_uneven):  # noqa
 
     n_image_original = 0
-    for episode_data in image_av_chunk_uneven:
+    for episode_data in image_av_bundle_uneven:
         n_image_original += len(episode_data.get_sequence_by_type(RGBImage))
 
     config = AutoEncoderDatasetConfig(batch_augment_factor=4)
-    dataset = AutoEncoderDataset.from_chunk(image_av_chunk_uneven, RGBImage, config)
+    dataset = AutoEncoderDataset.from_bundle(image_av_bundle_uneven, RGBImage, config)
 
     train_loader = DataLoader(dataset=dataset, batch_size=3, shuffle=True)
     n_sample_total = 0
@@ -116,14 +116,14 @@ def test_padding_sequnece_alginer_creation():
     aligner.n_seqlen_target == n_seqlen_max + n_after
 
 
-def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
-    chunk = image_av_chunk_uneven
-    rule = create_encoding_rule(chunk, balance=False)
+def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
+    bundle: EpisodeBundle = image_av_bundle_uneven
+    rule = create_encoding_rule(bundle, balance=False)
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
-    dataset = AutoRegressiveDataset.from_chunk(chunk, rule, config)
-    assert len(dataset.state_seq_list) == len(chunk.data_list) * (n_aug + 1)
+    dataset = AutoRegressiveDataset.from_bundle(bundle, rule, config)
+    assert len(dataset.state_seq_list) == len(bundle.get_touch_bundle()) * (n_aug + 1)
     assert_seq_list_list_compatible([dataset.state_seq_list, dataset.weight_seq_list])
 
     for state_seq in dataset.state_seq_list:
@@ -132,9 +132,9 @@ def test_auto_regressive_dataset(image_av_chunk_uneven):  # noqa
         assert n_dim == rule.dimension
 
 
-def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
-    chunk: MultiEpisodeChunk = image_av_chunk_uneven
-    default_rule = create_encoding_rule(chunk, balance=False)
+def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa
+    bundle: EpisodeBundle = image_av_bundle_uneven
+    default_rule = create_encoding_rule(bundle, balance=False)
     f1 = default_rule[RGBImage]
     f2 = default_rule[AngleVector]
     control_encode_rule = EncodingRule.from_encoders([f2])
@@ -143,16 +143,16 @@ def test_markov_control_system_dataset(image_av_chunk_uneven):  # noqa
     n_aug = 20
     config = SequenceDatasetConfig(n_aug=n_aug, cov_scale=0.0)  # 0.0 to remove noise
     for diff_as_control in [True, False]:
-        dataset = MarkovControlSystemDataset.from_chunk(
-            chunk,
+        dataset = MarkovControlSystemDataset.from_bundle(
+            bundle,
             control_encode_rule,
             observation_encode_rule,
             diff_as_control=diff_as_control,
             config=config,
         )
 
-        controls_seq = control_encode_rule.apply_to_multi_episode_chunk(chunk)
-        observations_seq = observation_encode_rule.apply_to_multi_episode_chunk(chunk)
+        controls_seq = control_encode_rule.apply_to_episode_bundle(bundle)
+        observations_seq = observation_encode_rule.apply_to_episode_bundle(bundle)
 
         # test __len__
         n_len_ground_truth = sum([len(seq) - 1 for seq in controls_seq]) * (n_aug + 1)

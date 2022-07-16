@@ -8,7 +8,7 @@ from mohou.model.markov import MarkoveModelConfig
 from mohou.script_utils import create_default_logger
 from mohou.setting import setting
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.types import AngleVector, MultiEpisodeChunk
+from mohou.types import AngleVector, EpisodeBundle
 
 
 def create_obs_rule():
@@ -32,15 +32,15 @@ if __name__ == "__main__":
 
     logger = create_default_logger(project_name, "control_model")
 
-    chunk = MultiEpisodeChunk.load(project_name)
-    n_av_dim = chunk.spec.type_shape_table[AngleVector][0]
+    bundle = EpisodeBundle.load(project_name)
+    n_av_dim = bundle.spec.type_shape_table[AngleVector][0]
     f = VectorIdenticalEncoder(AngleVector, n_av_dim)
     ctrl_rule = EncodingRule.from_encoders([f])
 
     obs_rule = create_obs_rule()
 
-    dataset = MarkovControlSystemDataset.from_chunk(
-        chunk, ctrl_rule, obs_rule, diff_as_control=True
+    dataset = MarkovControlSystemDataset.from_bundle(
+        bundle, ctrl_rule, obs_rule, diff_as_control=True
     )
 
     tcache = TrainCache[ControlModel](project_name)

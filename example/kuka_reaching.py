@@ -22,8 +22,8 @@ from mohou.types import (
     DepthImage,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     RGBImage,
 )
 
@@ -256,17 +256,17 @@ if __name__ == "__main__":
             n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
             pool.map(data_generation_task, zip(range(n_cpu), n_process_list_assign))
 
-            # Collect data and dump chunk of them
+            # Collect data and dump bundle of them
             data_list = []
             for file_name in os.listdir(td):
                 with open(os.path.join(td, file_name), "rb") as f:
                     data_list.append(pickle.load(f))
-            chunk = MultiEpisodeChunk.from_data_list(data_list)
-            chunk.dump(project_name)
-            chunk.plot_vector_histories(AngleVector, project_name)
+            bundle = EpisodeBundle.from_data_list(data_list)
+            bundle.dump(project_name)
+            bundle.plot_vector_histories(AngleVector, project_name)
 
             # For debugging
-            img_seq = chunk[0].get_sequence_by_type(RGBImage)
+            img_seq = bundle[0].get_sequence_by_type(RGBImage)
             file_path = get_project_path(project_name) / "sample.gif"
             clip = ImageSequenceClip([img for img in img_seq], fps=50)
             clip.write_gif(str(file_path), fps=50)

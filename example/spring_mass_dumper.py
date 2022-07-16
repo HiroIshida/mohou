@@ -15,8 +15,8 @@ from mohou.types import (
     AngleVector,
     ElementDict,
     ElementSequence,
+    EpisodeBundle,
     EpisodeData,
-    MultiEpisodeChunk,
     TerminateFlag,
 )
 
@@ -51,7 +51,7 @@ class SpringMassDumper:
             return False
         return True
 
-    def create_chunk(self, n_data: int = 100) -> MultiEpisodeChunk:
+    def create_bundle(self, n_data: int = 100) -> EpisodeBundle:
         edata_list = []
         for _ in range(n_data):
             state = self.sample_random_init_state()
@@ -62,8 +62,8 @@ class SpringMassDumper:
                 if self.is_termianate(state):
                     break
             edata_list.append(EpisodeData.from_seq_list([av_seq]))
-        chunk = MultiEpisodeChunk.from_data_list(edata_list)
-        return chunk
+        bundle = EpisodeBundle.from_data_list(edata_list)
+        return bundle
 
 
 if __name__ == "__main__":
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     rule = EncodingRule.from_encoders([av_emb, ef_identical_func])
 
     if with_training:
-        chunk = smd.create_chunk()
-        chunk.dump(project_name)
-        dataset = AutoRegressiveDataset.from_chunk(chunk, rule)
+        bundle = smd.create_bundle()
+        bundle.dump(project_name)
+        dataset = AutoRegressiveDataset.from_bundle(bundle, rule)
 
         tcache = TrainCache[LSTM](project_name)
         tconfig = TrainConfig(n_epoch=1000)

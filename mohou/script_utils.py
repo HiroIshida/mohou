@@ -39,9 +39,9 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
     ElementDict,
+    EpisodeBundle,
     GripperState,
     ImageBase,
-    MultiEpisodeChunk,
     TerminateFlag,
 )
 from mohou.utils import canvas_to_ndarray
@@ -77,14 +77,14 @@ def train_autoencoder(
     dataset_config: AutoEncoderDatasetConfig,
     train_config: TrainConfig,
     ae_type: Type[AutoEncoderBase] = AutoEncoder,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
 ):
 
-    if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+    if bundle is None:
+        bundle = EpisodeBundle.load(project_name)
 
-    dataset = AutoEncoderDataset.from_chunk(chunk, image_type, dataset_config)
+    dataset = AutoEncoderDataset.from_bundle(bundle, image_type, dataset_config)
     if warm_start:
         logger.info("warm start")
         tcache = TrainCache.load(project_name, ae_type)
@@ -102,13 +102,13 @@ def train_lstm(
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
     weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
 ):
 
-    if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+    if bundle is None:
+        bundle = EpisodeBundle.load(project_name)
 
     if context_list is None:
         assert model_config.n_static_context == 0
@@ -116,8 +116,8 @@ def train_lstm(
         for context in context_list:
             assert len(context) == model_config.n_static_context
 
-    dataset = AutoRegressiveDataset.from_chunk(
-        chunk,
+    dataset = AutoRegressiveDataset.from_bundle(
+        bundle,
         encoding_rule,
         augconfig=dataset_config,
         weighting=weighting,
@@ -139,13 +139,13 @@ def train_chimera(
     encoding_rule: EncodingRule,
     lstm_config: LSTMConfig,
     train_config: TrainConfig,
-    chunk: Optional[MultiEpisodeChunk] = None,
+    bundle: Optional[EpisodeBundle] = None,
 ):  # TODO(HiroIshida): minimal args
 
-    if chunk is None:
-        chunk = MultiEpisodeChunk.load(project_name)
+    if bundle is None:
+        bundle = EpisodeBundle.load(project_name)
 
-    dataset = ChimeraDataset.from_chunk(chunk, encoding_rule)
+    dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
     tcache = TrainCache(project_name)  # type: ignore[var-annotated]
     ae = TrainCache.load(project_name, AutoEncoder).best_model
     assert ae is not None
@@ -175,19 +175,19 @@ def visualize_train_histories(project_name: str):
 
 def visualize_image_reconstruction(
     project_name: str,
-    chunk: MultiEpisodeChunk,
+    bundle: EpisodeBundle,
     autoencoder: AutoEncoderBase,
     n_vis: int = 5,
     prefix: Optional[str] = None,
 ):
 
-    chunk_intact = chunk.get_intact_chunk()
-    chunk_not_intact = chunk.get_not_intact_chunk()
+    bundle_intact = bundle.get_untouch_bundle()
+    bundle_not_intact = bundle.get_touch_bundle()
 
     image_type = autoencoder.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
-    dataset_intact = AutoEncoderDataset.from_chunk(chunk_intact, image_type, no_aug)
-    dataset_not_intact = AutoEncoderDataset.from_chunk(chunk_not_intact, image_type, no_aug)
+    dataset_intact = AutoEncoderDataset.from_bundle(bundle_intact, image_type, no_aug)
+    dataset_not_intact = AutoEncoderDataset.from_bundle(bundle_not_intact, image_type, no_aug)
 
     for dataset, postfix in zip([dataset_intact, dataset_not_intact], ["intact", "not_intact"]):
         idxes = list(range(len(dataset)))
@@ -245,12 +245,12 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
-    chunk = MultiEpisodeChunk.load(project_name).get_intact_chunk()
+    bundle = EpisodeBundle.load(project_name).get_untouch_bundle()
     save_dir_path = get_subproject_path(project_name, "lstm_result")
     image_encoder = load_default_image_encoder(project_name)
 
-    for idx, edata in enumerate(chunk):
-        episode_data = chunk[idx]
+    for idx, edata in enumerate(bundle):
+        episode_data = bundle[idx]
 
         image_type = None
         for key, encoder in propagator.encoding_rule.items():
@@ -287,8 +287,8 @@ def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop
         if use_gripper:
             pred_gss = [elem_dict[GripperState].numpy() for elem_dict in elem_dict_list]
 
-        n_av_dim = chunk.spec.type_shape_table[AngleVector][0]
-        n_gs_dim = chunk.spec.type_shape_table[GripperState][0] if use_gripper else 0
+        n_av_dim = bundle.spec.type_shape_table[AngleVector][0]
+        n_gs_dim = bundle.spec.type_shape_table[GripperState][0] if use_gripper else 0
         fig, axs = plt.subplots(n_av_dim + n_gs_dim, 1)
 
         # plot angle vectors

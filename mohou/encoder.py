@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
-from mohou.types import ElementT, ImageT, MultiEpisodeChunk, VectorT
+from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
 
@@ -128,12 +128,12 @@ class VectorPCAEncoder(EncoderBase[VectorT]):
         return self.elem_type(out.flatten())
 
     @classmethod
-    def from_chunk(
-        cls, chunk: MultiEpisodeChunk, vector_type: Type[VectorT], n_out: int
+    def from_bundle(
+        cls, bundle: EpisodeBundle, vector_type: Type[VectorT], n_out: int
     ) -> "VectorPCAEncoder[VectorT]":
         elem_list: List[VectorT] = []
-        for data in chunk.data_list:
-            elem_seq = data.get_sequence_by_type(vector_type)
+        for episode in bundle.get_touch_bundle():
+            elem_seq = episode.get_sequence_by_type(vector_type)
             elem_list.extend(elem_seq.elem_list)
         mat = np.array([e.numpy() for e in elem_list])
         pca = PCA(n_components=n_out)

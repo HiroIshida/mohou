@@ -17,7 +17,7 @@ from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import AutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
-from mohou.types import ImageBase, ImageT, MultiEpisodeChunk
+from mohou.types import EpisodeBundle, ImageBase, ImageT
 from mohou.utils import (
     assert_equal_with_message,
     assert_seq_list_list_compatible,
@@ -111,7 +111,7 @@ class ChimeraDataset(Dataset):
         return image_seq_tensor, vector_seq_tensor
 
     @classmethod
-    def from_chunk(cls, chunk: MultiEpisodeChunk, encoding_rule: EncodingRule) -> "ChimeraDataset":
+    def from_bundle(cls, bundle: EpisodeBundle, encoding_rule: EncodingRule) -> "ChimeraDataset":
 
         first_elem_type = encoding_rule.encode_order[0]
         assert issubclass(
@@ -119,10 +119,10 @@ class ChimeraDataset(Dataset):
         )  # TODO(HiroIshida) relax this. see the model loss func
         image_type: Type[ImageBase] = first_elem_type
         encoding_rule.delete(image_type)  # because image encoding is done in the chimera model
-        vector_seqs: List[np.ndarray] = encoding_rule.apply_to_multi_episode_chunk(chunk)
+        vector_seqs: List[np.ndarray] = encoding_rule.apply_to_episode_bundle(bundle)
 
         image_seqs: List[List[ImageBase]] = []
-        for episode_data in chunk:
+        for episode_data in bundle:
             tmp = episode_data.get_sequence_by_type(image_type)
             image_seqs.append(tmp.elem_list)
 
