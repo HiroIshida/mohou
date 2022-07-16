@@ -211,13 +211,17 @@ class GripperState(VectorBase):
 
 
 class TerminateFlag(VectorBase):
-    _dtype: ClassVar[np.dtype] = np.dtype(bool)
+    """
+    Will be used to indicate that a sequence terminated when value = 1.0
+    """
+
+    _dtype: ClassVar[np.dtype] = np.dtype(np.float32)
 
     @classmethod
     def from_bool(cls, flag: bool) -> "TerminateFlag":
         assert isinstance(flag, bool)
         val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
-        data = np.array([val], dtype=bool)
+        data = np.array([val], dtype=cls._dtype)
         return cls(data)
 
 
