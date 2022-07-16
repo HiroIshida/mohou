@@ -1,6 +1,7 @@
 import copy
 import functools
 import hashlib
+import json
 import operator
 import pickle
 import random
@@ -129,6 +130,15 @@ class ElementBase(ABC):
     def from_tensor(cls: Type[ElementT], tensor: torch.Tensor) -> ElementT:
         pass
 
+    @abstractmethod
+    def serialize(self) -> str:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def deserialize(cls: Type[ElementT], data_str: str) -> ElementT:
+        pass
+
 
 class PrimitiveElementBase(ElementBase):
     _dtype: ClassVar[np.dtype]
@@ -163,6 +173,16 @@ class PrimitiveElementBase(ElementBase):
             return NotImplemented
         assert type(self) == type(other)
         return np.allclose(self._data, other._data, atol=1e-6)
+
+    def serialize(self) -> str:
+        d = {"numpy_dtype": str(self._dtype), "data": self._data.tolist()}
+        return json.dumps(d)
+
+    @classmethod
+    def deserialize(cls: Type[PrimitiveElementT], data_str: str) -> PrimitiveElementT:
+        d = json.loads(data_str)
+        arr = np.array(d["data"], dtype=np.dtype(d["numpy_dtype"]))
+        return cls(arr)
 
 
 class VectorBase(PrimitiveElementBase):
@@ -428,6 +448,17 @@ class CompositeImageBase(ImageBase):
             if im_self != im_other:
                 return False
         return True
+
+    def serialize(self) -> str:
+        return json.dumps([im.serialize() for im in self.images])
+
+    @classmethod
+    def deserialize(cls: Type[CompositeImageT], data_str: str) -> CompositeImageT:
+        json_list = json.loads(data_str)
+        images = []
+        for image_type, jdata in zip(cls.image_types, json_list):
+            images.append(image_type.deserialize(jdata))
+        return cls(images)
 
 
 class RGBDImage(CompositeImageBase):

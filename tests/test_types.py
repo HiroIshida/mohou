@@ -134,6 +134,8 @@ def test_primitive_images(T: Type[PrimitiveImageBase]):
     img.resize((30, 30))
     assert img.shape == (30, 30, img.channel())
 
+    assert T.deserialize(img.serialize()) == img
+
 
 def test_rdbd_image():
     rgbd = RGBDImage.dummy_from_shape((100, 100))
