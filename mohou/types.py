@@ -131,12 +131,18 @@ class ElementBase(ABC):
 
 
 class PrimitiveElementBase(ElementBase):
+    _dtype: ClassVar[np.dtype]
     _data: np.ndarray  # cmposition over inheritance!
 
     def __init__(self, data: np.ndarray) -> None:
         assert_isinstance_with_message(data, np.ndarray)
-        assert not np.isnan(data).any()
-        assert not np.isinf(data).any()
+        assert not np.isnan(data).any(), "data containing nan is not acceptable"
+        assert not np.isinf(data).any(), "data containing inf is not acceptable"
+
+        if self._dtype.kind == "f" and data.dtype.kind == "f":
+            data = data.astype(self._dtype)
+
+        assert_equal_with_message(data.dtype, self._dtype, "dtype of data")
         self._data = np.array(data)
 
     @property
@@ -177,19 +183,21 @@ class VectorBase(PrimitiveElementBase):
 
 
 class AngleVector(VectorBase):
-    pass
+    _dtype: ClassVar[np.dtype] = np.dtype(np.float32)
 
 
 class GripperState(VectorBase):
-    pass
+    _dtype: ClassVar[np.dtype] = np.dtype(np.float32)
 
 
 class TerminateFlag(VectorBase):
+    _dtype: ClassVar[np.dtype] = np.dtype(bool)
+
     @classmethod
     def from_bool(cls, flag: bool) -> "TerminateFlag":
         assert isinstance(flag, bool)
         val = TERMINATE_FLAG_VALUE if flag else CONTINUE_FLAG_VALUE
-        data = np.array([val], dtype=np.float64)
+        data = np.array([val], dtype=bool)
         return cls(data)
 
 
@@ -231,6 +239,8 @@ class PrimitiveImageBase(PrimitiveElementBase, ImageBase):
 
 
 class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
+    _dtype: ClassVar[np.dtype] = np.dtype(np.uint8)
+
     def __init__(self, data: np.ndarray) -> None:
         super().__init__(data)
         assert_equal_with_message(self._data.dtype.type, np.uint8, "numpy type")
@@ -310,15 +320,10 @@ def extract_contour_by_laplacian(
 
 
 class DepthImage(PrimitiveImageBase):
+    _dtype: ClassVar[np.dtype] = np.dtype(np.float32)
     _channel: ClassVar[int] = 1
     _max_value: ClassVar[float] = 4.0
     _min_value: ClassVar[float] = -1.0
-
-    def __init__(self, data: np.ndarray) -> None:
-        super().__init__(data)
-        assert_equal_with_message(
-            self._data.dtype.type, [np.float16, np.float32, np.float64], "numpy type"
-        )
 
     def to_tensor(self) -> torch.Tensor:
         data_cutoff = np.maximum(np.minimum(self._data, self._max_value), self._min_value)

@@ -76,7 +76,7 @@ def test_elements():
 
 def test_gripper_state():
     for arr in [np.zeros(2), np.ones(2)]:
-        gs = GripperState(arr.astype(bool))
+        gs = GripperState(arr.astype(float))
         gs_reconstructed = GripperState.from_tensor(gs.to_tensor())
         assert gs == gs_reconstructed
 
