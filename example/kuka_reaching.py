@@ -155,22 +155,22 @@ class BulletManager(object):
         N_rand = N + np.random.randint(10)
         angles_now = np.array(self.joint_angles())
         step = (np.array(joint_angles_target) - angles_now) / (N_rand - 1)
-        angles_seq = ElementSequence([AngleVector(angles_now + step * i) for i in range(N_rand)])  # type: ignore[var-annotated]
-        rgbimg_seq = ElementSequence()  # type: ignore[var-annotated]
-        dimg_seq = ElementSequence()  # type: ignore[var-annotated]
+        angles_list = [AngleVector(angles_now + step * i) for i in range(N_rand)]
+        rgb_list = []
+        depth_list = []
 
-        for av in angles_seq:
+        for av in angles_list:
             self.set_joint_angles(av)
             rgb, depth = self.take_photo(n_pixel)
-            rgbimg_seq.append(rgb)
-            dimg_seq.append(depth)
+            rgb_list.append(rgb)
+            depth_list.append(depth)
 
-        for i in range(30):  # augument the data (after reaching)
-            rgbimg_seq.append(rgb)
-            dimg_seq.append(depth)
-            angles_seq.append(angles_seq[-1])
+        n_extend = 30
+        rgb_list += [rgb_list[-1]] * n_extend
+        depth_list += [depth_list[-1]] * n_extend
+        angles_list += [angles_list[-1]] * n_extend
 
-        return rgbimg_seq, dimg_seq, angles_seq
+        return ElementSequence(rgb_list), ElementSequence(depth_list), ElementSequence(angles_list)
 
     def simulate_feedback(self, propagator: Propagator, n_pixel=112) -> List[RGBImage]:
         rgb_list = []
