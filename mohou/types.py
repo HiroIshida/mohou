@@ -483,6 +483,7 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     def __post_init__(self):
         # validation
         assert isinstance(self.elem_list, list)
+        assert len(self.elem_list) > 0
         assert len(set([type(elem) for elem in self.elem_list])) == 1
         assert len(set([elem.shape for elem in self.elem_list])) == 1
 
@@ -503,15 +504,19 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
 
 def create_composite_image_sequence(
     composite_image_type: Type[CompositeImageT],
-    elem_seqs: List[ElementSequence[PrimitiveImageBase]],
+    elemseq_list: List[ElementSequence[PrimitiveImageBase]],
 ) -> ElementSequence[CompositeImageT]:
+    """Create composite image ElementSequence from different-typed element sequence
+    composite_image_type: e.g. RGBDImage
+    elemseq_list: e.g. [RGBImage, DepthImage]
+    """
 
-    n_len_seq = len(elem_seqs[0])
-    composite_image_seq = ElementSequence[CompositeImageT]([])
+    n_len_seq = len(elemseq_list[0])
+    composite_image_list = []
     for i in range(n_len_seq):
-        composite_image = composite_image_type([seq[i] for seq in elem_seqs])
-        composite_image_seq.append(composite_image)
-    return composite_image_seq
+        composite_image: CompositeImageT = composite_image_type([seq[i] for seq in elemseq_list])
+        composite_image_list.append(composite_image)
+    return ElementSequence(composite_image_list)
 
 
 class TypeShapeTableMixin:
@@ -723,7 +728,7 @@ class BundleSpec(TypeShapeTableMixin):
     n_episode_intact: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    extra_info: Optional[MetaData] = None
+    meta_data: Optional[MetaData] = None
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -750,18 +755,33 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     _episode_list: List[EpisodeData]
     _untouch_episode_list: List[EpisodeData]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    spec: BundleSpec
+    _metadata: Optional[MetaData] = None
     _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
         return self._episode_list
 
+    @property
+    def type_shape_table(self) -> Dict[Type[ElementBase], Tuple[int, ...]]:
+        return self._episode_list[0].type_shape_table
+
+    @property
+    def spec(self) -> BundleSpec:
+        n_average = int(sum([len(data) for data in self._episode_list]) / len(self._episode_list))
+        spec = BundleSpec(
+            len(self._episode_list),
+            len(self._untouch_episode_list),
+            n_average,
+            self.type_shape_table,
+            self._metadata,
+        )
+        return spec
+
     @classmethod
     def from_data_list(
         cls,
         data_list: List[EpisodeData],
-        extra_info: Optional[MetaData] = None,
+        meta_data: Optional[MetaData] = None,
         shuffle: bool = True,
         with_intact_data: bool = True,
     ) -> "EpisodeBundle":
@@ -792,14 +812,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         if shuffle:
             rn.shuffle(data_list)
 
-        type_shape_table = data_list[0].type_shape_table
-
-        # bundle spec
-        n_average = int(sum([len(data) for data in data_list]) / len(data_list))
-        spec = BundleSpec(
-            len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
-        )
-        return cls(data_list, data_list_intact, type_shape_table, spec)
+        return cls(data_list, data_list_intact, meta_data)
 
     @classmethod
     def load(
@@ -846,11 +859,11 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     def get_untouch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
-        return EpisodeBundle(self._untouch_episode_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._untouch_episode_list, [], self._metadata, self._postfix)
 
     def get_touch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is used for training"""
-        return EpisodeBundle(self._episode_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._episode_list, [], self._metadata, self._postfix)
 
     def plot_vector_histories(
         self,
