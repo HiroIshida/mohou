@@ -80,6 +80,8 @@ def test_gripper_state():
         gs_reconstructed = GripperState.from_tensor(gs.to_tensor())
         assert gs == gs_reconstructed
 
+    assert GripperState.deserialize(gs.serialize()) == gs
+
 
 def test_rdb_image_creation(sample_image_path):
 
@@ -164,6 +166,8 @@ def test_rdbd_image():
 
     with pytest.raises(AssertionError):  # order mismatch
         RGBDImage([depth, rgb])
+
+    assert RGBDImage.deserialize(rgbd.serialize()) == rgbd
 
 
 def test_extract_contour_by_laplacian(sample_image_path):

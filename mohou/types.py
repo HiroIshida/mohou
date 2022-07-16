@@ -139,6 +139,10 @@ class ElementBase(ABC):
     def deserialize(cls: Type[ElementT], data_str: str) -> ElementT:
         pass
 
+    @abstractmethod
+    def __eq__(self, other: object) -> bool:
+        pass
+
 
 class PrimitiveElementBase(ElementBase):
     _dtype: ClassVar[np.dtype]
