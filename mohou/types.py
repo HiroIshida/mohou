@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import (
+    Any,
     ClassVar,
     Dict,
     Generic,
@@ -792,7 +793,7 @@ class EpisodeData(TypeShapeTableMixin):
         clip.write_gif(filename, fps=fps)
 
     def serialize(self) -> str:
-        d_all = {}
+        d_all: Dict[str, Any] = {}
 
         d_all["sequence_dict"] = {
             elem_type.__name__: seq.serialize() for elem_type, seq in self.sequence_dict.items()
@@ -1023,7 +1024,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         print("saved to {}".format(file_name))
 
     def serialize(self) -> str:
-        data = {}
+        data: Dict[str, Any] = {}
         data["_episode_list"] = [episode.serialize() for episode in self._episode_list]
         data["_untouch_episode_list"] = [
             episode.serialize() for episode in self._untouch_episode_list
@@ -1034,13 +1035,13 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     @classmethod
     def deserialize(cls, data_str: str):
-        dict_reconstructed = {}
+        dict_reconstructed: Dict[str, Any] = {}
         data = json.loads(data_str)
         dict_reconstructed["_episode_list"] = [
             EpisodeData.deserialize(string) for string in data["_episode_list"]
         ]
         dict_reconstructed["_untouch_episode_list"] = [
-            episode.deserialize(string) for string in data["_untouch_episode_list"]
+            EpisodeData.deserialize(string) for string in data["_untouch_episode_list"]
         ]
         dict_reconstructed["_metadata"] = None if data["_metadata"] == "nulL" else data["_metadata"]
         dict_reconstructed["_postfix"] = None if data["_postfix"] == "nulL" else data["_postfix"]
