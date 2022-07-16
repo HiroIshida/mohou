@@ -476,45 +476,47 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, "type {} not found".format(type_name)
 
 
+@dataclass(frozen=True)
 class ElementSequence(HasAList[ElementT], Generic[ElementT]):
-    elem_type: Optional[Type[ElementT]] = None
-    elem_shape: Optional[Tuple[int, ...]] = None
     elem_list: List[ElementT]
 
-    def __init__(self, elem_list: Optional[List[ElementT]] = None):
-        if elem_list is None or len(elem_list) == 0:
-            self.elem_list = []
-        else:
-            assert len(set([type(elem) for elem in elem_list])) == 1
-            assert len(set([elem.shape for elem in elem_list])) == 1
-            self.elem_list = elem_list
-            self.elem_type = type(elem_list[0])
-            self.elem_shape = elem_list[0].shape
+    def __post_init__(self):
+        # validation
+        assert isinstance(self.elem_list, list)
+        assert len(self.elem_list) > 0
+        assert len(set([type(elem) for elem in self.elem_list])) == 1
+        assert len(set([elem.shape for elem in self.elem_list])) == 1
+
+    @property
+    def elem_type(self) -> Type[ElementT]:
+        return type(self.elem_list[0])
+
+    @property
+    def elem_shape(self) -> Tuple[int, ...]:
+        return self.elem_list[0].shape
 
     def _get_has_a_list(self) -> List[ElementT]:
         return self.elem_list
 
-    def append(self, elem: ElementT):
-        if self.elem_type is None:
-            self.elem_type = type(elem)
-        if self.elem_shape is None:
-            self.elem_shape = elem.shape
-        assert type(elem) == self.elem_type
-        assert elem.shape == self.elem_shape
-        self.elem_list.append(elem)
+    def append(self, *args, **kwargs):  # type: ignore
+        raise NotImplementedError("deleted method")
 
 
 def create_composite_image_sequence(
     composite_image_type: Type[CompositeImageT],
-    elem_seqs: List[ElementSequence[PrimitiveImageBase]],
+    elemseq_list: List[ElementSequence[PrimitiveImageBase]],
 ) -> ElementSequence[CompositeImageT]:
+    """Create composite image ElementSequence from different-typed element sequence
+    composite_image_type: e.g. RGBDImage
+    elemseq_list: e.g. [RGBImage, DepthImage]
+    """
 
-    n_len_seq = len(elem_seqs[0])
-    composite_image_seq = ElementSequence[CompositeImageT]([])
+    n_len_seq = len(elemseq_list[0])
+    composite_image_list = []
     for i in range(n_len_seq):
-        composite_image = composite_image_type([seq[i] for seq in elem_seqs])
-        composite_image_seq.append(composite_image)
-    return composite_image_seq
+        composite_image: CompositeImageT = composite_image_type([seq[i] for seq in elemseq_list])
+        composite_image_list.append(composite_image)
+    return ElementSequence(composite_image_list)
 
 
 class TypeShapeTableMixin:
@@ -546,7 +548,6 @@ class TimeStampSequence(HasAList[float]):
 @dataclass(frozen=True)
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     time_stamp_seq: Optional[TimeStampSequence] = None
     metadata: Optional[MetaData] = None
 
@@ -558,6 +559,13 @@ class EpisodeData(TypeShapeTableMixin):
         # assume at least TerminateFlag is included
         assert TerminateFlag in self.sequence_dict
         return len(self.sequence_dict[TerminateFlag])
+
+    @property
+    def type_shape_table(self) -> Dict[Type[ElementBase], Tuple[int, ...]]:
+        dic = {}
+        for key, seq in self.sequence_dict.items():
+            dic[key] = seq.elem_shape
+        return dic
 
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
@@ -603,15 +611,12 @@ class EpisodeData(TypeShapeTableMixin):
             sequence_list.append(terminate_flag_seq)
             types.append(TerminateFlag)
 
-        shapes = [seq[0].shape for seq in sequence_list]
-        type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
-
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, type_shape_table, timestamp_seq, metadata)  # type: ignore
+        return cls(sequence_dict, timestamp_seq, metadata)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -723,7 +728,7 @@ class BundleSpec(TypeShapeTableMixin):
     n_episode_intact: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    extra_info: Optional[MetaData] = None
+    meta_data: Optional[MetaData] = None
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -750,18 +755,33 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     _episode_list: List[EpisodeData]
     _untouch_episode_list: List[EpisodeData]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    spec: BundleSpec
+    _metadata: Optional[MetaData] = None
     _postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
         return self._episode_list
 
+    @property
+    def type_shape_table(self) -> Dict[Type[ElementBase], Tuple[int, ...]]:
+        return self._episode_list[0].type_shape_table
+
+    @property
+    def spec(self) -> BundleSpec:
+        n_average = int(sum([len(data) for data in self._episode_list]) / len(self._episode_list))
+        spec = BundleSpec(
+            len(self._episode_list),
+            len(self._untouch_episode_list),
+            n_average,
+            self.type_shape_table,
+            self._metadata,
+        )
+        return spec
+
     @classmethod
     def from_data_list(
         cls,
         data_list: List[EpisodeData],
-        extra_info: Optional[MetaData] = None,
+        meta_data: Optional[MetaData] = None,
         shuffle: bool = True,
         with_intact_data: bool = True,
     ) -> "EpisodeBundle":
@@ -792,14 +812,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         if shuffle:
             rn.shuffle(data_list)
 
-        type_shape_table = data_list[0].type_shape_table
-
-        # bundle spec
-        n_average = int(sum([len(data) for data in data_list]) / len(data_list))
-        spec = BundleSpec(
-            len(data_list), len(data_list_intact), n_average, type_shape_table, extra_info
-        )
-        return cls(data_list, data_list_intact, type_shape_table, spec)
+        return cls(data_list, data_list_intact, meta_data)
 
     @classmethod
     def load(
@@ -846,11 +859,11 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     def get_untouch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
-        return EpisodeBundle(self._untouch_episode_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._untouch_episode_list, [], self._metadata, self._postfix)
 
     def get_touch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is used for training"""
-        return EpisodeBundle(self._episode_list, [], self.type_shape_table, self.spec)
+        return EpisodeBundle(self._episode_list, [], self._metadata, self._postfix)
 
     def plot_vector_histories(
         self,

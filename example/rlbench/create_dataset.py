@@ -3,7 +3,7 @@ import os
 import shutil
 import uuid
 from multiprocessing import Pool
-from typing import Type
+from typing import List, Type
 
 import numpy as np
 import rlbench.tasks
@@ -32,10 +32,10 @@ from mohou.types import (
 def rlbench_demo_to_mohou_episode_data(
     demo: Demo, camera_name: str, resolution: int
 ) -> EpisodeData:
-    seq_av = ElementSequence()  # type: ignore[var-annotated]
-    seq_gs = ElementSequence()  # type: ignore[var-annotated]
-    seq_rgb = ElementSequence()  # type: ignore[var-annotated]
-    seq_depth = ElementSequence()  # type: ignore[var-annotated]
+    av_list: List[AngleVector] = []
+    gs_list: List[GripperState] = []
+    rgb_list: List[RGBImage] = []
+    depth_list: List[DepthImage] = []
 
     for obs in demo:
         av = AngleVector(obs.joint_positions)
@@ -46,11 +46,18 @@ def rlbench_demo_to_mohou_episode_data(
         rgb.resize((resolution, resolution))
         depth.resize((resolution, resolution))
 
-        seq_av.append(av)
-        seq_gs.append(gs)
-        seq_rgb.append(rgb)
-        seq_depth.append(depth)
-    return EpisodeData.from_seq_list([seq_rgb, seq_depth, seq_av, seq_gs])
+        av_list.append(av)
+        gs_list.append(gs)
+        rgb_list.append(rgb)
+        depth_list.append(depth)
+    return EpisodeData.from_seq_list(
+        [
+            ElementSequence(av_list),
+            ElementSequence(gs_list),
+            ElementSequence(rgb_list),
+            ElementSequence(depth_list),
+        ]
+    )
 
 
 if __name__ == "__main__":
