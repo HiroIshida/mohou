@@ -545,6 +545,20 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     def append(self, *args, **kwargs):  # type: ignore
         raise NotImplementedError("deleted method")
 
+    def serialize(self) -> str:
+        d = {
+            "elem_type": self.elem_type.__name__,
+            "elem_list": [elem.serialize() for elem in self.elem_list],
+        }
+        return json.dumps(d)
+
+    @classmethod
+    def deserialize(cls, data_str: str) -> "ElementSequence":
+        d = json.loads(data_str)
+        elem_type = get_element_type(d["elem_type"])
+        elem_seq = ElementSequence([elem_type.deserialize(jdata) for jdata in d["elem_list"]])
+        return elem_seq
+
 
 def create_composite_image_sequence(
     composite_image_type: Type[CompositeImageT],
@@ -587,6 +601,13 @@ class TimeStampSequence(HasAList[float]):
         """find index greater than or equal to time"""
         eps = 1e-8
         return [i for i, t in enumerate(self._data) if t > time - eps][0]
+
+    def serialize(self) -> str:
+        return json.dumps(self._data)
+
+    @classmethod
+    def deserialize(cls, data_str: str) -> "TimeStampSequence":
+        return cls(json.loads(data_str))
 
 
 @dataclass(frozen=True)
@@ -764,6 +785,44 @@ class EpisodeData(TypeShapeTableMixin):
 
         clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
         clip.write_gif(filename, fps=fps)
+
+    def serialize(self) -> str:
+        d_all = {}
+
+        d_all["sequence_dict"] = {
+            elem_type.__name__: seq.serialize() for elem_type, seq in self.sequence_dict.items()
+        }
+
+        if self.time_stamp_seq is None:
+            d_all["time_stamp_seq"] = "null"
+        else:
+            d_all["time_stamp_seq"] = self.time_stamp_seq.serialize()
+
+        if self.metadata is None:
+            d_all["metadata"] = "null"
+        else:
+            d_all["metadata"] = json.dumps(self.metadata)
+        return json.dumps(d_all)
+
+    @classmethod
+    def deserialize(cls, data_str: str) -> "EpisodeData":
+        d_all = json.loads(data_str)
+
+        sequence_dict = {
+            get_element_type(key): ElementSequence.deserialize(val)
+            for key, val in d_all["sequence_dict"].items()
+        }
+        if d_all["time_stamp_seq"] == "null":
+            time_stamp_seq = None
+        else:
+            time_stamp_seq = TimeStampSequence.deserialize(d_all["time_stamp_seq"])
+
+        if d_all["metadata"] == "null":
+            metadata = None
+        else:
+            metadata = json.loads(d_all["metadata"])
+
+        return cls(sequence_dict, time_stamp_seq, metadata)
 
 
 @dataclass(frozen=True)

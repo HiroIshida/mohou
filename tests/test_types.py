@@ -196,6 +196,7 @@ def test_element_sequence():
     elem_seq = ElementSequence[RGBImage]([a])
     assert elem_seq.elem_shape == (100, 100, 3)
     assert elem_seq.elem_type == RGBImage
+    assert ElementSequence.deserialize(elem_seq.serialize()) == elem_seq
 
     # check inconsistent shape
     with pytest.raises(AssertionError):
@@ -255,6 +256,8 @@ def test_episode_data():
         assert flag_seq[i] == TerminateFlag.from_bool(False)
     for i in range(3, 8):
         assert flag_seq[i] == TerminateFlag.from_bool(True)
+
+    assert EpisodeData.deserialize(episode.serialize()) == episode
 
 
 def test_episode_data_assertion_different_size():
