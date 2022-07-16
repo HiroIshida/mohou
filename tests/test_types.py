@@ -185,21 +185,27 @@ def test_element_dict():
 
 def test_element_sequence():
     # start from empty list
-    elem_seq = ElementSequence[RGBImage]()
-    elem_seq.append(RGBImage.dummy_from_shape((100, 100)))
+    a = RGBImage.dummy_from_shape((100, 100))
+    assert a.shape == (100, 100, 3)
+    elem_seq = ElementSequence[RGBImage]([a])
     assert elem_seq.elem_shape == (100, 100, 3)
     assert elem_seq.elem_type == RGBImage
 
+    # check inconsistent shape
     with pytest.raises(AssertionError):
-        elem_seq.append(RGBImage.dummy_from_shape((100, 101)))  # invalid size
+        a = RGBImage.dummy_from_shape((100, 100))
+        b = RGBImage.dummy_from_shape((100, 101))
+        ElementSequence[RGBImage]([a, b])
+
+    # check inconsistent
+    with pytest.raises(AssertionError):
+        a = RGBImage.dummy_from_shape((100, 100))
+        b = DepthImage.dummy_from_shape((100, 100))
+        ElementSequence([a, b])
 
     # start from non empty list
     class TorqueVector(VectorBase):
         pass
-
-    elem_seq = ElementSequence[AngleVector]([AngleVector(np.zeros(3)) for _ in range(10)])
-    with pytest.raises(AssertionError):
-        elem_seq.append(TorqueVector(np.zeros(3)))  # invalid type
 
 
 def test_episode_data():

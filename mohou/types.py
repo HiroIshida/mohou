@@ -482,6 +482,7 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
 
     def __post_init__(self):
         # validation
+        assert isinstance(self.elem_list, list)
         assert len(set([type(elem) for elem in self.elem_list])) == 1
         assert len(set([elem.shape for elem in self.elem_list])) == 1
 
@@ -542,7 +543,6 @@ class TimeStampSequence(HasAList[float]):
 @dataclass(frozen=True)
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
-    type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
     time_stamp_seq: Optional[TimeStampSequence] = None
     metadata: Optional[MetaData] = None
 
@@ -554,6 +554,13 @@ class EpisodeData(TypeShapeTableMixin):
         # assume at least TerminateFlag is included
         assert TerminateFlag in self.sequence_dict
         return len(self.sequence_dict[TerminateFlag])
+
+    @property
+    def type_shape_table(self) -> Dict[Type[ElementBase], Tuple[int, ...]]:
+        dic = {}
+        for key, seq in self.sequence_dict.items():
+            dic[key] = seq.elem_shape
+        return dic
 
     @staticmethod
     def create_default_terminate_flag_seq(n_length) -> ElementSequence[TerminateFlag]:
@@ -599,15 +606,12 @@ class EpisodeData(TypeShapeTableMixin):
             sequence_list.append(terminate_flag_seq)
             types.append(TerminateFlag)
 
-        shapes = [seq[0].shape for seq in sequence_list]
-        type_shape_table = dict({t: s for (t, s) in zip(types, shapes)})
-
         n_type = len(set(types))
         all_different_type = n_type == len(sequence_list)
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, type_shape_table, timestamp_seq, metadata)  # type: ignore
+        return cls(sequence_dict, timestamp_seq, metadata)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
