@@ -524,9 +524,9 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
         d = {}
         for p in episode_dir_path.iterdir():
             result = re.match(r"sequence-(\w+).npy", p.name)
-            assert result is not None
-            elem_type = get_element_type(result.group(1))
-            d[elem_type] = cls.load(episode_dir_path, elem_type)
+            if result is not None:
+                elem_type = get_element_type(result.group(1))
+                d[elem_type] = cls.load(episode_dir_path, elem_type)
         return d
 
 
@@ -573,14 +573,14 @@ class TimeStampSequence(HasAList[float]):
         return [i for i, t in enumerate(self._data) if t > time - eps][0]
 
     def dump(self, episode_dir_path: pathlib.Path) -> None:
-        file_path = episode_dir_path / "time_stamp_sequence.npz"
+        file_path = episode_dir_path / "time_stamp_sequence.npy"
         np.save(file_path, np.array(self._data))
 
     @classmethod
     def load(cls, episode_dir_path: pathlib.Path) -> Optional["TimeStampSequence"]:
-        file_path = episode_dir_path / "time_stamp_sequence.npz"
+        file_path = episode_dir_path / "time_stamp_sequence.npy"
         if file_path.exists():
-            seq = np.load(file_path).list()
+            seq = np.load(file_path).tolist()
             return TimeStampSequence(seq)
         else:
             return None

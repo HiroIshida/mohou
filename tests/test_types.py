@@ -2,6 +2,7 @@ import copy
 import os
 import pathlib
 import pickle
+import tempfile
 from dataclasses import dataclass
 from typing import Type
 
@@ -203,9 +204,12 @@ def test_element_sequence():
         b = DepthImage.dummy_from_shape((100, 100))
         ElementSequence([a, b])
 
-    # start from non empty list
-    class TorqueVector(VectorBase):
-        pass
+    # test dump and load
+    with tempfile.TemporaryDirectory() as dname:
+        dpath = pathlib.Path(dname)
+        elem_seq.dump(dpath)
+        elem_seq_again = ElementSequence.load(dpath, RGBImage)
+        assert elem_seq == elem_seq_again
 
 
 def test_episode_data():
@@ -249,6 +253,13 @@ def test_episode_data():
         assert flag_seq[i] == TerminateFlag.from_bool(False)
     for i in range(3, 8):
         assert flag_seq[i] == TerminateFlag.from_bool(True)
+
+    # test dump and load
+    with tempfile.TemporaryDirectory() as dname:
+        dpath = pathlib.Path(dname)
+        episode.dump(dpath)
+        episode_again = EpisodeData.load(dpath)
+        assert episode == episode_again
 
 
 def test_episode_data_assertion_different_size():
