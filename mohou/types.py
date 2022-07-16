@@ -59,6 +59,11 @@ VectorT = TypeVar("VectorT", bound="VectorBase")
 CompositeListElementT = TypeVar("CompositeListElementT")
 
 
+class SerializableMixIn:
+    def serialize(self) -> str:
+        pass
+
+
 class HashableMixin:
     @property
     def hash_value(self) -> str:
@@ -1017,14 +1022,26 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         fig.savefig(file_name, format="png", dpi=300)
         print("saved to {}".format(file_name))
 
+    def serialize(self) -> str:
+        data = {}
+        data["_episode_list"] = [episode.serialize() for episode in self._episode_list]
+        data["_untouch_episode_list"] = [
+            episode.serialize() for episode in self._untouch_episode_list
+        ]
+        data["_metadata"] = self._metadata
+        data["_postfix"] = self._postfix
+        return json.dumps(data)
 
-class MultiEpisodeChunk(EpisodeBundle):
-    def get_intact_bundle(self, *args, **kwargs):
-        return self.get_untouch_bundle(*args, **kwargs)
-
-    def get_not_intact_bundle(self, *args, **kwargs):
-        return self.get_touch_bundle(*args, **kwargs)
-
-
-class ChunkSpec(BundleSpec):
-    pass
+    @classmethod
+    def deserialize(cls, data_str: str):
+        dict_reconstructed = {}
+        data = json.loads(data_str)
+        dict_reconstructed["_episode_list"] = [
+            EpisodeData.deserialize(string) for string in data["_episode_list"]
+        ]
+        dict_reconstructed["_untouch_episode_list"] = [
+            episode.deserialize(string) for string in data["_untouch_episode_list"]
+        ]
+        dict_reconstructed["_metadata"] = None if data["_metadata"] == "nulL" else data["_metadata"]
+        dict_reconstructed["_postfix"] = None if data["_postfix"] == "nulL" else data["_postfix"]
+        return cls(**dict_reconstructed)

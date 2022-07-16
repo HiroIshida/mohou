@@ -328,6 +328,10 @@ def image_av_bundle_uneven():
     return bundle
 
 
+def test_bundle_serialization(image_av_bundle_uneven):
+    EpisodeBundle.deserialize(image_av_bundle_uneven.serialize()) == image_av_bundle_uneven
+
+
 def test_bundle_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     extra_info = {"hz": 20, "author": "HiroIshida"}
