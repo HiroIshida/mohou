@@ -476,32 +476,28 @@ def get_element_type(type_name: str) -> Type[ElementBase]:
     assert False, "type {} not found".format(type_name)
 
 
+@dataclass(frozen=True)
 class ElementSequence(HasAList[ElementT], Generic[ElementT]):
-    elem_type: Optional[Type[ElementT]] = None
-    elem_shape: Optional[Tuple[int, ...]] = None
     elem_list: List[ElementT]
 
-    def __init__(self, elem_list: Optional[List[ElementT]] = None):
-        if elem_list is None or len(elem_list) == 0:
-            self.elem_list = []
-        else:
-            assert len(set([type(elem) for elem in elem_list])) == 1
-            assert len(set([elem.shape for elem in elem_list])) == 1
-            self.elem_list = elem_list
-            self.elem_type = type(elem_list[0])
-            self.elem_shape = elem_list[0].shape
+    def __post_init__(self):
+        # validation
+        assert len(set([type(elem) for elem in self.elem_list])) == 1
+        assert len(set([elem.shape for elem in self.elem_list])) == 1
+
+    @property
+    def elem_type(self) -> Type[ElementT]:
+        return type(self.elem_list[0])
+
+    @property
+    def elem_shape(self) -> Tuple[int, ...]:
+        return self.elem_list[0].shape
 
     def _get_has_a_list(self) -> List[ElementT]:
         return self.elem_list
 
-    def append(self, elem: ElementT):
-        if self.elem_type is None:
-            self.elem_type = type(elem)
-        if self.elem_shape is None:
-            self.elem_shape = elem.shape
-        assert type(elem) == self.elem_type
-        assert elem.shape == self.elem_shape
-        self.elem_list.append(elem)
+    def append(self, *args, **kwargs):  # type: ignore
+        raise NotImplementedError("deleted method")
 
 
 def create_composite_image_sequence(
