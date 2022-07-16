@@ -136,7 +136,7 @@ def test_primitive_images(T: Type[PrimitiveImageBase]):
 
 
 def test_rdbd_image():
-    rgbd = RGBDImage.dummy_from_shape((100, 100))
+    rgbd = RGBDImage.random((100, 100))
     tensor = rgbd.to_tensor()
     assert list(tensor.shape) == [4, 100, 100]
 
@@ -178,7 +178,7 @@ def test_element_dict():
     assert isinstance(dic[RGBImage], RGBImage)
     assert isinstance(dic[RGBDImage], RGBDImage)
 
-    rgbd = RGBDImage.dummy_from_shape((100, 100))
+    rgbd = RGBDImage.random((100, 100))
     dic = ElementDict([rgbd])
     assert isinstance(dic[RGBDImage], RGBDImage)
 

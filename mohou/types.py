@@ -205,7 +205,7 @@ class ImageBase(ElementBase):
 
     @classmethod
     @abstractmethod
-    def dummy_from_shape(cls: Type[ImageT], shape2d: Tuple[int, int]) -> ImageT:
+    def random(cls: Type[ImageT], shape2d: Tuple[int, int]) -> ImageT:
         pass
 
     @abstractmethod
@@ -239,7 +239,8 @@ class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
         return torchvision.transforms.ToTensor()(self._data).float()
 
     @classmethod
-    def dummy_from_shape(cls: Type[ColorImageT], shape2d: Tuple[int, int]) -> ColorImageT:
+    def random(cls: Type[ColorImageT], shape2d: Tuple[int, int]) -> ColorImageT:
+        """ construct randomize image """
         shape = (shape2d[0], shape2d[1], cls.channel())
         dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
         return cls(dummy_array)
@@ -337,7 +338,7 @@ class DepthImage(PrimitiveImageBase):
         return DepthImage(rand_depth_arr)
 
     @classmethod
-    def dummy_from_shape(cls, shape2d: Tuple[int, int]) -> "DepthImage":
+    def random(cls, shape2d: Tuple[int, int]) -> "DepthImage":
         shape = (shape2d[0], shape2d[1], cls.channel())
         dummy_array = np.random.rand(*shape)
         return cls(dummy_array)
@@ -401,8 +402,8 @@ class CompositeImageBase(ImageBase):
         return cls(images)
 
     @classmethod
-    def dummy_from_shape(cls: Type[CompositeImageT], shape2d: Tuple[int, int]) -> CompositeImageT:
-        images = [t.dummy_from_shape(shape2d) for t in cls.image_types]
+    def random(cls: Type[CompositeImageT], shape2d: Tuple[int, int]) -> CompositeImageT:
+        images = [t.random(shape2d) for t in cls.image_types]
         return cls(images)
 
     def get_primitive_image(self, image_type: Type[PrimitiveImageT]) -> PrimitiveImageT:
