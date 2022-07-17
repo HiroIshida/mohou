@@ -348,9 +348,6 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     assert bundle == loaded
     assert (tmp_project_name, None) in _bundle_cache
 
-    bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)
-    assert pickle.dumps(bundle.spec) == pickle.dumps(bundle_spec_loaded)
-
     bundle.dump(tmp_project_name, postfix="without_tar", use_tar=False)
     loaded2 = EpisodeBundle.load(tmp_project_name, postfix="without_tar", use_tar=False)
     assert bundle == loaded2
@@ -361,9 +358,6 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     extra_bundle.dump(tmp_project_name, postfix)
     extra_bundle_loaded = EpisodeBundle.load(tmp_project_name, postfix)
     assert extra_bundle == extra_bundle_loaded
-
-    extra_bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name, postfix)
-    assert extra_bundle.spec == extra_bundle_spec_loaded
 
     remove_project(tmp_project_name)
 
