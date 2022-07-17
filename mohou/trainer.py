@@ -44,9 +44,22 @@ class TrainCache(Generic[ModelT]):
         file_uuid = str(uuid.uuid4())[-6:]
         return cls(model, [], [], file_uuid)
 
+    @property
+    def min_validate_loss(self) -> float:
+        totals = [dic.total() for dic in self.validate_loss_dict_seq]
+        min_loss_sofar = min(totals)
+        return min_loss_sofar
+
     @staticmethod
     def train_result_base_path(project_name: str) -> Path:
         return get_project_path(project_name) / "train_result"
+
+    def train_result_path(self, project_name: str):
+        base_path = self.train_result_base_path(project_name)
+        class_name = self.best_model.__class__.__name__
+        config_hash = self.best_model.config.hash_value
+        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
+        return result_path
 
     @classmethod
     def filter_result_paths(
@@ -65,19 +78,6 @@ class TrainCache(Generic[ModelT]):
                 if model_config.hash_value in p.name:
                     ps.append(p)
         return ps
-
-    def train_result_path(self, project_name: str):
-        base_path = self.train_result_base_path(project_name)
-        class_name = self.best_model.__class__.__name__
-        config_hash = self.best_model.config.hash_value
-        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
-        return result_path
-
-    @property
-    def min_validate_loss(self) -> float:
-        totals = [dic.total() for dic in self.validate_loss_dict_seq]
-        min_loss_sofar = min(totals)
-        return min_loss_sofar
 
     def update_and_save(
         self,
@@ -111,26 +111,6 @@ class TrainCache(Generic[ModelT]):
             with valid_loss_path.open(mode="wb") as f:
                 pickle.dump(self.validate_loss_dict_seq, f)
             logger.info("model is updated and saved")
-
-    @staticmethod
-    def get_file_postfix(model: ModelT, file_uuid: Optional[str]) -> str:
-        class_name = model.__class__.__name__
-        config_hash = model.hash_value
-
-        postfix = "{}-{}".format(class_name, config_hash)
-        if file_uuid is not None:
-            postfix += "-{}".format(file_uuid)
-        return postfix
-
-    def visualize(self, fax: Optional[Tuple] = None):
-        fax = plt.subplots() if fax is None else fax
-        fig, ax = fax
-        train_loss_seq = [dic.total() for dic in self.train_loss_dict_seq]
-        valid_loss_seq = [dic.total() for dic in self.validate_loss_dict_seq]
-        ax.plot(train_loss_seq)
-        ax.plot(valid_loss_seq)
-        ax.set_yscale("log")
-        ax.legend(["train", "valid"])
 
     @classmethod
     def load_from_base_path(cls, base_path: Path) -> "TrainCache":
@@ -173,6 +153,16 @@ class TrainCache(Generic[ModelT]):
         tcache_list = cls.load_all(project_name, model_type, model_config)
         tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
         return tcaceh_list_sorted[0]
+
+    def visualize(self, fax: Optional[Tuple] = None):
+        fax = plt.subplots() if fax is None else fax
+        fig, ax = fax
+        train_loss_seq = [dic.total() for dic in self.train_loss_dict_seq]
+        valid_loss_seq = [dic.total() for dic in self.validate_loss_dict_seq]
+        ax.plot(train_loss_seq)
+        ax.plot(valid_loss_seq)
+        ax.set_yscale("log")
+        ax.legend(["train", "valid"])
 
 
 def train(
