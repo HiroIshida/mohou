@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import operator
+import os
 import pathlib
 import pickle
 import random
@@ -1017,7 +1018,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 tarfile = bundle_file_without_ext + ".tar"
                 tarfile_full = get_project_path(project_name) / tarfile
                 if tarfile_full.exists():
-                    shutil.rmtree(tarfile_full)
+                    os.remove(tarfile_full)
 
                 # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
                 cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
