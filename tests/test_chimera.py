@@ -52,12 +52,15 @@ def test_chimera_model(image_av_bundle_uneven, chimera_dataset):  # noqa
     models.append(Chimera(conf))
 
     for model in models:
+        model.put_on_device()
         n_batch = 8
         n_seqlen = 12
         image_tensor_shape = tuple(reversed(bundle.get_element_shape(RGBImage)))
         av_dim = bundle.get_element_shape(AngleVector)[0]
-        image_seqs = torch.randn((n_batch, n_seqlen, *image_tensor_shape))
-        vector_seqs = torch.randn((n_batch, n_seqlen, av_dim + 1))  # 1 for terminal flag
+        image_seqs = torch.randn((n_batch, n_seqlen, *image_tensor_shape)).to(model.device)
+        vector_seqs = torch.randn((n_batch, n_seqlen, av_dim + 1)).to(
+            model.device
+        )  # 1 for terminal flag
 
         loss_dict = model.loss((image_seqs, vector_seqs))
         keys = ["prediction", "reconstruction"]
