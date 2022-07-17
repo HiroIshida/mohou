@@ -2,6 +2,7 @@ import copy
 import logging
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
@@ -12,7 +13,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
 import mohou
-from mohou.file import dump_object, load_objects
+from mohou.file import dump_object, get_project_path, load_objects
 from mohou.model import (
     FloatLossDict,
     ModelBase,
@@ -48,6 +49,18 @@ class TrainCache(Generic[ModelT]):
         self.validate_loss_dict_seq = []
         self.file_uuid = str(uuid.uuid4())[-6:]
         self.best_model = None
+
+    @staticmethod
+    def train_result_base_path(project_name: str) -> Path:
+        return get_project_path(project_name) / "train_result"
+
+    @classmethod
+    def train_result_path(cls, project_name: str, file_uuid: str):
+        base_path = cls.train_result_base_path(project_name)
+        class_name = model.__class__.__name__
+        config_hash = model.hash_value
+        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, file_uuid)
+        return result_path
 
     def update_and_save(
         self,
