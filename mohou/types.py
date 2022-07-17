@@ -917,32 +917,41 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         assert isinstance(project_name, str)  # for mypy check
 
         if (project_name, postfix) not in _bundle_cache:
-            bundle_dir_path = get_project_path(project_name) / (
-                "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix))
+            bundle_file_without_ext = "EpisodeBundle" + (
+                "" if postfix is None else "-{}".format(postfix)
             )
+            bundle_tar = bundle_file_without_ext + ".tar"
+            bundle_tar_path = get_project_path(project_name) / bundle_tar
 
-            def load_episodes(str_startswitdth: str):
-                episode_names: List[str] = natsort.natsorted(
-                    [
-                        p.name
-                        for p in bundle_dir_path.iterdir()
-                        if p.name.startswith(str_startswitdth)
-                    ],
-                )  # type: ignore
-                episode_list = []
-                for episode_name in episode_names:
-                    episode_dir_path = bundle_dir_path / episode_name
-                    episode_list.append(EpisodeData.load(episode_dir_path))
-                return episode_list
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_dir_path = pathlib.Path(tmp_dir)
+                subprocess.run(
+                    "cd {} && tar -xf {}".format(tmp_dir_path, bundle_tar_path), shell=True
+                )
+                bundle_dir_path = tmp_dir_path / bundle_file_without_ext
 
-            episode_list = load_episodes("episode")
-            untouch_episode_list = load_episodes("untouch_episode")
+                def load_episodes(str_startswitdth: str):
+                    episode_names: List[str] = natsort.natsorted(
+                        [
+                            p.name
+                            for p in bundle_dir_path.iterdir()
+                            if p.name.startswith(str_startswitdth)
+                        ],
+                    )  # type: ignore
+                    episode_list = []
+                    for episode_name in episode_names:
+                        episode_dir_path = bundle_dir_path / episode_name
+                        episode_list.append(EpisodeData.load(episode_dir_path))
+                    return episode_list
 
-            metadata_file_path = bundle_dir_path / "metadata.yaml"
-            with metadata_file_path.open(mode="r") as f:
-                metadata = yaml.safe_load(f)
-            bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
-            _bundle_cache[(project_name, postfix)] = bundle
+                episode_list = load_episodes("episode")
+                untouch_episode_list = load_episodes("untouch_episode")
+
+                metadata_file_path = bundle_dir_path / "metadata.yaml"
+                with metadata_file_path.open(mode="r") as f:
+                    metadata = yaml.safe_load(f)
+                bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
+                _bundle_cache[(project_name, postfix)] = bundle
 
         bundle = _bundle_cache[(project_name, postfix)]
         return bundle
@@ -956,8 +965,16 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         Please send me a PR. Currently, no compreesion is applied.
         """
 
-        with tempfile.TemporaryDirectory() as dname:
-            bundle_dir_path = pathlib.Path(dname)
+        self._postfix = postfix
+        bundle_file_without_ext = "EpisodeBundle" + (
+            "" if postfix is None else "-{}".format(postfix)
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = pathlib.Path(tmp_dir)
+
+            bundle_dir_path = tmp_dir_path / bundle_file_without_ext
+            bundle_dir_path.mkdir(parents=True, exist_ok=True)
 
             for i, episode in enumerate(self._episode_list):
                 episode_dir_path = bundle_dir_path / "episode{}".format(i)
@@ -971,13 +988,13 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             with metadata_file_path.open(mode="w") as f:
                 yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
 
-            tarfile = "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix)) + ".tar"
+            tarfile = bundle_file_without_ext + ".tar"
             tarfile_full = get_project_path(project_name) / tarfile
             if tarfile_full.exists():
                 os.remove(tarfile_full)
 
             # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
-            cmd = "cd {} && tar cvf {} *".format(bundle_dir_path, tarfile_full)
+            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
             subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)

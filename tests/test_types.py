@@ -357,10 +357,10 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     extra_bundle: EpisodeBundle = image_bundle
     extra_bundle.dump(tmp_project_name, postfix)
     extra_bundle_loaded = EpisodeBundle.load(tmp_project_name, postfix)
-    assert pickle.dumps(extra_bundle) == pickle.dumps(extra_bundle_loaded)
+    assert extra_bundle == extra_bundle_loaded
 
     extra_bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name, postfix)
-    assert pickle.dumps(extra_bundle.spec) == pickle.dumps(extra_bundle_spec_loaded)
+    assert extra_bundle.spec == extra_bundle_spec_loaded
 
     remove_project(tmp_project_name)
 
