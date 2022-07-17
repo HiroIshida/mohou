@@ -66,15 +66,6 @@ class TrainCache(Generic[ModelT]):
                     ps.append(p)
         return ps
 
-    @staticmethod
-    def get_file_info(file_name: str) -> Tuple[str, str, str]:
-        m = re.match(r"(w+)-(\w+)-(\w+)", file_name)
-        assert m is not None
-        model_name = m[1]
-        config_hash = m[2]
-        file_uuid = m[3]
-        return model_name, config_hash, file_uuid
-
     def train_result_path(self, project_name: str):
         base_path = self.train_result_base_path(project_name)
         class_name = self.best_model.__class__.__name__
@@ -146,13 +137,17 @@ class TrainCache(Generic[ModelT]):
         model_path = base_path / "model.pth"
         valid_loss_path = base_path / "validation_loss.pkl"
         train_loss_path = base_path / "train_loss.pkl"
+        m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
+        assert m is not None
+        file_uuid = m[3]
 
         best_model = torch.load(model_path)
         with train_loss_path.open(mode="rb") as f:
             train_loss = pickle.load(f)
         with valid_loss_path.open(mode="rb") as f:
             valid_loss = pickle.load(f)
-        return cls(best_model, train_loss, valid_loss, "hogehoge")
+
+        return cls(best_model, train_loss, valid_loss, file_uuid)
 
     @classmethod
     def load_all(
