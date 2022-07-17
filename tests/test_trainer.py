@@ -36,6 +36,7 @@ def test_traincache_load_all(tmp_project_name):  # noqa
     for _ in range(10):
         dump_train_cache(conf2, np.random.rand(), tmp_project_name)
 
+    assert len(TrainCache.load_all(tmp_project_name)) == 20
     assert len(TrainCache.load_all(tmp_project_name, LSTM)) == 20
     assert len(TrainCache.load_all(tmp_project_name, LSTM, conf)) == 10
     assert len(TrainCache.load_all(tmp_project_name, LSTM, conf2)) == 10
