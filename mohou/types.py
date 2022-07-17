@@ -961,7 +961,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                     bundle = cls._load(bundle_dir_path, postfix)
 
             else:
-                bundle_dir_path = get_project_path() / bundle_file_without_ext
+                bundle_dir_path = get_project_path(project_name) / bundle_file_without_ext
                 bundle = cls._load(bundle_dir_path, postfix)
 
             _bundle_cache[(project_name, postfix)] = bundle
@@ -1016,7 +1016,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
                 subprocess.run(cmd, shell=True)
             else:  # just move things to project directory
-                shutil.move(bundle_dir_path, get_project_path(project_name))
+                # https://bugs.python.org/issue34069
+                shutil.move(str(bundle_dir_path), str(get_project_path(project_name)))
 
         # extra dump just for debugging (the following info is not requried to load bundle)
         spec_file_path = self.spec_file_path(project_name, postfix)
