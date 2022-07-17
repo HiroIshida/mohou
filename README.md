@@ -16,6 +16,33 @@ pip install -e .
 ```
 After this pip install you are readly to start [pybullet demo](/pipeline/pybullet_demo.sh)! However, to run [rlbench_demo](/pipeline/rlbench_demo.sh), there is an additional step of rlbench installation. See https://github.com/stepjam/RLBench for rlbench installation. 
 
+## Contribution
+When you make a new PR, one need to check that the tests passed and formatting is correct.
+
+### testing
+The test for `mohou` software is 3 steps: 1) static type check by mypy, 2) unit test by pytest and 3) integration test.
+To running these test, you need install `mypy` and `pytest` by
+```
+pip3 install pytest mypy  # or use --user option 
+```
+Then, do the following
+```bash
+mypy .
+pytest -v -s
+bash ./pipeline/test.sh
+```
+### formatting
+`mohou` code follows [black](https://github.com/psf/black) standard style. Additionally, we use isort and flake8 to check if the code is following pep standard. Basically, what you have to do for formatting is running 
+```
+./format.sh
+```
+(If this command is not sufficient to pass the lint test in CI, please send me a PR)
+
+Note that to run the command you need to install packages
+```
+pip3 install black isort flake8 autoflake
+```
+
 ## Tutorial demo (vision-based reaching task)
 
 <img src="https://user-images.githubusercontent.com/38597814/155882282-f40af02b-99aa-41b3-bd43-fe7b7d0c2d96.gif" width="30%" /><img src="https://user-images.githubusercontent.com/38597814/155882252-5739fa16-baf7-4a26-b88f-24e106ea0dd1.gif" width="30%" />
