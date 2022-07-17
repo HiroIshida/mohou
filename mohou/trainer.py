@@ -14,13 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 
 import mohou
 from mohou.file import dump_object, get_project_path, load_objects
-from mohou.model import (
-    FloatLossDict,
-    ModelBase,
-    ModelConfigBase,
-    ModelT,
-    average_float_loss_dict,
-)
+from mohou.model import FloatLossDict, ModelConfigBase, ModelT, average_float_loss_dict
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
@@ -41,14 +35,14 @@ class TrainCache(Generic[ModelT]):
     train_loss_dict_seq: List[FloatLossDict]
     validate_loss_dict_seq: List[FloatLossDict]
     min_validate_loss: float
-    best_model: Optional[ModelT]
+    best_model: ModelT
     file_uuid: str
 
-    def __init__(self):
+    def __init__(self, model: ModelT):
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.file_uuid = str(uuid.uuid4())[-6:]
-        self.best_model = None
+        self.best_model = model
 
     @staticmethod
     def train_result_base_path(project_name: str) -> Path:
@@ -154,7 +148,6 @@ def train(
     project_name: str,
     tcache: TrainCache,
     dataset: Dataset,
-    model: Optional[ModelBase] = None,
     config: TrainConfig = TrainConfig(),
 ) -> None:
 
@@ -162,9 +155,7 @@ def train(
     log_text_with_box(logger, "train log")
     logger.info("train start with config: {}".format(config))
 
-    if model is None:
-        assert tcache.best_model is not None
-        model = tcache.best_model
+    model = tcache.best_model
 
     def move_to_device(sample):
         if isinstance(sample, torch.Tensor):

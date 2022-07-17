@@ -88,11 +88,11 @@ def train_autoencoder(
     if warm_start:
         logger.info("warm start")
         tcache = TrainCache.load(project_name, ae_type)
-        train(project_name, tcache, dataset, model=None, config=train_config)
+        train(project_name, tcache, dataset, config=train_config)
     else:
-        tcache = TrainCache()  # type: ignore[var-annotated]
         model = ae_type(model_config)  # type: ignore
-        train(project_name, tcache, dataset, model=model, config=train_config)
+        tcache = TrainCache(model)  # type: ignore[var-annotated]
+        train(project_name, tcache, dataset, config=train_config)
 
 
 def train_lstm(
@@ -127,11 +127,11 @@ def train_lstm(
     if warm_start:
         logger.info("warm start")
         tcache = TrainCache.load(project_name, LSTM)
-        train(project_name, tcache, dataset, model=None, config=train_config)
+        train(project_name, tcache, dataset, config=train_config)
     else:
-        tcache = TrainCache()  # type: ignore[var-annotated]
         model = LSTM(model_config)
-        train(project_name, tcache, dataset, model=model, config=train_config)
+        tcache = TrainCache(model)  # type: ignore[var-annotated]
+        train(project_name, tcache, dataset, config=train_config)
 
 
 def train_chimera(
@@ -146,12 +146,12 @@ def train_chimera(
         bundle = EpisodeBundle.load(project_name)
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
-    tcache = TrainCache()  # type: ignore[var-annotated]
     ae = TrainCache.load(project_name, AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
-    train(project_name, tcache, dataset, model, train_config)
+    tcache = TrainCache(model)  # type: ignore[var-annotated]
+    train(project_name, tcache, dataset, train_config)
 
 
 def visualize_train_histories(project_name: str):
