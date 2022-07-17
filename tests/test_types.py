@@ -2,6 +2,7 @@ import copy
 import os
 import pathlib
 import pickle
+import tempfile
 from dataclasses import dataclass
 from typing import Type
 
@@ -203,9 +204,12 @@ def test_element_sequence():
         b = DepthImage.dummy_from_shape((100, 100))
         ElementSequence([a, b])
 
-    # start from non empty list
-    class TorqueVector(VectorBase):
-        pass
+    # test dump and load
+    with tempfile.TemporaryDirectory() as dname:
+        dpath = pathlib.Path(dname)
+        elem_seq.dump(dpath)
+        elem_seq_again = ElementSequence.load(dpath, RGBImage)
+        assert elem_seq == elem_seq_again
 
 
 def test_episode_data():
@@ -249,6 +253,13 @@ def test_episode_data():
         assert flag_seq[i] == TerminateFlag.from_bool(False)
     for i in range(3, 8):
         assert flag_seq[i] == TerminateFlag.from_bool(True)
+
+    # test dump and load
+    with tempfile.TemporaryDirectory() as dname:
+        dpath = pathlib.Path(dname)
+        episode.dump(dpath)
+        episode_again = EpisodeData.load(dpath)
+        assert episode == episode_again
 
 
 def test_episode_data_assertion_different_size():
@@ -334,21 +345,25 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     bundle.dump(tmp_project_name)
     assert tmp_project_name not in _bundle_cache
     loaded = bundle.load(tmp_project_name)
-    assert pickle.dumps(bundle) == pickle.dumps(loaded)
+    assert bundle == loaded
     assert (tmp_project_name, None) in _bundle_cache
 
     bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)
     assert pickle.dumps(bundle.spec) == pickle.dumps(bundle_spec_loaded)
+
+    bundle.dump(tmp_project_name, postfix="without_tar", use_tar=False)
+    loaded2 = EpisodeBundle.load(tmp_project_name, postfix="without_tar", use_tar=False)
+    assert bundle == loaded2
 
     # test having multiple bundle in one project
     postfix = "extra"
     extra_bundle: EpisodeBundle = image_bundle
     extra_bundle.dump(tmp_project_name, postfix)
     extra_bundle_loaded = EpisodeBundle.load(tmp_project_name, postfix)
-    assert pickle.dumps(extra_bundle) == pickle.dumps(extra_bundle_loaded)
+    assert extra_bundle == extra_bundle_loaded
 
     extra_bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name, postfix)
-    assert pickle.dumps(extra_bundle.spec) == pickle.dumps(extra_bundle_spec_loaded)
+    assert extra_bundle.spec == extra_bundle_spec_loaded
 
     remove_project(tmp_project_name)
 

@@ -112,8 +112,9 @@ def assert_equal_with_message(given: AnyT, expected: Union[AnyT, List[Any]], ele
 
 
 def assert_isinstance_with_message(given: Any, expected: Type):
-    message = "{0}: given {1}, exepcted {2}".format("not isinstance", given, expected)
-    assert isinstance(given, expected), message
+    assert isinstance(given, expected), "{0}: given {1}, exepcted {2}".format(
+        "not isinstance", given, expected
+    )
 
 
 def assert_seq_list_list_compatible(seq_llist: List[List[Any]]):
