@@ -926,9 +926,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         episode_list = load_episodes("episode")
         untouch_episode_list = load_episodes("untouch_episode")
 
-        metadata_file_path = bundle_dir_path / "metadata.yaml"
+        metadata_file_path = bundle_dir_path / "metadata.json"
         with metadata_file_path.open(mode="r") as f:
-            metadata = yaml.safe_load(f)
+            metadata = json.load(f)
         bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
         return bundle
 
@@ -1010,9 +1010,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
                 episode.dump(episode_dir_path)
 
-            metadata_file_path = bundle_dir_path / "metadata.yaml"
+            metadata_file_path = bundle_dir_path / "metadata.json"
             with metadata_file_path.open(mode="w") as f:
-                yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
+                json.dump(self._metadata, f)
 
             if use_tar:
                 tarfile = bundle_file_without_ext + ".tar"
