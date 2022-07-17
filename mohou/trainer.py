@@ -1,6 +1,5 @@
 import copy
 import logging
-import pickle
 import re
 import uuid
 from dataclasses import dataclass
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import tqdm
 from torch.optim import Adam
@@ -86,6 +86,13 @@ class TrainCache(Generic[ModelT]):
         validate_loss_dict: FloatLossDict,
         project_name: str,
     ) -> None:
+        def dump_fld_as_npz(flds: List[FloatLossDict], path: Path) -> None:
+            kwargs = {}
+            for key in flds[0].keys():
+                values = np.array([fld[key] for fld in flds])
+                kwargs[key] = values
+            np.savez(path, **kwargs)
+
         self.train_loss_dict_seq.append(train_loss_dict)
         self.validate_loss_dict_seq.append(validate_loss_dict)
 
@@ -102,31 +109,35 @@ class TrainCache(Generic[ModelT]):
             base_path = self.train_result_path(project_name)
             base_path.mkdir(exist_ok=True, parents=True)
             model_path = base_path / "model.pth"
-            valid_loss_path = base_path / "validation_loss.pkl"
-            train_loss_path = base_path / "train_loss.pkl"
+            valid_loss_path = base_path / "validation_loss.npz"
+            train_loss_path = base_path / "train_loss.npz"
 
             torch.save(self.best_model, model_path)
-            with train_loss_path.open(mode="wb") as f:
-                pickle.dump(self.train_loss_dict_seq, f)
-            with valid_loss_path.open(mode="wb") as f:
-                pickle.dump(self.validate_loss_dict_seq, f)
+            dump_fld_as_npz(self.train_loss_dict_seq, valid_loss_path)
+            dump_fld_as_npz(self.validate_loss_dict_seq, train_loss_path)
             logger.info("model is updated and saved")
 
     @classmethod
     def load_from_base_path(cls, base_path: Path) -> "TrainCache":
+        def load_fld_from_npy(path: Path) -> List[FloatLossDict]:
+            obj = np.load(path)
+            keys = obj.keys()
+            flds: List[FloatLossDict] = []
+            for values in zip(obj.values()):
+                fld = FloatLossDict({k: v for k, v in zip(keys, values)})
+                flds.append(fld)
+            return flds
+
         model_path = base_path / "model.pth"
-        valid_loss_path = base_path / "validation_loss.pkl"
-        train_loss_path = base_path / "train_loss.pkl"
+        valid_loss_path = base_path / "validation_loss.npz"
+        train_loss_path = base_path / "train_loss.npz"
         m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
         assert m is not None
         file_uuid = m[3]
 
         best_model = torch.load(model_path)
-        with train_loss_path.open(mode="rb") as f:
-            train_loss = pickle.load(f)
-        with valid_loss_path.open(mode="rb") as f:
-            valid_loss = pickle.load(f)
-
+        train_loss = load_fld_from_npy(train_loss_path)
+        valid_loss = load_fld_from_npy(valid_loss_path)
         return cls(best_model, train_loss, valid_loss, file_uuid)
 
     @classmethod
