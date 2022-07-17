@@ -935,6 +935,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         postfix: Optional[str] = None,
         use_tar: bool = False,
     ) -> "EpisodeBundle":
+        """load bundle
+        use_tar: if True, load tar archive, otherwise load from a directory
+        """
 
         if project_name is None:
             project_name = setting.primary_project_name
@@ -974,8 +977,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         postfix: Optional[str] = None,
         use_tar: bool = False,
     ) -> None:
-        """dump the bundle as a tar file with 0 compression
-        tar is great because it's immutable and no trouble when downloading from gdrive
+        """dump the bundle
+        use_tar: if True, save as tar archive, otherwise save as a directory
+
+        NOTE: tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
 
         TODO: Adding option for compression rate control is a future option.
