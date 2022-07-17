@@ -3,10 +3,13 @@ import functools
 import hashlib
 import json
 import operator
+import os
 import pathlib
 import pickle
 import random
 import re
+import subprocess
+import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -945,23 +948,32 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         return bundle
 
     def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
-        self._postfix = postfix
-        bundle_dir_path = get_project_path(project_name) / (
-            "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix))
-        )
-        bundle_dir_path.mkdir(exist_ok=True)
+        """dump the bundle as a zip file with 0 compression
+        Zip is great because it's immutable and no trouble when downloading from gdrive
+        and it can be easily viewed on common file viewer.
+        """
 
-        for i, episode in enumerate(self._episode_list):
-            episode_dir_path = bundle_dir_path / "episode{}".format(i)
-            episode.dump(episode_dir_path)
+        with tempfile.TemporaryDirectory() as dname:
+            bundle_dir_path = pathlib.Path(dname)
 
-        for i, episode in enumerate(self._untouch_episode_list):
-            episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
-            episode.dump(episode_dir_path)
+            for i, episode in enumerate(self._episode_list):
+                episode_dir_path = bundle_dir_path / "episode{}".format(i)
+                episode.dump(episode_dir_path)
 
-        metadata_file_path = bundle_dir_path / "metadata.yaml"
-        with metadata_file_path.open(mode="w") as f:
-            yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
+            for i, episode in enumerate(self._untouch_episode_list):
+                episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
+                episode.dump(episode_dir_path)
+
+            metadata_file_path = bundle_dir_path / "metadata.yaml"
+            with metadata_file_path.open(mode="w") as f:
+                yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
+
+            zipfile = "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix)) + ".zip"
+            zipfile_full = get_project_path(project_name) / zipfile
+            if zipfile_full.exists():
+                os.remove(zipfile_full)
+            cmd = "cd {} && zip -0 -r {} *".format(str(bundle_dir_path), zipfile_full)
+            subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)
         spec_file_path = self.spec_file_path(project_name, postfix)
