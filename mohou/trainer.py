@@ -37,7 +37,6 @@ TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 
 
 class TrainCache(Generic[ModelT]):
-    epoch: int
     train_loss_dict_seq: List[FloatLossDict]
     validate_loss_dict_seq: List[FloatLossDict]
     min_validate_loss: float
@@ -50,23 +49,25 @@ class TrainCache(Generic[ModelT]):
         self.file_uuid = str(uuid.uuid4())[-6:]
         self.best_model = None
 
-    def update_loss(
-        self, train_loss_dict: FloatLossDict, validate_loss_dict: FloatLossDict
+    def update_and_save(
+        self,
+        model: ModelT,
+        train_loss_dict: FloatLossDict,
+        validate_loss_dict: FloatLossDict,
+        project_name: str,
     ) -> None:
         self.train_loss_dict_seq.append(train_loss_dict)
         self.validate_loss_dict_seq.append(validate_loss_dict)
 
-    def update_best_model(self, model: ModelT, project_name: str):
-        model = copy.deepcopy(model)
-        model = model.to(torch.device("cpu"))
-
         totals = [dic.total() for dic in self.validate_loss_dict_seq]
         min_loss_sofar = min(totals)
-
-        update_model = totals[-1] == min_loss_sofar
-        if update_model:
+        require_update_model = totals[-1] == min_loss_sofar
+        if require_update_model:
+            model = copy.deepcopy(model)
+            model = model.to(torch.device("cpu"))
             self.min_validate_loss = min_loss_sofar
             self.best_model = model
+
             logger.info("model is updated")
             postfix = self.get_file_postfix(self.best_model, self.file_uuid)
             dump_object(self, project_name, postfix)
@@ -200,5 +201,4 @@ def train(
         logger.info("epoch: {}".format(epoch))
         logger.info("train loss => {}".format(train_ld_mean))
         logger.info("validate loss => {}".format(validate_ld_mean))
-        tcache.update_loss(train_ld_mean, validate_ld_mean)
-        tcache.update_best_model(model, project_name)
+        tcache.update_and_save(model, train_ld_mean, validate_ld_mean, project_name)
