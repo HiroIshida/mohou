@@ -934,7 +934,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         cls,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        load_tar: bool = True,
+        use_tar: bool = False,
     ) -> "EpisodeBundle":
 
         if project_name is None:
@@ -947,7 +947,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             if postfix is not None:
                 bundle_file_without_ext += "-{}".format(postfix)
 
-            if load_tar:
+            if use_tar:
                 bundle_tar = bundle_file_without_ext + ".tar"
                 bundle_tar_path = get_project_path(project_name) / bundle_tar
 
@@ -973,7 +973,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         self,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        dump_tar: bool = True,
+        use_tar: bool = False,
     ) -> None:
         """dump the bundle as a tar file with 0 compression
         tar is great because it's immutable and no trouble when downloading from gdrive
@@ -1006,7 +1006,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             with metadata_file_path.open(mode="w") as f:
                 yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
 
-            if dump_tar:
+            if use_tar:
                 tarfile = bundle_file_without_ext + ".tar"
                 tarfile_full = get_project_path(project_name) / tarfile
                 if tarfile_full.exists():

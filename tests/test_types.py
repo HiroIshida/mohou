@@ -351,8 +351,8 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)
     assert pickle.dumps(bundle.spec) == pickle.dumps(bundle_spec_loaded)
 
-    bundle.dump(tmp_project_name, postfix="without_tar", dump_tar=False)
-    loaded2 = EpisodeBundle.load(tmp_project_name, postfix="without_tar", load_tar=False)
+    bundle.dump(tmp_project_name, postfix="without_tar", use_tar=False)
+    loaded2 = EpisodeBundle.load(tmp_project_name, postfix="without_tar", use_tar=False)
     assert bundle == loaded2
 
     # test having multiple bundle in one project
