@@ -63,21 +63,33 @@ class TrainCache(Generic[ModelT]):
 
     @classmethod
     def filter_result_paths(
-        cls, project_name: str, model_type: Type[ModelT], model_config: Optional[ModelConfigBase]
+        cls,
+        project_name: str,
+        model_type: Optional[Type[ModelT]],
+        model_config: Optional[ModelConfigBase],
     ) -> List[Path]:
-        ps = []
-        for p in cls.train_result_base_path(project_name).iterdir():
-            name = p.name
+        """filter train cache path. see filter_predicate for the logic."""
 
-            if not name.startswith(model_type.__name__):
-                continue
+        def filter_predicate(path: Path):
+            name = path.name
 
-            if model_config is None:
-                ps.append(p)
+            if model_type is None:
+                # if not specified, always pass
+                return True
             else:
-                if model_config.hash_value in p.name:
-                    ps.append(p)
-        return ps
+                assert model_type is not None  # this is for mypy
+                if not name.startswith(model_type.__name__):
+                    # if specified, name must be start with model_type.__name__
+                    return False
+                else:
+                    if model_config is None:
+                        # if not specified, always pass
+                        return True
+                    else:
+                        return model_config.hash_value in name
+
+        ps = filter(filter_predicate, cls.train_result_base_path(project_name).iterdir())
+        return list(ps)
 
     @staticmethod
     def dump_flds_as_npz_dict(flds: List[FloatLossDict]) -> Dict:
