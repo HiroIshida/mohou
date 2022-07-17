@@ -299,7 +299,7 @@ def image_bundle():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    bundle = EpisodeBundle.from_data_list(lst)
+    bundle = EpisodeBundle.from_data_list(lst, meta_data=MetaData({"hoge": 1.0}))
     return bundle
 
 
@@ -312,7 +312,7 @@ def image_av_bundle():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    bundle = EpisodeBundle.from_data_list(lst)
+    bundle = EpisodeBundle.from_data_list(lst, meta_data=MetaData({"hoge": 1.0}))
     return bundle
 
 
