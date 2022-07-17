@@ -85,11 +85,11 @@ if __name__ == "__main__":
         bundle.dump(project_name)
         dataset = AutoRegressiveDataset.from_bundle(bundle, rule)
 
-        tcache = TrainCache[LSTM](project_name)
+        tcache = TrainCache[LSTM]()
         tconfig = TrainConfig(n_epoch=1000)
         mconfig = LSTMConfig(4)
         model = LSTM(mconfig)
-        train(tcache, dataset, model=model, config=tconfig)
+        train(project_name, tcache, dataset, model=model, config=tconfig)
     else:
         tcache = TrainCache[LSTM].load(project_name, LSTM)
 

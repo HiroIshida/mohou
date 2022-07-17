@@ -37,33 +37,39 @@ TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 
 
 class TrainCache(Generic[ModelT]):
-    project_name: str
     epoch: int
     train_loss_dict_seq: List[FloatLossDict]
     validate_loss_dict_seq: List[FloatLossDict]
     min_validate_loss: float
     best_model: Optional[ModelT]
-    latest_model: ModelT
     file_uuid: str
 
-    def __init__(self, project_name: str):
-        self.project_name = project_name
+    def __init__(self):
         self.train_loss_dict_seq = []
         self.validate_loss_dict_seq = []
         self.file_uuid = str(uuid.uuid4())[-6:]
         self.best_model = None
 
-    def on_startof_epoch(self, epoch: int, dataset: Dataset):
-        logger.info("new epoch: {}".format(epoch))
-        self.epoch = epoch
+    def update_loss(
+        self, train_loss_dict: FloatLossDict, validate_loss_dict: FloatLossDict
+    ) -> None:
+        self.train_loss_dict_seq.append(train_loss_dict)
+        self.validate_loss_dict_seq.append(validate_loss_dict)
 
-    def on_train_loss(self, loss_dict: FloatLossDict, epoch: int):
-        self.train_loss_dict_seq.append(loss_dict)
-        logger.info("train loss => {}".format(loss_dict))
+    def save_if_model_is_good(self, model: ModelT, project_name: str):
+        model = copy.deepcopy(model)
+        model = model.to(torch.device("cpu"))
 
-    def on_validate_loss(self, loss_dict: FloatLossDict, epoch: int):
-        self.validate_loss_dict_seq.append(loss_dict)
-        logger.info("validate loss => {}".format(loss_dict))
+        totals = [dic.total() for dic in self.validate_loss_dict_seq]
+        min_loss_sofar = min(totals)
+
+        update_model = totals[-1] == min_loss_sofar
+        if update_model:
+            self.min_validate_loss = min_loss_sofar
+            self.best_model = model
+            logger.info("model is updated")
+            postfix = self.get_file_postfix(self.best_model, self.file_uuid)
+            dump_object(self, project_name, postfix)
 
     @staticmethod
     def get_file_postfix(model: ModelT, file_uuid: Optional[str]) -> str:
@@ -74,26 +80,6 @@ class TrainCache(Generic[ModelT]):
         if file_uuid is not None:
             postfix += "-{}".format(file_uuid)
         return postfix
-
-    def on_endof_epoch(self, model: ModelT, epoch: int):
-        model = copy.deepcopy(model)
-        model.to(torch.device("cpu"))
-        self.latest_model = model
-
-        totals = [dic.total() for dic in self.validate_loss_dict_seq]
-        min_loss_sofar = min(totals)
-
-        update_model = totals[-1] == min_loss_sofar
-        if update_model:
-            self.min_validate_loss = min_loss_sofar
-            self.best_model = model
-            logger.info("model is updated")
-            self.dump()
-
-    def dump(self):
-        assert self.best_model is not None
-        postfix = self.get_file_postfix(self.best_model, self.file_uuid)
-        dump_object(self, self.project_name, postfix)
 
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
@@ -151,6 +137,7 @@ class TrainCache(Generic[ModelT]):
 
 
 def train(
+    project_name: str,
     tcache: TrainCache,
     dataset: Dataset,
     model: Optional[ModelBase] = None,
@@ -183,7 +170,7 @@ def train(
 
     model.put_on_device()
     for epoch in tqdm.tqdm(range(config.n_epoch)):
-        tcache.on_startof_epoch(epoch, dataset)
+        logger.info("new epoch: {}".format(epoch))
 
         model.train()
         train_ld_list: List[FloatLossDict] = []
@@ -198,7 +185,6 @@ def train(
             optimizer.step()
 
         train_ld_mean = average_float_loss_dict(train_ld_list)
-        tcache.on_train_loss(train_ld_mean, epoch)
 
         model.eval()
         validate_ld_list: List[FloatLossDict] = []
@@ -209,6 +195,10 @@ def train(
             validate_ld_list.append(fld)
 
         validate_ld_mean = average_float_loss_dict(validate_ld_list)
-        tcache.on_validate_loss(validate_ld_mean, epoch)
 
-        tcache.on_endof_epoch(model, epoch)
+        # update
+        logger.info("epoch: {}".format(epoch))
+        logger.info("train loss => {}".format(train_ld_mean))
+        logger.info("validate loss => {}".format(validate_ld_mean))
+        tcache.update_loss(train_ld_mean, validate_ld_mean)
+        tcache.save_if_model_is_good(model, project_name)
