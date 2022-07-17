@@ -1,6 +1,7 @@
 import copy
 import logging
 import pickle
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,8 +54,9 @@ class TrainCache(Generic[ModelT]):
     ) -> List[Path]:
         ps = []
         for p in cls.train_result_base_path(project_name).iterdir():
+            name = p.name
 
-            if not p.name.startswith(model_type.__name__):
+            if not name.startswith(model_type.__name__):
                 continue
 
             if model_config is None:
@@ -64,12 +66,27 @@ class TrainCache(Generic[ModelT]):
                     ps.append(p)
         return ps
 
+    @staticmethod
+    def get_file_info(file_name: str) -> Tuple[str, str, str]:
+        m = re.match(r"(w+)-(\w+)-(\w+)", file_name)
+        assert m is not None
+        model_name = m[1]
+        config_hash = m[2]
+        file_uuid = m[3]
+        return model_name, config_hash, file_uuid
+
     def train_result_path(self, project_name: str):
         base_path = self.train_result_base_path(project_name)
         class_name = self.best_model.__class__.__name__
         config_hash = self.best_model.config.hash_value
         result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
         return result_path
+
+    @property
+    def min_validate_loss(self) -> float:
+        totals = [dic.total() for dic in self.validate_loss_dict_seq]
+        min_loss_sofar = min(totals)
+        return min_loss_sofar
 
     def update_and_save(
         self,
@@ -124,49 +141,8 @@ class TrainCache(Generic[ModelT]):
         ax.set_yscale("log")
         ax.legend(["train", "valid"])
 
-    # @staticmethod
-    # def _choose_lowest_validation_loss(
-    #    tcache_list: List["TrainCache[ModelT]"],
-    # ) -> "TrainCache[ModelT]":
-    #    min_validate_loss_list = []
-    #    for tcache in tcache_list:
-    #        if hasattr(tcache, "min_validate_loss"):
-    #            min_validate_loss_list.append(tcache.min_validate_loss)
-    #        else:
-    #            from warnings import warn
-
-    #            warn("for backward compatibility. will be removed", DeprecationWarning)
-    #            totals = [dic.total() for dic in tcache.validate_loss_dict_seq]
-    #            min_validate_loss_list.append(min(totals))
-
-    #    idx_min_validate = np.argmin(min_validate_loss_list)
-    #    return tcache_list[idx_min_validate]
-
-    # @classmethod
-    # def load_all(
-    #    cls,
-    #    project_name: Optional[str],
-    #    model_type: Type[ModelT],
-    #    model_config: Optional[ModelConfigBase] = None,
-    # ) -> "List[TrainCache[ModelT]]":
-
-    #    # TODO(HiroIshida): get_file_postfix function ????
-    #    postfix = model_type.__name__
-    #    if model_config is not None:
-    #        postfix += "-{}".format(model_config.hash_value)
-
-    #    tcache_list = load_objects(TrainCache, project_name, postfix)
-    #    return tcache_list
-
     @classmethod
-    def load(
-        cls,
-        project_name: str,
-        model_type: Type[ModelT],
-        model_config: Optional[ModelConfigBase] = None,
-    ) -> "TrainCache[ModelT]":
-        ps = cls.filter_result_paths(project_name, model_type, model_config)
-        base_path = ps[0]
+    def load_from_base_path(cls, base_path: Path) -> "TrainCache":
         model_path = base_path / "model.pth"
         valid_loss_path = base_path / "validation_loss.pkl"
         train_loss_path = base_path / "train_loss.pkl"
@@ -177,6 +153,31 @@ class TrainCache(Generic[ModelT]):
         with valid_loss_path.open(mode="rb") as f:
             valid_loss = pickle.load(f)
         return cls(best_model, train_loss, valid_loss, "hogehoge")
+
+    @classmethod
+    def load_all(
+        cls,
+        project_name: str,
+        model_type: Type[ModelT],
+        model_config: Optional[ModelConfigBase] = None,
+    ) -> "List[TrainCache[ModelT]]":
+
+        ps = cls.filter_result_paths(project_name, model_type, model_config)
+        tcache_list = [cls.load_from_base_path(p) for p in ps]
+        if len(tcache_list) == 0:
+            raise FileNotFoundError
+        return tcache_list
+
+    @classmethod
+    def load(
+        cls,
+        project_name: str,
+        model_type: Type[ModelT],
+        model_config: Optional[ModelConfigBase] = None,
+    ) -> "TrainCache[ModelT]":
+        tcache_list = cls.load_all(project_name, model_type, model_config)
+        tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
+        return tcaceh_list_sorted[0]
 
 
 def train(
