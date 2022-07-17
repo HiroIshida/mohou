@@ -10,7 +10,7 @@ from mohou.trainer import TrainCache
 
 def dump_train_cache(conf, loss_value, project_name):
     model = LSTM(conf)
-    tcache = TrainCache()
+    tcache = TrainCache.from_model(model)
     fld = FloatLossDict({"loss": loss_value})
     tcache.update_and_save(model, fld, fld, project_name)
 

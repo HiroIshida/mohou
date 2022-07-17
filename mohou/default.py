@@ -6,6 +6,7 @@ from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, AutoEncoderBase, Chimera
 from mohou.propagator import Propagator
+from mohou.setting import setting
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -22,6 +23,9 @@ class DefaultNotFoundError(Exception):
 
 
 def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[AutoEncoderBase]:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
 
     # TODO(HiroIshida) dirty...
     t: Optional[Type[AutoEncoderBase]] = None
@@ -47,6 +51,10 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
 
 
 def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncoder:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     ae_type = auto_detect_autoencoder_type(project_name)
     try:
         tcache_autoencoder = TrainCache.load(project_name, ae_type)
@@ -59,6 +67,9 @@ def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncod
 
 
 def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
 
     bundle = EpisodeBundle.load(project_name)
     bundle_spec = bundle.spec
@@ -82,6 +93,10 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
 
 
 def create_chimera_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     # experimental
     encoding_rule = create_default_encoding_rule(project_name)
     image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
@@ -99,6 +114,10 @@ def create_chimera_encoding_rule(project_name: Optional[str] = None) -> Encoding
 
 
 def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     try:
         tcach_lstm = TrainCache.load(project_name, LSTM)
     except Exception:
@@ -111,6 +130,10 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
 
 
 def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     encoding_rule = create_chimera_encoding_rule(project_name)
 
     chimera = TrainCache.load(project_name, Chimera).best_model

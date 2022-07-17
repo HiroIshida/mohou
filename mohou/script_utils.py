@@ -35,6 +35,7 @@ from mohou.model import (
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.propagator import Propagator
+from mohou.setting import setting
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
@@ -91,7 +92,7 @@ def train_autoencoder(
         train(project_name, tcache, dataset, config=train_config)
     else:
         model = ae_type(model_config)  # type: ignore
-        tcache = TrainCache(model)  # type: ignore[var-annotated]
+        tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
         train(project_name, tcache, dataset, config=train_config)
 
 
@@ -130,7 +131,7 @@ def train_lstm(
         train(project_name, tcache, dataset, config=train_config)
     else:
         model = LSTM(model_config)
-        tcache = TrainCache(model)  # type: ignore[var-annotated]
+        tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
         train(project_name, tcache, dataset, config=train_config)
 
 
@@ -150,7 +151,7 @@ def train_chimera(
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
-    tcache = TrainCache(model)  # type: ignore[var-annotated]
+    tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
     train(project_name, tcache, dataset, train_config)
 
 
@@ -217,6 +218,10 @@ def visualize_image_reconstruction(
 
 
 def visualize_variational_autoencoder(project_name: Optional[str] = None):
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     tcache = TrainCache.load(project_name, VariationalAutoEncoder)
     vae = tcache.best_model
     assert vae is not None

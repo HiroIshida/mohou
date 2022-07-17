@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
         tconfig = TrainConfig(n_epoch=1000)
         mconfig = LSTMConfig(4)
-        tcache = TrainCache[LSTM](LSTM(mconfig))
+        tcache = TrainCache[LSTM].from_model(LSTM(mconfig))
         train(project_name, tcache, dataset, config=tconfig)
     else:
         tcache = TrainCache[LSTM].load(project_name, LSTM)

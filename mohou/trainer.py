@@ -1,19 +1,19 @@
 import copy
 import logging
+import pickle
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
 import mohou
-from mohou.file import dump_object, get_project_path, load_objects
+from mohou.file import get_project_path
 from mohou.model import FloatLossDict, ModelConfigBase, ModelT, average_float_loss_dict
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
@@ -31,29 +31,44 @@ class TrainConfig:
 TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 
 
+@dataclass
 class TrainCache(Generic[ModelT]):
+    best_model: ModelT
     train_loss_dict_seq: List[FloatLossDict]
     validate_loss_dict_seq: List[FloatLossDict]
-    min_validate_loss: float
-    best_model: ModelT
     file_uuid: str
 
-    def __init__(self, model: ModelT):
-        self.train_loss_dict_seq = []
-        self.validate_loss_dict_seq = []
-        self.file_uuid = str(uuid.uuid4())[-6:]
-        self.best_model = model
+    @classmethod
+    def from_model(cls, model: ModelT) -> "TrainCache[ModelT]":
+        file_uuid = str(uuid.uuid4())[-6:]
+        return cls(model, [], [], file_uuid)
 
     @staticmethod
     def train_result_base_path(project_name: str) -> Path:
         return get_project_path(project_name) / "train_result"
 
     @classmethod
-    def train_result_path(cls, project_name: str, file_uuid: str):
-        base_path = cls.train_result_base_path(project_name)
-        class_name = model.__class__.__name__
-        config_hash = model.hash_value
-        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, file_uuid)
+    def filter_result_paths(
+        cls, project_name: str, model_type: Type[ModelT], model_config: Optional[ModelConfigBase]
+    ) -> List[Path]:
+        ps = []
+        for p in cls.train_result_base_path(project_name).iterdir():
+
+            if not p.name.startswith(model_type.__name__):
+                continue
+
+            if model_config is None:
+                ps.append(p)
+            else:
+                if model_config.hash_value in p.name:
+                    ps.append(p)
+        return ps
+
+    def train_result_path(self, project_name: str):
+        base_path = self.train_result_base_path(project_name)
+        class_name = self.best_model.__class__.__name__
+        config_hash = self.best_model.config.hash_value
+        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
         return result_path
 
     def update_and_save(
@@ -72,12 +87,22 @@ class TrainCache(Generic[ModelT]):
         if require_update_model:
             model = copy.deepcopy(model)
             model = model.to(torch.device("cpu"))
-            self.min_validate_loss = min_loss_sofar
             self.best_model = model
 
-            logger.info("model is updated")
-            postfix = self.get_file_postfix(self.best_model, self.file_uuid)
-            dump_object(self, project_name, postfix)
+            # save everything
+            # TODO: error handling
+            base_path = self.train_result_path(project_name)
+            base_path.mkdir(exist_ok=True, parents=True)
+            model_path = base_path / "model.pth"
+            valid_loss_path = base_path / "validation_loss.pkl"
+            train_loss_path = base_path / "train_loss.pkl"
+
+            torch.save(self.best_model, model_path)
+            with train_loss_path.open(mode="wb") as f:
+                pickle.dump(self.train_loss_dict_seq, f)
+            with valid_loss_path.open(mode="wb") as f:
+                pickle.dump(self.validate_loss_dict_seq, f)
+            logger.info("model is updated and saved")
 
     @staticmethod
     def get_file_postfix(model: ModelT, file_uuid: Optional[str]) -> str:
@@ -99,49 +124,59 @@ class TrainCache(Generic[ModelT]):
         ax.set_yscale("log")
         ax.legend(["train", "valid"])
 
-    @staticmethod
-    def _choose_lowest_validation_loss(
-        tcache_list: List["TrainCache[ModelT]"],
-    ) -> "TrainCache[ModelT]":
-        min_validate_loss_list = []
-        for tcache in tcache_list:
-            if hasattr(tcache, "min_validate_loss"):
-                min_validate_loss_list.append(tcache.min_validate_loss)
-            else:
-                from warnings import warn
+    # @staticmethod
+    # def _choose_lowest_validation_loss(
+    #    tcache_list: List["TrainCache[ModelT]"],
+    # ) -> "TrainCache[ModelT]":
+    #    min_validate_loss_list = []
+    #    for tcache in tcache_list:
+    #        if hasattr(tcache, "min_validate_loss"):
+    #            min_validate_loss_list.append(tcache.min_validate_loss)
+    #        else:
+    #            from warnings import warn
 
-                warn("for backward compatibility. will be removed", DeprecationWarning)
-                totals = [dic.total() for dic in tcache.validate_loss_dict_seq]
-                min_validate_loss_list.append(min(totals))
+    #            warn("for backward compatibility. will be removed", DeprecationWarning)
+    #            totals = [dic.total() for dic in tcache.validate_loss_dict_seq]
+    #            min_validate_loss_list.append(min(totals))
 
-        idx_min_validate = np.argmin(min_validate_loss_list)
-        return tcache_list[idx_min_validate]
+    #    idx_min_validate = np.argmin(min_validate_loss_list)
+    #    return tcache_list[idx_min_validate]
 
-    @classmethod
-    def load_all(
-        cls,
-        project_name: Optional[str],
-        model_type: Type[ModelT],
-        model_config: Optional[ModelConfigBase] = None,
-    ) -> "List[TrainCache[ModelT]]":
+    # @classmethod
+    # def load_all(
+    #    cls,
+    #    project_name: Optional[str],
+    #    model_type: Type[ModelT],
+    #    model_config: Optional[ModelConfigBase] = None,
+    # ) -> "List[TrainCache[ModelT]]":
 
-        # TODO(HiroIshida): get_file_postfix function ????
-        postfix = model_type.__name__
-        if model_config is not None:
-            postfix += "-{}".format(model_config.hash_value)
+    #    # TODO(HiroIshida): get_file_postfix function ????
+    #    postfix = model_type.__name__
+    #    if model_config is not None:
+    #        postfix += "-{}".format(model_config.hash_value)
 
-        tcache_list = load_objects(TrainCache, project_name, postfix)
-        return tcache_list
+    #    tcache_list = load_objects(TrainCache, project_name, postfix)
+    #    return tcache_list
 
     @classmethod
     def load(
         cls,
-        project_name: Optional[str],
+        project_name: str,
         model_type: Type[ModelT],
         model_config: Optional[ModelConfigBase] = None,
     ) -> "TrainCache[ModelT]":
-        tcache_list = cls.load_all(project_name, model_type, model_config)
-        return cls._choose_lowest_validation_loss(tcache_list)
+        ps = cls.filter_result_paths(project_name, model_type, model_config)
+        base_path = ps[0]
+        model_path = base_path / "model.pth"
+        valid_loss_path = base_path / "validation_loss.pkl"
+        train_loss_path = base_path / "train_loss.pkl"
+
+        best_model = torch.load(model_path)
+        with train_loss_path.open(mode="rb") as f:
+            train_loss = pickle.load(f)
+        with valid_loss_path.open(mode="rb") as f:
+            valid_loss = pickle.load(f)
+        return cls(best_model, train_loss, valid_loss, "hogehoge")
 
 
 def train(

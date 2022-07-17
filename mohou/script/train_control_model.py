@@ -46,6 +46,6 @@ if __name__ == "__main__":
     n_input = ctrl_rule.dimension + obs_rule.dimension
     n_output = obs_rule.dimension
     config = MarkoveModelConfig(n_input, n_output, activation="relu")
-    tcache = TrainCache[ControlModel](ControlModel(config))
+    tcache = TrainCache[ControlModel].from_model(ControlModel(config))
     tconfig = TrainConfig(n_epoch=n_epoch)
     train(project_name, tcache, dataset, config=tconfig)
