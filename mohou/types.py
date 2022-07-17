@@ -2,6 +2,7 @@ import copy
 import functools
 import hashlib
 import json
+import logging
 import operator
 import pathlib
 import pickle
@@ -52,6 +53,8 @@ from mohou.utils import (
     get_all_concrete_leaftypes,
     split_sequence,
 )
+
+logger = logging.getLogger(__name__)
 
 ElementT = TypeVar("ElementT", bound="ElementBase")
 PrimitiveElementT = TypeVar("PrimitiveElementT", bound="PrimitiveElementBase")
@@ -933,10 +936,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         cls,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        use_tar: bool = False,
+        use_tar: bool = True,
     ) -> "EpisodeBundle":
         """load bundle
-        use_tar: if True, load tar archive, otherwise load from a directory
+        use_tar: default True. if True, load tar archive, otherwise load from a directory
         """
 
         if project_name is None:
@@ -975,10 +978,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         self,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        use_tar: bool = False,
+        use_tar: bool = True,
     ) -> None:
         """dump the bundle
-        use_tar: if True, save as tar archive, otherwise save as a directory
+        use_tar: defalut True. if True, save as tar archive, otherwise save as a directory
 
         NOTE: tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
