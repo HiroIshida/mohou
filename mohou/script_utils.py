@@ -35,6 +35,7 @@ from mohou.model import (
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.propagator import Propagator
+from mohou.setting import setting
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
@@ -88,11 +89,11 @@ def train_autoencoder(
     if warm_start:
         logger.info("warm start")
         tcache = TrainCache.load(project_name, ae_type)
-        train(tcache, dataset, model=None, config=train_config)
+        train(project_name, tcache, dataset, config=train_config)
     else:
-        tcache = TrainCache(project_name)  # type: ignore[var-annotated]
         model = ae_type(model_config)  # type: ignore
-        train(tcache, dataset, model=model, config=train_config)
+        tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
+        train(project_name, tcache, dataset, config=train_config)
 
 
 def train_lstm(
@@ -127,11 +128,11 @@ def train_lstm(
     if warm_start:
         logger.info("warm start")
         tcache = TrainCache.load(project_name, LSTM)
-        train(tcache, dataset, model=None, config=train_config)
+        train(project_name, tcache, dataset, config=train_config)
     else:
-        tcache = TrainCache(project_name)  # type: ignore[var-annotated]
         model = LSTM(model_config)
-        train(tcache, dataset, model=model, config=train_config)
+        tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
+        train(project_name, tcache, dataset, config=train_config)
 
 
 def train_chimera(
@@ -146,12 +147,12 @@ def train_chimera(
         bundle = EpisodeBundle.load(project_name)
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
-    tcache = TrainCache(project_name)  # type: ignore[var-annotated]
     ae = TrainCache.load(project_name, AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
-    train(tcache, dataset, model, train_config)
+    tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
+    train(project_name, tcache, dataset, train_config)
 
 
 def visualize_train_histories(project_name: str):
@@ -217,6 +218,10 @@ def visualize_image_reconstruction(
 
 
 def visualize_variational_autoencoder(project_name: Optional[str] = None):
+    if project_name is None:
+        assert setting.primary_project_name is not None
+        project_name = setting.primary_project_name
+
     tcache = TrainCache.load(project_name, VariationalAutoEncoder)
     vae = tcache.best_model
     assert vae is not None
