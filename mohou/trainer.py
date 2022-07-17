@@ -4,7 +4,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, List, Optional, Tuple, Type, TypeVar
+from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -79,6 +79,24 @@ class TrainCache(Generic[ModelT]):
                     ps.append(p)
         return ps
 
+    @staticmethod
+    def dump_flds_as_npz_dict(flds: List[FloatLossDict]) -> Dict:
+        kwargs = {}
+        for key in flds[0].keys():
+            values = np.array([fld[key] for fld in flds])
+            kwargs[key] = values
+        return kwargs
+
+    @staticmethod
+    def load_flds_from_npz_dict(npz_dict: Dict) -> List[FloatLossDict]:
+        keys = list(npz_dict.keys())
+        flds: List[FloatLossDict] = []
+        n_seqlen = len(npz_dict[keys[0]])
+        for i in range(n_seqlen):
+            fld = FloatLossDict({k: npz_dict[k][i] for k in keys})
+            flds.append(fld)
+        return flds
+
     def update_and_save(
         self,
         model: ModelT,
@@ -86,12 +104,6 @@ class TrainCache(Generic[ModelT]):
         validate_loss_dict: FloatLossDict,
         project_name: str,
     ) -> None:
-        def dump_fld_as_npz(flds: List[FloatLossDict], path: Path) -> None:
-            kwargs = {}
-            for key in flds[0].keys():
-                values = np.array([fld[key] for fld in flds])
-                kwargs[key] = values
-            np.savez(path, **kwargs)
 
         self.train_loss_dict_seq.append(train_loss_dict)
         self.validate_loss_dict_seq.append(validate_loss_dict)
@@ -113,21 +125,12 @@ class TrainCache(Generic[ModelT]):
             train_loss_path = base_path / "train_loss.npz"
 
             torch.save(self.best_model, model_path)
-            dump_fld_as_npz(self.train_loss_dict_seq, valid_loss_path)
-            dump_fld_as_npz(self.validate_loss_dict_seq, train_loss_path)
+            np.savez(train_loss_path, **self.dump_flds_as_npz_dict(self.train_loss_dict_seq))
+            np.savez(valid_loss_path, **self.dump_flds_as_npz_dict(self.validate_loss_dict_seq))
             logger.info("model is updated and saved")
 
     @classmethod
     def load_from_base_path(cls, base_path: Path) -> "TrainCache":
-        def load_fld_from_npy(path: Path) -> List[FloatLossDict]:
-            obj = np.load(path)
-            keys = obj.keys()
-            flds: List[FloatLossDict] = []
-            for values in zip(obj.values()):
-                fld = FloatLossDict({k: v for k, v in zip(keys, values)})
-                flds.append(fld)
-            return flds
-
         model_path = base_path / "model.pth"
         valid_loss_path = base_path / "validation_loss.npz"
         train_loss_path = base_path / "train_loss.npz"
@@ -136,8 +139,8 @@ class TrainCache(Generic[ModelT]):
         file_uuid = m[3]
 
         best_model = torch.load(model_path)
-        train_loss = load_fld_from_npy(train_loss_path)
-        valid_loss = load_fld_from_npy(valid_loss_path)
+        train_loss = cls.load_flds_from_npz_dict(np.load(train_loss_path))
+        valid_loss = cls.load_flds_from_npz_dict(np.load(valid_loss_path))
         return cls(best_model, train_loss, valid_loss, file_uuid)
 
     @classmethod
