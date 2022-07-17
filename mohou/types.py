@@ -3,7 +3,6 @@ import functools
 import hashlib
 import json
 import operator
-import os
 import pathlib
 import pickle
 import random
@@ -1010,14 +1009,18 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 tarfile = bundle_file_without_ext + ".tar"
                 tarfile_full = get_project_path(project_name) / tarfile
                 if tarfile_full.exists():
-                    os.remove(tarfile_full)
+                    shutil.rmtree(tarfile_full)
 
                 # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
                 cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
                 subprocess.run(cmd, shell=True)
             else:  # just move things to project directory
+                project_path = get_project_path(project_name)
+                destination_path = project_path / bundle_file_without_ext
+                if destination_path.exists():
+                    shutil.rmtree(destination_path)
                 # https://bugs.python.org/issue34069
-                shutil.move(str(bundle_dir_path), str(get_project_path(project_name)))
+                shutil.move(str(bundle_dir_path), str(destination_path))
 
         # extra dump just for debugging (the following info is not requried to load bundle)
         spec_file_path = self.spec_file_path(project_name, postfix)
