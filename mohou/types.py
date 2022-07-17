@@ -927,6 +927,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         with metadata_file_path.open(mode="r") as f:
             metadata = yaml.safe_load(f)
         bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
+        return bundle
 
     @classmethod
     def load(
@@ -943,7 +944,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         if (project_name, postfix) not in _bundle_cache:
 
             bundle_file_without_ext = "EpisodeBundle"
-            if postfix is None:
+            if postfix is not None:
                 bundle_file_without_ext += "-{}".format(postfix)
 
             if load_tar:
