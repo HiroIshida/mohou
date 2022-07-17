@@ -948,9 +948,12 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         return bundle
 
     def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
-        """dump the bundle as a zip file with 0 compression
-        Zip is great because it's immutable and no trouble when downloading from gdrive
+        """dump the bundle as a tar file with 0 compression
+        tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
+
+        TODO: Adding option for compression rate control is a future option.
+        Please send me a PR. Currently, no compreesion is applied.
         """
 
         with tempfile.TemporaryDirectory() as dname:
@@ -968,11 +971,13 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             with metadata_file_path.open(mode="w") as f:
                 yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
 
-            zipfile = "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix)) + ".zip"
-            zipfile_full = get_project_path(project_name) / zipfile
-            if zipfile_full.exists():
-                os.remove(zipfile_full)
-            cmd = "cd {} && zip -0 -r {} *".format(str(bundle_dir_path), zipfile_full)
+            tarfile = "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix)) + ".tar"
+            tarfile_full = get_project_path(project_name) / tarfile
+            if tarfile_full.exists():
+                os.remove(tarfile_full)
+
+            # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
+            cmd = "cd {} && tar cvf {} *".format(bundle_dir_path, tarfile_full)
             subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)
