@@ -326,7 +326,7 @@ def image_av_bundle_uneven():
 
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    bundle = EpisodeBundle.from_data_list(lst, shuffle=False, with_intact_data=False)
+    bundle = EpisodeBundle.from_data_list(lst, shuffle=False, leave_untouch_episode=False)
     return bundle
 
 
