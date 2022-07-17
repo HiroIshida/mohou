@@ -2,7 +2,9 @@ import copy
 import functools
 import hashlib
 import json
+import logging
 import operator
+import os
 import pathlib
 import pickle
 import random
@@ -52,6 +54,8 @@ from mohou.utils import (
     get_all_concrete_leaftypes,
     split_sequence,
 )
+
+logger = logging.getLogger(__name__)
 
 ElementT = TypeVar("ElementT", bound="ElementBase")
 PrimitiveElementT = TypeVar("PrimitiveElementT", bound="PrimitiveElementBase")
@@ -933,10 +937,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         cls,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        use_tar: bool = False,
+        use_tar: bool = True,
     ) -> "EpisodeBundle":
         """load bundle
-        use_tar: if True, load tar archive, otherwise load from a directory
+        use_tar: default True. if True, load tar archive, otherwise load from a directory
         """
 
         if project_name is None:
@@ -975,10 +979,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         self,
         project_name: Optional[str] = None,
         postfix: Optional[str] = None,
-        use_tar: bool = False,
+        use_tar: bool = True,
     ) -> None:
         """dump the bundle
-        use_tar: if True, save as tar archive, otherwise save as a directory
+        use_tar: defalut True. if True, save as tar archive, otherwise save as a directory
 
         NOTE: tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
@@ -1014,7 +1018,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 tarfile = bundle_file_without_ext + ".tar"
                 tarfile_full = get_project_path(project_name) / tarfile
                 if tarfile_full.exists():
-                    shutil.rmtree(tarfile_full)
+                    os.remove(tarfile_full)
 
                 # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
                 cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
