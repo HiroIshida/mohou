@@ -182,15 +182,15 @@ def visualize_image_reconstruction(
     prefix: Optional[str] = None,
 ):
 
-    bundle_intact = bundle.get_untouch_bundle()
-    bundle_not_intact = bundle.get_touch_bundle()
+    bundle_untouch = bundle.get_untouch_bundle()
+    bundle_touch = bundle.get_touch_bundle()
 
     image_type = autoencoder.image_type  # type: ignore[union-attr]
     no_aug = AutoEncoderDatasetConfig(0)  # to feed not randomized image
-    dataset_intact = AutoEncoderDataset.from_bundle(bundle_intact, image_type, no_aug)
-    dataset_not_intact = AutoEncoderDataset.from_bundle(bundle_not_intact, image_type, no_aug)
+    dataset_untouch = AutoEncoderDataset.from_bundle(bundle_untouch, image_type, no_aug)
+    dataset_touch = AutoEncoderDataset.from_bundle(bundle_touch, image_type, no_aug)
 
-    for dataset, postfix in zip([dataset_intact, dataset_not_intact], ["intact", "not_intact"]):
+    for dataset, postfix in zip([dataset_untouch, dataset_touch], ["untouch", "touch"]):
         idxes = list(range(len(dataset)))
         random.shuffle(idxes)
         idxes_test = idxes[: min(n_vis, len(dataset))]

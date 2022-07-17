@@ -841,8 +841,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     def spec(self) -> BundleSpec:
         n_average = int(sum([len(data) for data in self._episode_list]) / len(self._episode_list))
         spec = BundleSpec(
-            len(self._episode_list) - setting.n_data_intact,
-            setting.n_data_intact,
+            len(self._episode_list) - setting.n_untouch_episode,
+            setting.n_untouch_episode,
             n_average,
             self.type_shape_table,
             self._metadata,
@@ -855,7 +855,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         data_list: List[EpisodeData],
         meta_data: Optional[MetaData] = None,
         shuffle: bool = True,
-        with_intact_data: bool = True,
+        leave_untouch_episode: bool = True,
     ) -> "EpisodeBundle":
 
         set_types = set(functools.reduce(operator.add, [list(data.types()) for data in data_list]))
@@ -864,15 +864,15 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         n_type_expected = len(data_list[0].types())
         assert_equal_with_message(n_type_appeared, n_type_expected, "num of element type in bundle")
 
-        data_list_intact = []
-        if with_intact_data:
-            n_data_intact = setting.n_data_intact
-            assert n_data_intact > 0
-            interval = len(data_list) // n_data_intact
-            indices_intact = [interval * i for i in range(n_data_intact)]
+        untouch_episode_list = []
+        if leave_untouch_episode:
+            n_episode_untouch = setting.n_untouch_episode
+            assert n_episode_untouch > 0
+            interval = len(data_list) // n_episode_untouch
+            indices_untouch = [interval * i for i in range(n_episode_untouch)]
             # sorted is necessary because pop changes index
-            for idx in sorted(indices_intact, reverse=True):
-                data_list_intact.append(data_list.pop(idx))
+            for idx in sorted(indices_untouch, reverse=True):
+                untouch_episode_list.append(data_list.pop(idx))
 
         # use fixed random seed where it's scope is only in this function
         # The reason why I used fixed seed is to keep two different shuffled
@@ -884,7 +884,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         if shuffle:
             rn.shuffle(data_list)
 
-        return cls(data_list, data_list_intact, meta_data)
+        return cls(data_list, untouch_episode_list, meta_data)
 
     @staticmethod
     def spec_file_path(project_name: Optional[str] = None, postfix: Optional[str] = None) -> Path:
@@ -1088,15 +1088,3 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         file_name = str(file_path)
         fig.savefig(file_name, format="png", dpi=300)
         print("saved to {}".format(file_name))
-
-
-class MultiEpisodeChunk(EpisodeBundle):
-    def get_intact_bundle(self, *args, **kwargs):
-        return self.get_untouch_bundle(*args, **kwargs)
-
-    def get_not_intact_bundle(self, *args, **kwargs):
-        return self.get_touch_bundle(*args, **kwargs)
-
-
-class ChunkSpec(BundleSpec):
-    pass
