@@ -1,7 +1,5 @@
 import logging
-import pickle
 import random
-import re
 import time
 from logging import Logger
 from typing import List, Optional, Type, Union
@@ -157,21 +155,18 @@ def train_chimera(
 
 def visualize_train_histories(project_name: str):
     project_path = get_project_path(project_name)
-    file_paths = sorted(project_path.iterdir())
+    sorted(project_path.iterdir())
 
     plot_dir_path = get_subproject_path(project_name, "train_history")
-    for path in file_paths:
-        m = re.match(r".*TrainCache.*", path.name)
-        if m is not None:
-            pickle_path = project_path / path.name
 
-            with pickle_path.open(mode="rb") as f:
-                tcache: TrainCache = pickle.load(f)
-                fig, ax = plt.subplots()
-                tcache.visualize((fig, ax))
-                image_path = plot_dir_path / (path.name + ".png")
-                fig.savefig(str(image_path))
-                print("saved to {}".format(image_path))
+    all_result_paths = TrainCache.filter_result_paths(project_name, None, None)
+    for result_path in all_result_paths:
+        tcache = TrainCache.load_from_base_path(result_path)
+        image_path = plot_dir_path / (result_path.name + ".png")
+        fig, ax = plt.subplots()
+        tcache.visualize((fig, ax))
+        fig.savefig(str(image_path))
+        print("saved to {}".format(image_path))
 
 
 def visualize_image_reconstruction(

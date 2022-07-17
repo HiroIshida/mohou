@@ -170,7 +170,7 @@ class TrainCache(Generic[ModelT]):
     def load_all(
         cls,
         project_name: str,
-        model_type: Type[ModelT],
+        model_type: Optional[Type[ModelT]] = None,
         model_config: Optional[ModelConfigBase] = None,
     ) -> "List[TrainCache[ModelT]]":
 
