@@ -8,6 +8,7 @@ import pathlib
 import pickle
 import random
 import re
+import shutil
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
@@ -908,8 +909,31 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         return spec
 
     @classmethod
+    def _load(cls, bundle_dir_path: pathlib.Path, postfix: Optional[str]) -> "EpisodeBundle":
+        def load_episodes(str_startswitdth: str):
+            episode_names: List[str] = natsort.natsorted(
+                [p.name for p in bundle_dir_path.iterdir() if p.name.startswith(str_startswitdth)],
+            )  # type: ignore
+            episode_list = []
+            for episode_name in episode_names:
+                episode_dir_path = bundle_dir_path / episode_name
+                episode_list.append(EpisodeData.load(episode_dir_path))
+            return episode_list
+
+        episode_list = load_episodes("episode")
+        untouch_episode_list = load_episodes("untouch_episode")
+
+        metadata_file_path = bundle_dir_path / "metadata.yaml"
+        with metadata_file_path.open(mode="r") as f:
+            metadata = yaml.safe_load(f)
+        bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
+
+    @classmethod
     def load(
-        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
+        cls,
+        project_name: Optional[str] = None,
+        postfix: Optional[str] = None,
+        load_tar: bool = True,
     ) -> "EpisodeBundle":
 
         if project_name is None:
@@ -917,46 +941,39 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         assert isinstance(project_name, str)  # for mypy check
 
         if (project_name, postfix) not in _bundle_cache:
-            bundle_file_without_ext = "EpisodeBundle" + (
-                "" if postfix is None else "-{}".format(postfix)
-            )
-            bundle_tar = bundle_file_without_ext + ".tar"
-            bundle_tar_path = get_project_path(project_name) / bundle_tar
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_dir_path = pathlib.Path(tmp_dir)
-                subprocess.run(
-                    "cd {} && tar -xf {}".format(tmp_dir_path, bundle_tar_path), shell=True
-                )
-                bundle_dir_path = tmp_dir_path / bundle_file_without_ext
+            bundle_file_without_ext = "EpisodeBundle"
+            if postfix is None:
+                bundle_file_without_ext += "-{}".format(postfix)
 
-                def load_episodes(str_startswitdth: str):
-                    episode_names: List[str] = natsort.natsorted(
-                        [
-                            p.name
-                            for p in bundle_dir_path.iterdir()
-                            if p.name.startswith(str_startswitdth)
-                        ],
-                    )  # type: ignore
-                    episode_list = []
-                    for episode_name in episode_names:
-                        episode_dir_path = bundle_dir_path / episode_name
-                        episode_list.append(EpisodeData.load(episode_dir_path))
-                    return episode_list
+            if load_tar:
+                bundle_tar = bundle_file_without_ext + ".tar"
+                bundle_tar_path = get_project_path(project_name) / bundle_tar
 
-                episode_list = load_episodes("episode")
-                untouch_episode_list = load_episodes("untouch_episode")
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_dir_path = pathlib.Path(tmp_dir)
+                    # TODO: use python's tarfile library
+                    subprocess.run(
+                        "cd {} && tar -xf {}".format(tmp_dir_path, bundle_tar_path), shell=True
+                    )
+                    bundle_dir_path = tmp_dir_path / bundle_file_without_ext
+                    bundle = cls._load(bundle_dir_path, postfix)
 
-                metadata_file_path = bundle_dir_path / "metadata.yaml"
-                with metadata_file_path.open(mode="r") as f:
-                    metadata = yaml.safe_load(f)
-                bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
-                _bundle_cache[(project_name, postfix)] = bundle
+            else:
+                bundle_dir_path = get_project_path() / bundle_file_without_ext
+                bundle = cls._load(bundle_dir_path, postfix)
+
+            _bundle_cache[(project_name, postfix)] = bundle
 
         bundle = _bundle_cache[(project_name, postfix)]
         return bundle
 
-    def dump(self, project_name: Optional[str] = None, postfix: Optional[str] = None) -> None:
+    def dump(
+        self,
+        project_name: Optional[str] = None,
+        postfix: Optional[str] = None,
+        dump_tar: bool = True,
+    ) -> None:
         """dump the bundle as a tar file with 0 compression
         tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
@@ -988,14 +1005,17 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             with metadata_file_path.open(mode="w") as f:
                 yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
 
-            tarfile = bundle_file_without_ext + ".tar"
-            tarfile_full = get_project_path(project_name) / tarfile
-            if tarfile_full.exists():
-                os.remove(tarfile_full)
+            if dump_tar:
+                tarfile = bundle_file_without_ext + ".tar"
+                tarfile_full = get_project_path(project_name) / tarfile
+                if tarfile_full.exists():
+                    os.remove(tarfile_full)
 
-            # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
-            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
-            subprocess.run(cmd, shell=True)
+                # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
+                cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
+                subprocess.run(cmd, shell=True)
+            else:  # just move things to project directory
+                shutil.move(bundle_dir_path, get_project_path(project_name))
 
         # extra dump just for debugging (the following info is not requried to load bundle)
         spec_file_path = self.spec_file_path(project_name, postfix)
