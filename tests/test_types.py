@@ -345,7 +345,8 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     bundle.dump(tmp_project_name)
     assert tmp_project_name not in _bundle_cache
     loaded = bundle.load(tmp_project_name)
-    assert pickle.dumps(bundle) == pickle.dumps(loaded)
+    assert len(bundle) == len(loaded)
+    assert bundle == loaded
     assert (tmp_project_name, None) in _bundle_cache
 
     bundle_spec_loaded = EpisodeBundle.load_spec(tmp_project_name)

@@ -27,6 +27,7 @@ from typing import (
 
 import cv2
 import matplotlib.pyplot as plt
+import natsort
 import numpy as np
 import PIL.Image
 import torch
@@ -526,7 +527,7 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
             result = re.match(r"sequence-(\w+).npy", p.name)
             if result is not None:
                 elem_type = get_element_type(result.group(1))
-                d[elem_type] = cls.load(episode_dir_path, elem_type)
+                d[elem_type] = cls.load(episode_dir_path, elem_type)  # type: ignore
         return d
 
 
@@ -917,23 +918,22 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 "EpisodeBundle" + ("" if postfix is None else "-{}".format(postfix))
             )
 
-            # load episode
-            episode_names = sorted(
-                [p for p in bundle_dir_path.iterdir() if p.name.startswith("episode")]
-            )
-            episode_list = []
-            for episode_name in episode_names:
-                episode_dir_path = bundle_dir_path / episode_name
-                episode_list.append(EpisodeData.load(episode_dir_path))
+            def load_episodes(str_startswitdth: str):
+                episode_names: List[str] = natsort.natsorted(
+                    [
+                        p.name
+                        for p in bundle_dir_path.iterdir()
+                        if p.name.startswith(str_startswitdth)
+                    ],
+                )  # type: ignore
+                episode_list = []
+                for episode_name in episode_names:
+                    episode_dir_path = bundle_dir_path / episode_name
+                    episode_list.append(EpisodeData.load(episode_dir_path))
+                return episode_list
 
-            # load untouch episode
-            episode_names = sorted(
-                [p for p in bundle_dir_path.iterdir() if p.name.startswith("untouch_episode")]
-            )
-            untouch_episode_list = []
-            for episode_name in episode_names:
-                episode_dir_path = bundle_dir_path / episode_name
-                untouch_episode_list.append(EpisodeData.load(episode_dir_path))
+            episode_list = load_episodes("episode")
+            untouch_episode_list = load_episodes("untouch_episode")
 
             metadata_file_path = bundle_dir_path / "metadata.yaml"
             with metadata_file_path.open(mode="r") as f:
