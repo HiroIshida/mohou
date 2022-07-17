@@ -56,7 +56,7 @@ class TrainCache(Generic[ModelT]):
         self.train_loss_dict_seq.append(train_loss_dict)
         self.validate_loss_dict_seq.append(validate_loss_dict)
 
-    def save_if_model_is_good(self, model: ModelT, project_name: str):
+    def update_best_model(self, model: ModelT, project_name: str):
         model = copy.deepcopy(model)
         model = model.to(torch.device("cpu"))
 
@@ -201,4 +201,4 @@ def train(
         logger.info("train loss => {}".format(train_ld_mean))
         logger.info("validate loss => {}".format(validate_ld_mean))
         tcache.update_loss(train_ld_mean, validate_ld_mean)
-        tcache.save_if_model_is_good(model, project_name)
+        tcache.update_best_model(model, project_name)

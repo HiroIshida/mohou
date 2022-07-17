@@ -10,10 +10,10 @@ from mohou.trainer import TrainCache
 
 def dump_train_cache(conf, loss_value, project_name):
     model = LSTM(conf)
-    tcache = TrainCache(project_name)
+    tcache = TrainCache()
     tcache.validate_loss_dict_seq = [FloatLossDict({"loss": loss_value})]  # dummy
     tcache.best_model = model
-    tcache.dump()
+    tcache.update_best_model(model, project_name)
 
 
 def test_traincache_load_all(tmp_project_name):  # noqa
