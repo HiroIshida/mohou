@@ -124,9 +124,20 @@ class TrainCache(Generic[ModelT]):
             valid_loss_path = base_path / "validation_loss.npz"
             train_loss_path = base_path / "train_loss.npz"
 
-            torch.save(self.best_model, model_path)
-            np.savez(train_loss_path, **self.dump_flds_as_npz_dict(self.train_loss_dict_seq))
-            np.savez(valid_loss_path, **self.dump_flds_as_npz_dict(self.validate_loss_dict_seq))
+            def save():
+                torch.save(self.best_model, model_path)
+                np.savez(train_loss_path, **self.dump_flds_as_npz_dict(self.train_loss_dict_seq))
+                np.savez(valid_loss_path, **self.dump_flds_as_npz_dict(self.validate_loss_dict_seq))
+
+            # error handling for keyboard interrupt
+            try:
+                save()
+            except KeyboardInterrupt:
+                logger.info("got keyboard interuppt. but let me dump the object...")
+                save()
+            except Exception as e:
+                logger.info("cannot saved model and losses correctly")
+                raise e
             logger.info("model is updated and saved")
 
     @classmethod
