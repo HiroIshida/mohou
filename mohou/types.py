@@ -14,7 +14,6 @@ import subprocess
 import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import (
     ClassVar,
     Dict,
@@ -890,27 +889,6 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
         return cls(data_list, untouch_episode_list, meta_data)
 
-    @staticmethod
-    def spec_file_path(project_name: Optional[str] = None, postfix: Optional[str] = None) -> Path:
-
-        project_path = get_project_path(project_name)
-        if postfix is None:
-            yaml_file_path = project_path / "bundle_spec.yaml"
-        else:
-            yaml_file_path = project_path / "bundle_spec-{}.yaml".format(postfix)
-        return yaml_file_path
-
-    @classmethod
-    def load_spec(
-        cls, project_name: Optional[str] = None, postfix: Optional[str] = None
-    ) -> BundleSpec:
-
-        yaml_file_path = cls.spec_file_path(project_name, postfix)
-        with yaml_file_path.open(mode="r") as f:
-            d = yaml.safe_load(f)
-            spec = BundleSpec.from_dict(d)
-        return spec
-
     @classmethod
     def _load(cls, bundle_dir_path: pathlib.Path, postfix: Optional[str]) -> "EpisodeBundle":
         def load_episodes(str_startswitdth: str):
@@ -926,9 +904,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         episode_list = load_episodes("episode")
         untouch_episode_list = load_episodes("untouch_episode")
 
-        metadata_file_path = bundle_dir_path / "metadata.yaml"
+        metadata_file_path = bundle_dir_path / "metadata.json"
         with metadata_file_path.open(mode="r") as f:
-            metadata = yaml.safe_load(f)
+            metadata = json.load(f)
         bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
         return bundle
 
@@ -996,6 +974,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             "" if postfix is None else "-{}".format(postfix)
         )
 
+        project_path = get_project_path(project_name)
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = pathlib.Path(tmp_dir)
 
@@ -1010,13 +990,13 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
                 episode.dump(episode_dir_path)
 
-            metadata_file_path = bundle_dir_path / "metadata.yaml"
+            metadata_file_path = bundle_dir_path / "metadata.json"
             with metadata_file_path.open(mode="w") as f:
-                yaml.dump(self._metadata, f, default_flow_style=False, sort_keys=False)
+                json.dump(self._metadata, f)
 
             if use_tar:
                 tarfile = bundle_file_without_ext + ".tar"
-                tarfile_full = get_project_path(project_name) / tarfile
+                tarfile_full = project_path / tarfile
                 if tarfile_full.exists():
                     os.remove(tarfile_full)
 
@@ -1024,7 +1004,6 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
                 subprocess.run(cmd, shell=True)
             else:  # just move things to project directory
-                project_path = get_project_path(project_name)
                 destination_path = project_path / bundle_file_without_ext
                 if destination_path.exists():
                     shutil.rmtree(destination_path)
@@ -1032,7 +1011,10 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 shutil.move(str(bundle_dir_path), str(destination_path))
 
         # extra dump just for debugging (the following info is not requried to load bundle)
-        spec_file_path = self.spec_file_path(project_name, postfix)
+        if postfix is None:
+            spec_file_path = project_path / "bundle_spec.yaml"
+        else:
+            spec_file_path = project_path / "bundle_spec-{}.yaml".format(postfix)
         with spec_file_path.open(mode="w") as f:
             yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
 
