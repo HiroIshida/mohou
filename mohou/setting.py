@@ -1,56 +1,48 @@
-from dataclasses import MISSING, dataclass
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 
 
-@dataclass(frozen=True)
+@dataclass
 class Setting:
-    root_path: Path = Path("~/.mohou")
-    primary_project_name: Optional[str] = None
-    n_untouch_episode: int = 5
+    project_dir_path_list: List[Path]
+    primary_project_name: Optional[str]
+    n_untouch_episode: int
 
     @classmethod
     def construct(cls) -> "Setting":
 
-        default_attributes = {}
-        for key, val in cls.__dataclass_fields__.items():  # type: ignore # mypy's bug
-            assert val.default != MISSING
-            default_attributes[key] = val.default
+        # define default settings
+        default_setting: Dict[str, Any] = {
+            "project_dir_path_list": [Path("~/.mohou")],
+            "primary_project_name": None,
+            "n_untouch_episode": 5,
+        }
 
-        setting = None
+        # overwrite default setting by loading yaml
         setting_path = Path("~/.mohou").expanduser() / "setting.yaml"
-        if setting_path.exists():
-            with setting_path.open(mode="r") as f:
-                setting = yaml.safe_load(f)
+        if not setting_path.exists():
+            return cls(**default_setting)  # type: ignore
 
-        if setting is None:
-            return cls()  # use default
+        with setting_path.open(mode="r") as f:
+            setting_load = yaml.safe_load(f)
 
-        invalid_keys = set(setting.keys()).difference(set(default_attributes.keys()))
+        invalid_keys = set(setting_load.keys()).difference(default_setting.keys())
         message = "invalid keys {} in setting.yaml".format(invalid_keys)
         assert len(invalid_keys) == 0, message
 
-        for key in default_attributes.keys():
-            if key in setting:
-                # overwrite
-                raw_type = cls.__dataclass_fields__[key].type  # type: ignore # mypy's bug
-                if isinstance(raw_type, type):
-                    expect_type = raw_type
-                else:
-                    is_union_t = len(raw_type.__args__) == 2
-                    is_optional_t = is_union_t and issubclass(raw_type.__args__[1], type(None))
-                    assert is_optional_t
-                    expect_type = raw_type.__args__[0]  # the one that is not NoneType
-                default_attributes[key] = expect_type(setting[key])  # cast
-
-        return cls(**default_attributes)  # type: ignore
-
-    def __post_init__(self):
-        for key, val in self.__dict__.items():
-            if isinstance(val, Path):
-                self.__dict__[key] = val.expanduser()
+        if "project_dir_path_list" in setting_load:
+            default_setting["project_dir_path_list"] = [
+                Path(v).expanduser() for v in setting_load["project_dir_path_list"]
+            ]
+        if "primary_project_name" in setting_load:
+            default_setting["primary_project_name"] = str(setting_load["primary_project_name"])
+        if "n_untouch_episode" in setting_load:
+            default_setting["n_untouch_episode"] = int(setting_load["n_untouch_episode"])
+        print(default_setting)
+        return cls(**default_setting)  # type: ignore
 
 
 setting = Setting.construct()

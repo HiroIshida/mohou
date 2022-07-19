@@ -12,20 +12,25 @@ from mohou.setting import setting
 logger = logging.getLogger(__name__)
 
 
-def get_root_path() -> Path:
-    path = setting.root_path
-    path.mkdir(exist_ok=True)
-    return path
+def create_project_dir(project_name: str):
+    assert len(setting.project_dir_path_list) == 1, "cannot determine the directory"
+    path = setting.project_dir_path_list[0] / project_name
+    path.mkdir(exist_ok=True, parents=True)
 
 
 def get_project_path(project_name: Optional[str] = None) -> Path:
-    root_path = get_root_path()
     if project_name is None:
         assert setting.primary_project_name is not None
         project_name = setting.primary_project_name
-    project_dir_path = root_path / project_name
-    project_dir_path.mkdir(exist_ok=True)
-    return project_dir_path
+
+    create_project_dir(project_name)
+
+    for project_dir_path in setting.project_dir_path_list:
+        for project_path in project_dir_path.iterdir():
+            if project_path.name == project_name:
+                return project_path
+
+    raise FileNotFoundError
 
 
 def get_subproject_path(project_name: Optional[str], subpath: Union[str, Path]) -> Path:
