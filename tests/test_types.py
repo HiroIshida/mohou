@@ -262,6 +262,28 @@ def test_episode_data():
         assert episode == episode_again
 
 
+def test_episode_data_set_sequence():
+    av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
+    episode = EpisodeData.from_seq_list([av_seq])
+
+    im_seq = ElementSequence([RGBImage.dummy_from_shape((10, 10)) for _ in range(10)])
+    episode.set_sequence(RGBImage, im_seq)  # ok
+
+    # check inconsistent type
+    with pytest.raises(AssertionError):
+        episode.set_sequence(RGBImage, av_seq)  # NG
+
+    # check inconsistent length
+    with pytest.raises(AssertionError):
+        av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(11)])
+        episode.set_sequence(AngleVector, av_seq)  # NG
+
+    # check non-primitive elem
+    with pytest.raises(AssertionError):
+        rgbd_seq = ElementSequence([RGBDImage.dummy_from_shape((10, 10)) for _ in range(10)])
+        episode.set_sequence(RGBDImage, rgbd_seq)  # NG
+
+
 def test_episode_data_assertion_different_size():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(3)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])

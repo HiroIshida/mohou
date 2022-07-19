@@ -600,12 +600,34 @@ class EpisodeData(TypeShapeTableMixin):
     metadata: Optional[MetaData] = None
 
     def __post_init__(self):
-        ef_seq = self.get_sequence_by_type(TerminateFlag)
-        self.check_terminate_seq(ef_seq)
+        self._validate_data()
 
-    def __len__(self) -> int:
+    def _validate_data(self) -> None:
+        # call this after update
+        lengths = [len(seq) for seq in self.sequence_dict.values()]
+        all_same_length = len(set(lengths)) == 1
+        assert all_same_length
+
         # assume at least TerminateFlag is included
         assert TerminateFlag in self.sequence_dict
+        flag_seq = self.get_sequence_by_type(TerminateFlag)
+        self.check_terminate_seq(flag_seq)
+
+    @staticmethod
+    def check_terminate_seq(ef_seq: ElementSequence[TerminateFlag]):
+        # first index must be CONTINUE
+        assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
+        # last index must be END
+        assert ef_seq[-1].numpy().item() == TERMINATE_FLAG_VALUE
+
+        # sequence must be like ffffffftttttt not ffffttffftttt
+        change_count = 0
+        for i in range(len(ef_seq) - 1):
+            if ef_seq[i + 1].numpy().item() != ef_seq[i].numpy().item():
+                change_count += 1
+        assert change_count == 1
+
+    def __len__(self) -> int:
         return len(self.sequence_dict[TerminateFlag])
 
     @property
@@ -622,20 +644,6 @@ class EpisodeData(TypeShapeTableMixin):
         elem_seq = ElementSequence(flag_lst)
         return elem_seq
 
-    @staticmethod
-    def check_terminate_seq(ef_seq: ElementSequence[TerminateFlag]):
-        # first index must be CONTINUE
-        assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
-        # last index must be END
-        assert ef_seq[-1].numpy().item() == TERMINATE_FLAG_VALUE
-
-        # sequence must be like ffffffftttttt not ffffttffftttt
-        change_count = 0
-        for i in range(len(ef_seq) - 1):
-            if ef_seq[i + 1].numpy().item() != ef_seq[i].numpy().item():
-                change_count += 1
-        assert change_count == 1
-
     @classmethod
     def from_seq_list(
         cls,
@@ -647,8 +655,6 @@ class EpisodeData(TypeShapeTableMixin):
         for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
 
-        all_same_length = len(set(map(len, sequence_list))) == 1
-        assert all_same_length
         if timestamp_seq is not None:
             assert len(sequence_list[0]) == len(timestamp_seq)
 
@@ -675,6 +681,14 @@ class EpisodeData(TypeShapeTableMixin):
             return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False, "element with type {} not found".format(elem_type)
+
+    def set_sequence(
+        self, elem_type: Type[PrimitiveElementT], seq: ElementSequence[PrimitiveElementT]
+    ) -> None:
+        assert issubclass(elem_type, PrimitiveElementBase)
+        assert seq.elem_type == elem_type
+        self.sequence_dict[elem_type] = seq  # type: ignore
+        self._validate_data()
 
     @overload
     def __getitem__(self, index: int) -> ElementDict:
