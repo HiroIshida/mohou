@@ -596,8 +596,8 @@ class TimeStampSequence(HasAList[float]):
 @dataclass
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
+    metadata: MetaData
     time_stamp_seq: Optional[TimeStampSequence] = None
-    metadata: Optional[MetaData] = None
 
     def __post_init__(self):
         self._validate_data()
@@ -655,6 +655,8 @@ class EpisodeData(TypeShapeTableMixin):
         timestamp_seq: Optional[TimeStampSequence] = None,
         metadata: Optional[MetaData] = None,
     ):
+        if metadata is None:
+            metadata = MetaData({})
 
         for sequence in sequence_list:
             assert isinstance(sequence, ElementSequence)
@@ -674,7 +676,7 @@ class EpisodeData(TypeShapeTableMixin):
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
-        return cls(sequence_dict, timestamp_seq, metadata)  # type: ignore
+        return cls(sequence_dict, metadata, timestamp_seq)  # type: ignore
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -797,9 +799,8 @@ class EpisodeData(TypeShapeTableMixin):
         if self.time_stamp_seq is not None:
             self.time_stamp_seq.dump(episode_dir_path)
 
-        if self.metadata is not None:
-            with open(episode_dir_path / "metadata.json", mode="w") as f:
-                json.dump(self.metadata, f)
+        with open(episode_dir_path / "metadata.json", mode="w") as f:
+            json.dump(self.metadata, f)
 
     @classmethod
     def load(cls, episode_dir_path: pathlib.Path) -> "EpisodeData":
@@ -807,12 +808,10 @@ class EpisodeData(TypeShapeTableMixin):
         type_seq_table = ElementSequence.load_all(episode_dir_path)
         time_stamp_seq = TimeStampSequence.load(episode_dir_path)
 
-        metadata_path = episode_dir_path / "metadata.json"
-        metadata = None
-        if metadata_path.exists():
-            with open(episode_dir_path / "metadata.json", mode="r") as f:
-                metadata = json.load(f)
-        return cls(type_seq_table, time_stamp_seq, metadata)
+        episode_dir_path / "metadata.json"
+        with open(episode_dir_path / "metadata.json", mode="r") as f:
+            metadata = MetaData(json.load(f))
+        return cls(type_seq_table, metadata, time_stamp_seq)
 
 
 @dataclass(frozen=True)
@@ -848,7 +847,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     _episode_list: List[EpisodeData]
     _untouch_episode_list: List[EpisodeData]
-    metadata: Optional[MetaData] = None
+    metadata: Optional[MetaData]
     postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
@@ -878,6 +877,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         shuffle: bool = True,
         leave_untouch_episode: bool = True,
     ) -> "EpisodeBundle":
+
+        if meta_data is None:
+            meta_data = MetaData({})
 
         set_types = set(functools.reduce(operator.add, [list(data.types()) for data in data_list]))
 
@@ -924,7 +926,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
         metadata_file_path = bundle_dir_path / "metadata.json"
         with metadata_file_path.open(mode="r") as f:
-            metadata = json.load(f)
+            metadata = MetaData(json.load(f))
         bundle = EpisodeBundle(episode_list, untouch_episode_list, metadata, postfix)
         return bundle
 
