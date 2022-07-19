@@ -593,7 +593,7 @@ class TimeStampSequence(HasAList[float]):
             return None
 
 
-@dataclass(frozen=True)
+@dataclass
 class EpisodeData(TypeShapeTableMixin):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     time_stamp_seq: Optional[TimeStampSequence] = None
