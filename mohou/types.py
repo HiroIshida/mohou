@@ -608,6 +608,10 @@ class EpisodeData(TypeShapeTableMixin):
         all_same_length = len(set(lengths)) == 1
         assert all_same_length
 
+        # check is sequence
+        is_sequence = lengths[0] > 1
+        assert is_sequence
+
         # assume at least TerminateFlag is included
         assert TerminateFlag in self.sequence_dict
         flag_seq = self.get_sequence_by_type(TerminateFlag)
@@ -844,8 +848,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     _episode_list: List[EpisodeData]
     _untouch_episode_list: List[EpisodeData]
-    _metadata: Optional[MetaData] = None
-    _postfix: Optional[str] = None
+    metadata: Optional[MetaData] = None
+    postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
         return self._episode_list
@@ -862,7 +866,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
             setting.n_untouch_episode,
             n_average,
             self.type_shape_table,
-            self._metadata,
+            self.metadata,
         )
         return spec
 
@@ -983,7 +987,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         Please send me a PR. Currently, no compreesion is applied.
         """
 
-        self._postfix = postfix
+        self.postfix = postfix
         bundle_file_without_ext = "EpisodeBundle" + (
             "" if postfix is None else "-{}".format(postfix)
         )
@@ -1006,7 +1010,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
             metadata_file_path = bundle_dir_path / "metadata.json"
             with metadata_file_path.open(mode="w") as f:
-                json.dump(self._metadata, f)
+                json.dump(self.metadata, f)
 
             if use_tar:
                 tarfile = bundle_file_without_ext + ".tar"
@@ -1034,11 +1038,11 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     def get_untouch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
-        return EpisodeBundle(self._untouch_episode_list, [], self._metadata, self._postfix)
+        return EpisodeBundle(self._untouch_episode_list, [], self.metadata, self.postfix)
 
     def get_touch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is used for training"""
-        return EpisodeBundle(self._episode_list, [], self._metadata, self._postfix)
+        return EpisodeBundle(self._episode_list, [], self.metadata, self.postfix)
 
     def plot_vector_histories(
         self,
