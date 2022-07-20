@@ -20,15 +20,16 @@ if __name__ == "__main__":
     project_name: str = args.pn
     n_vis = args.n
 
-    bundle = EpisodeBundle.load(get_project_path(project_name))
+    project_path = get_project_path(project_name)
+    bundle = EpisodeBundle.load(project_path)
 
     if args.chimera:
-        chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model
+        chimera = TrainCache.load(project_path, Chimera).best_model
         assert chimera is not None
         visualize_image_reconstruction(project_name, bundle, chimera.ae, n_vis, prefix="chimera")
     else:
-        ae_type = auto_detect_autoencoder_type(project_name)
-        model = TrainCache.load(get_project_path(project_name), ae_type).best_model
+        ae_type = auto_detect_autoencoder_type(project_path)
+        model = TrainCache.load(project_path, ae_type).best_model
         assert model is not None
         visualize_image_reconstruction(project_name, bundle, model, n_vis)
 

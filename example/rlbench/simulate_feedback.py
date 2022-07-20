@@ -84,7 +84,7 @@ if __name__ == "__main__":
     for i in range(n_sim):
         task.reset()
 
-        prop = create_default_propagator(project_name)
+        prop = create_default_propagator(project_path)
 
         rgb_seq_gif = []
 

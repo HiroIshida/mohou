@@ -1,13 +1,12 @@
+from pathlib import Path
 from typing import List, Optional, Type
 
 import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
-from mohou.file import get_project_path
 from mohou.model import LSTM, AutoEncoderBase, Chimera
 from mohou.propagator import Propagator
-from mohou.setting import setting
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -23,11 +22,7 @@ class DefaultNotFoundError(Exception):
     pass
 
 
-def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[AutoEncoderBase]:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
-
+def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     # TODO(HiroIshida) dirty...
     t: Optional[Type[AutoEncoderBase]] = None
 
@@ -36,7 +31,7 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     detect_count = 0
     for t_cand in t_cand_list:
         try:
-            TrainCache.load(get_project_path(project_name), t_cand)
+            TrainCache.load(project_path, t_cand)
             t = t_cand
             detect_count += 1
         except Exception:
@@ -51,14 +46,10 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     return t
 
 
-def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncoder:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
-
-    ae_type = auto_detect_autoencoder_type(project_name)
+def load_default_image_encoder(project_path: Path) -> ImageEncoder:
+    ae_type = auto_detect_autoencoder_type(project_path)
     try:
-        tcache_autoencoder = TrainCache.load(get_project_path(project_name), ae_type)
+        tcache_autoencoder = TrainCache.load(project_path, ae_type)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for autoencoder is found ")
 
@@ -67,15 +58,11 @@ def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncod
     return tcache_autoencoder.best_model.get_encoder()
 
 
-def create_default_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
-
-    bundle = EpisodeBundle.load(get_project_path(project_name))
+def create_default_encoding_rule(project_path: Path) -> EncodingRule:
+    bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
     av_dim = bundle_spec.type_shape_table[AngleVector][0]
-    image_encoder = load_default_image_encoder(project_name)
+    image_encoder = load_default_image_encoder(project_path)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
 
     encoders = [image_encoder, av_idendical_encoder]
@@ -93,15 +80,11 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
     return encoding_rule
 
 
-def create_chimera_encoding_rule(project_name: Optional[str] = None) -> EncodingRule:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
-
+def create_chimera_encoding_rule(project_path: Path) -> EncodingRule:
     # experimental
-    encoding_rule = create_default_encoding_rule(project_name)
+    encoding_rule = create_default_encoding_rule(project_path)
     image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
-    chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model
+    chimera = TrainCache.load(project_path, Chimera).best_model
     assert chimera is not None
     image_encoder_new = chimera.get_encoder()
     assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
@@ -114,30 +97,23 @@ def create_chimera_encoding_rule(project_name: Optional[str] = None) -> Encoding
     return encoding_rule
 
 
-def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
+def create_default_propagator(project_path: Path) -> Propagator:
 
     try:
-        tcach_lstm = TrainCache.load(get_project_path(project_name), LSTM)
+        tcach_lstm = TrainCache.load(project_path, LSTM)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
-    encoding_rule = create_default_encoding_rule(project_name)
+    encoding_rule = create_default_encoding_rule(project_path)
     assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, encoding_rule)
     return propagator
 
 
-def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
+def create_chimera_propagator(project_path: Path) -> Propagator:
+    encoding_rule = create_chimera_encoding_rule(project_path)
 
-    encoding_rule = create_chimera_encoding_rule(project_name)
-
-    chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model
+    chimera = TrainCache.load(project_path, Chimera).best_model
     assert chimera is not None
 
     propagator = Propagator(chimera.lstm, encoding_rule)
@@ -145,11 +121,11 @@ def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
 
 
 def create_default_image_context_list(
-    project_name: Optional[str] = None, bundle: Optional[EpisodeBundle] = None
+    project_path: Path, bundle: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
     if bundle is None:
-        bundle = EpisodeBundle.load(get_project_path(project_name))
-    image_encoder = load_default_image_encoder(project_name)
+        bundle = EpisodeBundle.load(project_path)
+    image_encoder = load_default_image_encoder(project_path)
 
     context_list = []
     for episode in bundle:
