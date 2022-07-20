@@ -4,7 +4,8 @@ import os
 import pickle
 import tempfile
 import uuid
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
 import numpy as np
 import psutil
@@ -192,6 +193,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
     parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
+    parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=100, help="epoch num")
     parser.add_argument("-m", type=int, default=112, help="pixel num")
     parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
@@ -203,9 +205,15 @@ if __name__ == "__main__":
     project_name: str = args.pn
     n_untouch: int = args.untouch
     seed: int = args.seed
+    project_path_str: Optional[str] = args.pp
 
-    create_project_dir(project_name)
-    project_path = get_project_path(project_name)
+    if project_path_str is None:
+        assert project_name is not None
+        create_project_dir(project_name)
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(project_path_str)
+        project_path.mkdir(exist_ok=True)
 
     np.random.seed(seed)
 

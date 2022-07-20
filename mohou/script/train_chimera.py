@@ -19,8 +19,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    args = parser.parse_args()
-
     project_name: str = args.pn
     n_epoch: int = args.n
     n_aug: int = args.aug
