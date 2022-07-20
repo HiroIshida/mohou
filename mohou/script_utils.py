@@ -154,6 +154,7 @@ def train_chimera(
 
 def visualize_train_histories(project_path: Path):
     plot_dir_path = project_path / "train_history"
+    plot_dir_path.mkdir(exist_ok=True)
 
     all_result_paths = TrainCache.filter_result_paths(project_path, None, None)
     for result_path in all_result_paths:
@@ -172,6 +173,8 @@ def visualize_image_reconstruction(
     n_vis: int = 5,
     prefix: Optional[str] = None,
 ):
+    save_dir_path = project_path / "autoencoder_result"
+    save_dir_path.mkdir(exist_ok=True)
 
     bundle_untouch = bundle.get_untouch_bundle()
     bundle_touch = bundle.get_touch_bundle()
@@ -200,7 +203,6 @@ def visualize_image_reconstruction(
             fig.suptitle("left: original, right: reconstructed")
             ax1.imshow(img.to_rgb()._data)
             ax2.imshow(img_reconstructed.to_rgb()._data)
-            save_dir_path = project_path / "autoencoder_result"
             filename = "result-{}-{}.png".format(postfix, i)
             if prefix is not None:
                 filename = prefix + "-" + str(filename)
@@ -215,6 +217,7 @@ def visualize_variational_autoencoder(project_path: Path):
     assert vae is not None
 
     save_dir_path = project_path / "autoencoder_result"
+    save_dir_path.mkdir(exist_ok=True)
 
     for axis in range(vae.config.n_bottleneck):
         images = vae.get_latent_axis_images(axis)
@@ -239,6 +242,8 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_prop: int):
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     save_dir_path = project_path / "lstm_result"
+    save_dir_path.mkdir(exist_ok=True)
+
     image_encoder = load_default_image_encoder(project_path)
 
     for idx, edata in enumerate(bundle):
