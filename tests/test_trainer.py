@@ -11,8 +11,7 @@ from mohou.trainer import TrainCache
 def test_fld_npz_dict_conversion():
     flds = []
     for _ in range(10):
-        flds.append({"loss": abs(np.random.randn())})
-        print(flds[-1])
+        flds.append(FloatLossDict({"loss": abs(np.random.randn())}))
     npz_dict = TrainCache.dump_flds_as_npz_dict(flds)
     flds_again = TrainCache.load_flds_from_npz_dict(npz_dict)
     assert flds == flds_again

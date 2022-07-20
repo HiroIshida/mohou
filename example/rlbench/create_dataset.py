@@ -3,6 +3,7 @@ import os
 import shutil
 import uuid
 from multiprocessing import Pool
+from pathlib import Path
 from typing import List, Type
 
 import numpy as np
@@ -99,10 +100,10 @@ if __name__ == "__main__":
 
         for i in tqdm.tqdm(range(n_episode)):
             demo = task.get_demos(amount=1, live_demos=True)[0]
-            dump_object(demo, project_name, str(uuid.uuid4()), subpath="temp")
+            dump_object(demo, project_name, str(uuid.uuid4()), subpath=Path("temp"))
 
     # delete temp files
-    temp_path = get_subproject_path(project_name, subpath="temp")
+    temp_path = get_subproject_path(project_name, subpath=Path("temp"))
     shutil.rmtree(str(temp_path))
 
     # First store demos in temp files
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     p.map(generate_demo, n_process_list_assign)
 
     # load demos in temporary files and create bundles
-    demos = load_objects(Demo, project_name, subpath="temp")
+    demos = load_objects(Demo, project_name, subpath=Path("temp"))
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
     bundle = EpisodeBundle.from_data_list(episodes)
     bundle.dump(project_name)

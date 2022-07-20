@@ -123,7 +123,7 @@ class ElementBase(ABC):
 
     @classmethod
     def is_concrete_type(cls):
-        return len(cls.__abstractmethods__) == 0 and len(cls.__subclasses__()) == 0
+        return len(cls.__abstractmethods__) == 0 and len(cls.__subclasses__()) == 0  # type: ignore [attr-defined]
 
     @property
     @abstractmethod

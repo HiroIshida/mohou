@@ -1,3 +1,5 @@
+from typing import List
+
 import pytest
 import torch
 from test_encoding_rule import create_encoding_rule
@@ -43,7 +45,7 @@ def test_chimera_model(image_av_bundle_uneven, chimera_dataset):  # noqa
     )
 
     # create model
-    models = []
+    models: List[Chimera] = []
 
     conf = ChimeraConfig(lstm_config, ae_config)
     models.append(Chimera(conf))  # from conf
