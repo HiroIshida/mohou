@@ -24,7 +24,7 @@ from mohou.dataset import (
 )
 from mohou.default import load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
-from mohou.file import get_project_path, get_subproject_path
+from mohou.file import get_subproject_path
 from mohou.model import (
     LSTM,
     AutoEncoder,
@@ -82,7 +82,7 @@ def train_autoencoder(
 ):
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(get_project_path(project_name))
 
     dataset = AutoEncoderDataset.from_bundle(bundle, image_type, dataset_config)
     if warm_start:
@@ -108,7 +108,7 @@ def train_lstm(
 ):
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(get_project_path(project_name))
 
     if context_list is None:
         assert model_config.n_static_context == 0
@@ -143,7 +143,7 @@ def train_chimera(
 ):  # TODO(HiroIshida): minimal args
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(get_project_path(project_name))
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
     ae = TrainCache.load(get_project_path(project_name), AutoEncoder).best_model
@@ -246,7 +246,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 
 def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
 
-    bundle = EpisodeBundle.load(project_name).get_untouch_bundle()
+    bundle = EpisodeBundle.load(get_project_path(project_name)).get_untouch_bundle()
     save_dir_path = get_subproject_path(project_name, "lstm_result")
     image_encoder = load_default_image_encoder(project_name)
 

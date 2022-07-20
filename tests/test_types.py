@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from test_file import tmp_project_name  # noqa
 
-from mohou.file import remove_project
+from mohou.file import get_project_path, remove_project
 from mohou.types import (
     AngleVector,
     BundleSpec,
@@ -363,22 +363,23 @@ def test_bundle_spec():
 def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
     bundle: EpisodeBundle = image_av_bundle
     assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
+    tmp_project_path = get_project_path(tmp_project_name)
 
-    bundle.dump(tmp_project_name)
-    assert tmp_project_name not in _bundle_cache
-    loaded = bundle.load(tmp_project_name)
+    bundle.dump(tmp_project_path)
+    assert (tmp_project_path, None) not in _bundle_cache
+    loaded = bundle.load(tmp_project_path)
     assert bundle == loaded
-    assert (tmp_project_name, None) in _bundle_cache
+    assert (tmp_project_path, None) in _bundle_cache
 
-    bundle.dump(tmp_project_name, postfix="without_tar", use_tar=False)
-    loaded2 = EpisodeBundle.load(tmp_project_name, postfix="without_tar", use_tar=False)
+    bundle.dump(tmp_project_path, postfix="without_tar", use_tar=False)
+    loaded2 = EpisodeBundle.load(tmp_project_path, postfix="without_tar", use_tar=False)
     assert bundle == loaded2
 
     # test having multiple bundle in one project
     postfix = "extra"
     extra_bundle: EpisodeBundle = image_bundle
-    extra_bundle.dump(tmp_project_name, postfix)
-    extra_bundle_loaded = EpisodeBundle.load(tmp_project_name, postfix)
+    extra_bundle.dump(tmp_project_path, postfix)
+    extra_bundle_loaded = EpisodeBundle.load(tmp_project_path, postfix)
     assert extra_bundle == extra_bundle_loaded
 
     remove_project(tmp_project_name)

@@ -71,7 +71,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action="store_true", help="train instead of using cache")
     args = parser.parse_args()
-    with_training = args.train
+    with_training: bool = args.train
 
     project_name = "spring_mass_dumper"
     create_default_logger(project_name, "LSTM")
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     if with_training:
         bundle = smd.create_bundle()
-        bundle.dump(project_name)
+        bundle.dump(get_project_path(project_name))
         dataset = AutoRegressiveDataset.from_bundle(bundle, rule)
 
         tconfig = TrainConfig(n_epoch=1000)

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     project_name: str = args.pn
     n_vis = args.n
 
-    bundle = EpisodeBundle.load(project_name)
+    bundle = EpisodeBundle.load(get_project_path(project_name))
 
     if args.chimera:
         chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model

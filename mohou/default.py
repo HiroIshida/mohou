@@ -72,7 +72,7 @@ def create_default_encoding_rule(project_name: Optional[str] = None) -> Encoding
         assert setting.primary_project_name is not None
         project_name = setting.primary_project_name
 
-    bundle = EpisodeBundle.load(project_name)
+    bundle = EpisodeBundle.load(get_project_path(project_name))
     bundle_spec = bundle.spec
     av_dim = bundle_spec.type_shape_table[AngleVector][0]
     image_encoder = load_default_image_encoder(project_name)
@@ -148,7 +148,7 @@ def create_default_image_context_list(
     project_name: Optional[str] = None, bundle: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(get_project_path(project_name))
     image_encoder = load_default_image_encoder(project_name)
 
     context_list = []
