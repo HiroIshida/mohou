@@ -25,13 +25,21 @@ def create_obs_rule(project_path: Path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
+    parser.add_argument(
+        "-full_path",
+        type=str,
+        help="project full path. If this arg is set, full path will be prefered over project name",
+    )
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
 
     args = parser.parse_args()
     project_name: str = args.pn
     n_epoch: int = args.n
-    assert project_name is not None
-    project_path = get_project_path(project_name)
+
+    if args.full_path is None:
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(args.full_path)
 
     logger = create_default_logger(project_path, "control_model")
 

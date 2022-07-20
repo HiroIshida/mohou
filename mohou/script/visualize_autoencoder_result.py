@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from mohou.default import auto_detect_autoencoder_type
 from mohou.file import get_project_path
@@ -14,13 +15,19 @@ from mohou.types import EpisodeBundle
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
+    parser.add_argument("-pp", type=str, help="project path. prefered over pn.")
     parser.add_argument("-n", type=int, default=5, help="number of visualization")
     parser.add_argument("--chimera", action="store_true", help="use chimera")
     args = parser.parse_args()
     project_name: str = args.pn
+    project_path_str: str = args.pp
     n_vis: int = args.n
 
-    project_path = get_project_path(project_name)
+    if project_path_str is None:
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(project_path_str)
+
     bundle = EpisodeBundle.load(project_path)
 
     if args.chimera:

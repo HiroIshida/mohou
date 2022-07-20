@@ -60,9 +60,21 @@ function test_batch {
     rm -rf ~/.mohou/$project_name
 }
 
+function test_with_fullpath {
+    project_path="/tmp/$(uuidgen)"
+    mkdir $project_path
+    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pp $project_path
+    python3 -m mohou.script.train_autoencoder -n 2 -pp $project_path -image RGBImage
+    python3 -m mohou.script.visualize_autoencoder_result -n 2 -pp $project_path
+    python3 -m mohou.script.train_lstm -valid-ratio 0.5 -n 2 -pp $project_path
+    python3 -m mohou.script.visualize_lstm_result -n 2 -pp $project_path
+    python3 $example_path/kuka_reaching.py -pp $project_path --feedback
+}
+
 test_batch RGB true true false # test warm train
 test_batch RGB false false true # test using context
 test_batch RGB false false false true # test chimera
 test_batch RGB false false false
 test_batch Depth false false false
 test_batch RGBD false false false
+test_with_fullpath

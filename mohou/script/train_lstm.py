@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+from typing import Optional
 
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.default import (
@@ -14,6 +16,11 @@ from mohou.trainer import TrainConfig
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
+    parser.add_argument(
+        "-pp",
+        type=str,
+        help="project full path. If this arg is set, full path will be prefered over project name",
+    )
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
@@ -30,6 +37,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     project_name: str = args.pn
+    project_path_str: Optional[str] = args.pp
     n_epoch: int = args.n
     n_aug: int = args.aug
     n_hidden: int = args.hidden
@@ -39,7 +47,10 @@ if __name__ == "__main__":
     warm_start: bool = args.warm
     use_image_context: bool = args.use_image_context
 
-    project_path = get_project_path(project_name)
+    if project_path_str is None:
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(project_path_str)
 
     logger = create_default_logger(project_path, "lstm")  # noqa
 

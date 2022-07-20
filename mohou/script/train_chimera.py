@@ -10,6 +10,11 @@ from mohou.trainer import TrainConfig
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
+    parser.add_argument(
+        "-full_path",
+        type=str,
+        help="project full path. If this arg is set, full path will be prefered over project name",
+    )
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
@@ -19,8 +24,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    args = parser.parse_args()
-
     project_name: str = args.pn
     n_epoch: int = args.n
     n_aug: int = args.aug
@@ -28,7 +31,10 @@ if __name__ == "__main__":
     n_layer: int = args.layer
     valid_ratio: float = args.valid_ratio
 
-    project_path = get_project_path(project_name)
+    if args.full_path is None:
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(args.full_path)
 
     logger = create_default_logger(project_path, "chimera")  # noqa
     encoding_rule = create_default_encoding_rule(project_path)
