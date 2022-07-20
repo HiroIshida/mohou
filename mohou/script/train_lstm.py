@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     project_path = get_project_path(project_name)
 
-    logger = create_default_logger(project_name, "lstm")  # noqa
+    logger = create_default_logger(project_path, "lstm")  # noqa
 
     encoding_rule = create_default_encoding_rule(project_path)
     model_config = LSTMConfig(
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         model_config.n_static_context = len(context_list[0])
 
     train_lstm(
-        project_name,
+        project_path,
         encoding_rule,
         model_config,
         dataset_config,

@@ -26,12 +26,12 @@ if __name__ == "__main__":
     if args.chimera:
         chimera = TrainCache.load(project_path, Chimera).best_model
         assert chimera is not None
-        visualize_image_reconstruction(project_name, bundle, chimera.ae, n_vis, prefix="chimera")
+        visualize_image_reconstruction(project_path, bundle, chimera.ae, n_vis, prefix="chimera")
     else:
         ae_type = auto_detect_autoencoder_type(project_path)
         model = TrainCache.load(project_path, ae_type).best_model
         assert model is not None
-        visualize_image_reconstruction(project_name, bundle, model, n_vis)
+        visualize_image_reconstruction(project_path, bundle, model, n_vis)
 
         if ae_type == VariationalAutoEncoder:  # TODO(HiroIshida): enable this also for chimera
-            visualize_variational_autoencoder(project_name)
+            visualize_variational_autoencoder(project_path)

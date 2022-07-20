@@ -22,4 +22,4 @@ if __name__ == "__main__":
     else:
         propagator = create_default_propagator(project_path)
 
-    visualize_lstm_propagation(project_name, propagator, n_prop)
+    visualize_lstm_propagation(project_path, propagator, n_prop)

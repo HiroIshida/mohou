@@ -34,11 +34,13 @@ if __name__ == "__main__":
     warm_start: bool = args.warm
     bundle_postfix: Optional[str] = args.bundle_postfix
 
-    logger = create_default_logger(project_name, "autoencoder")
+    project_path = get_project_path(project_name)
+
+    logger = create_default_logger(project_path, "autoencoder")
 
     if bundle_postfix == "":
         bundle_postfix = None
-    bundle = EpisodeBundle.load(get_project_path(project_name), bundle_postfix)
+    bundle = EpisodeBundle.load(project_path, bundle_postfix)
 
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
     n_pixel, _, _ = bundle.spec.type_shape_table[RGBImage]  # Assuming bundle contains rgb
@@ -47,7 +49,7 @@ if __name__ == "__main__":
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     ae_type: Type[AutoEncoderBase] = VariationalAutoEncoder if use_vae else AutoEncoder  # type: ignore
     train_autoencoder(
-        project_name,
+        project_path,
         image_type,
         model_config,
         dataset_config,

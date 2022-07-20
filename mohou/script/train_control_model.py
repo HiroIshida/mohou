@@ -33,7 +33,7 @@ if __name__ == "__main__":
     assert project_name is not None
     project_path = get_project_path(project_name)
 
-    logger = create_default_logger(project_name, "control_model")
+    logger = create_default_logger(project_path, "control_model")
 
     bundle = EpisodeBundle.load(project_path)
     n_av_dim = bundle.spec.type_shape_table[AngleVector][0]

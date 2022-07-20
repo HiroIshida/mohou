@@ -74,7 +74,8 @@ if __name__ == "__main__":
     with_training: bool = args.train
 
     project_name = "spring_mass_dumper"
-    create_default_logger(project_name, "LSTM")
+    project_path = get_project_path(project_name)
+    create_default_logger(project_path, "LSTM")
     smd = SpringMassDumper()
 
     av_emb = VectorIdenticalEncoder(AngleVector, 3)
@@ -83,15 +84,15 @@ if __name__ == "__main__":
 
     if with_training:
         bundle = smd.create_bundle()
-        bundle.dump(get_project_path(project_name))
+        bundle.dump(project_path)
         dataset = AutoRegressiveDataset.from_bundle(bundle, rule)
 
         tconfig = TrainConfig(n_epoch=1000)
         mconfig = LSTMConfig(4)
         tcache = TrainCache[LSTM].from_model(LSTM(mconfig))
-        train(get_project_path(project_name), tcache, dataset, config=tconfig)
+        train(project_path, tcache, dataset, config=tconfig)
     else:
-        tcache = TrainCache[LSTM].load(get_project_path(project_name), LSTM)
+        tcache = TrainCache[LSTM].load(project_path, LSTM)
 
     state_init = smd.sample_random_init_state()
     n_prop = 200

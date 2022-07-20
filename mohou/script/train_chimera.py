@@ -28,9 +28,11 @@ if __name__ == "__main__":
     n_layer: int = args.layer
     valid_ratio: float = args.valid_ratio
 
-    logger = create_default_logger(project_name, "chimera")  # noqa
-    encoding_rule = create_default_encoding_rule(get_project_path(project_name))
+    project_path = get_project_path(project_name)
+
+    logger = create_default_logger(project_path, "chimera")  # noqa
+    encoding_rule = create_default_encoding_rule(project_path)
     lstm_config = LSTMConfig(encoding_rule.dimension, n_hidden=n_hidden, n_layer=n_layer)
     train_config = TrainConfig(n_epoch=n_epoch, batch_size=30, valid_data_ratio=valid_ratio)
 
-    train_chimera(project_name, encoding_rule, lstm_config, train_config)
+    train_chimera(project_path, encoding_rule, lstm_config, train_config)
