@@ -1046,6 +1046,17 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         """get episode bundle which is used for training"""
         return EpisodeBundle(self._episode_list, [], self.metadata, self.postfix)
 
+    def __add__(self, other: "EpisodeBundle") -> "EpisodeBundle":
+        """merge two episode bundles
+        two bundles must has same type_shape_table, i.e. each bundle have to have the same type
+        of element sequence and at the same time the shape/dimension of the each element must
+        be the same.
+        """
+        assert self.type_shape_table == other.type_shape_table
+        episode_list_new = self._episode_list + other._episode_list
+        untouch_episode_list_new = self._untouch_episode_list + other._untouch_episode_list
+        return EpisodeBundle(episode_list_new, untouch_episode_list_new, MetaData({}), None)
+
     def plot_vector_histories(
         self,
         elem_type: Type[VectorBase],

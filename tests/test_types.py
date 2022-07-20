@@ -360,7 +360,7 @@ def test_bundle_spec():
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
 
-def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
+def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
     bundle: EpisodeBundle = image_av_bundle
     assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
@@ -384,7 +384,17 @@ def test_multi_episode_bundle(image_av_bundle, image_bundle, tmp_project_name): 
     remove_project(tmp_project_name)
 
 
-def test_multi_episode_bundle_assertion_type_inconsitency():
+def test_episode_bundle_add(image_av_bundle, image_bundle):
+
+    image_av_bundle_double = image_av_bundle + image_av_bundle  # ok
+    assert len(image_av_bundle_double) == 2 * len(image_av_bundle)
+
+    # check inconsistent bundle addition
+    with pytest.raises(AssertionError):
+        image_av_bundle + image_bundle
+
+
+def test_episode_bundle_assertion_type_inconsitency():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.zeros(10)) for _ in range(10)])
     depth_seq = ElementSequence([DepthImage(np.zeros((100, 100, 1))) for _ in range(10)])
