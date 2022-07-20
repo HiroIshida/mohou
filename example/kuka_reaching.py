@@ -15,7 +15,7 @@ import tqdm
 from moviepy.editor import ImageSequenceClip
 
 from mohou.default import create_default_propagator, load_default_image_encoder
-from mohou.file import get_project_path
+from mohou.file import create_project_dir, get_project_path
 from mohou.propagator import Propagator
 from mohou.types import (
     AngleVector,
@@ -202,6 +202,7 @@ if __name__ == "__main__":
     project_name: str = args.pn
     seed: int = args.seed
 
+    create_project_dir(project_name)
     project_path = get_project_path(project_name)
 
     np.random.seed(seed)

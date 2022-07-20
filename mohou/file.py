@@ -18,13 +18,20 @@ def get_root_path() -> Path:
     return path
 
 
+def create_project_dir(project_name: str) -> Path:
+    root_path = get_root_path()
+    project_path = root_path / project_name
+    project_path.mkdir(exist_ok=True)
+
+
 def get_project_path(project_name: Optional[str] = None) -> Path:
     root_path = get_root_path()
     if project_name is None:
         assert setting.primary_project_name is not None
         project_name = setting.primary_project_name
     project_dir_path = root_path / project_name
-    project_dir_path.mkdir(exist_ok=True)
+    if not project_dir_path.exists():
+        raise FileNotFoundError
     return project_dir_path
 
 
