@@ -56,6 +56,8 @@ function test_batch {
         python3 -m mohou.script.visualize_train_history -pn $project_name
         python3 $example_path/kuka_reaching.py -pn $project_name --feedback
     fi
+
+    rm -rf ~/.mohou/$project_name
 }
 
 test_batch RGB true true false # test warm train
