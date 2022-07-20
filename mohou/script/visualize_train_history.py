@@ -7,5 +7,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
     args = parser.parse_args()
-    project_name = args.pn
+    project_name: str = args.pn
     visualize_train_histories(project_name)

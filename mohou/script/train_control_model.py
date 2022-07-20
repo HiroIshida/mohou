@@ -27,8 +27,8 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
 
     args = parser.parse_args()
-    project_name = args.pn
-    n_epoch = args.n
+    project_name: str = args.pn
+    n_epoch: int = args.n
     assert project_name is not None
 
     logger = create_default_logger(project_name, "control_model")

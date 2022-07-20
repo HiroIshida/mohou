@@ -18,7 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--chimera", action="store_true", help="use chimera")
     args = parser.parse_args()
     project_name: str = args.pn
-    n_vis = args.n
+    n_vis: int = args.n
 
     project_path = get_project_path(project_name)
     bundle = EpisodeBundle.load(project_path)
