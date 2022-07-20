@@ -11,6 +11,7 @@ function test_batch {
     local test_warm_train=$3
     local use_context=$4
     local use_chimera=$5  # train chimera (ae + lstm) instead of lstm
+    local n_pixel=28
 
     local vae_option=""
     if [ $use_vae = true ]; then
@@ -32,7 +33,7 @@ function test_batch {
     echo "use_context: $4"
     echo "use_chimera: $5"
 
-    python3 $example_path/kuka_reaching.py -pn $project_name -n 7
+    python3 $example_path/kuka_reaching.py -pn $project_name -n 3 -untouch 1 -m $n_pixel
     python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type $vae_option
 
     if [ $test_warm_train = true ]; then
@@ -54,7 +55,7 @@ function test_batch {
         fi
         python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
         python3 -m mohou.script.visualize_train_history -pn $project_name
-        python3 $example_path/kuka_reaching.py -pn $project_name --feedback
+        python3 $example_path/kuka_reaching.py -pn $project_name --feedback -m $n_pixel
     fi
 
     rm -rf ~/.mohou/$project_name
