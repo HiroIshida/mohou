@@ -2,6 +2,7 @@ import logging
 import random
 import time
 from logging import Logger
+from pathlib import Path
 from typing import List, Optional, Type, Union
 
 import matplotlib.pyplot as plt
@@ -23,7 +24,6 @@ from mohou.dataset import (
 )
 from mohou.default import load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
-from mohou.file import get_project_path, get_subproject_path
 from mohou.model import (
     LSTM,
     AutoEncoder,
@@ -33,7 +33,6 @@ from mohou.model import (
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.propagator import Propagator
-from mohou.setting import setting
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
@@ -48,9 +47,9 @@ from mohou.utils import canvas_to_ndarray
 logger = logging.getLogger(__name__)
 
 
-def create_default_logger(project_name: str, prefix: str) -> Logger:
+def create_default_logger(project_path: Path, prefix: str) -> Logger:
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
-    log_dir_path = get_project_path(project_name) / "log"
+    log_dir_path = project_path / "log"
     log_dir_path.mkdir(parents=True, exist_ok=True)
     log_file_path = log_dir_path / (prefix + timestr + ".log")
 
@@ -70,7 +69,7 @@ def create_default_logger(project_name: str, prefix: str) -> Logger:
 
 
 def train_autoencoder(
-    project_name: str,
+    project_path: Path,
     image_type: Type[ImageBase],
     model_config: AutoEncoderConfig,
     dataset_config: AutoEncoderDatasetConfig,
@@ -81,21 +80,21 @@ def train_autoencoder(
 ):
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(project_path)
 
     dataset = AutoEncoderDataset.from_bundle(bundle, image_type, dataset_config)
     if warm_start:
         logger.info("warm start")
-        tcache = TrainCache.load(project_name, ae_type)
-        train(project_name, tcache, dataset, config=train_config)
+        tcache = TrainCache.load(project_path, ae_type)
+        train(project_path, tcache, dataset, config=train_config)
     else:
         model = ae_type(model_config)  # type: ignore
         tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-        train(project_name, tcache, dataset, config=train_config)
+        train(project_path, tcache, dataset, config=train_config)
 
 
 def train_lstm(
-    project_name: str,
+    project_path: Path,
     encoding_rule: EncodingRule,
     model_config: LSTMConfig,
     dataset_config: AutoRegressiveDatasetConfig,
@@ -107,7 +106,7 @@ def train_lstm(
 ):
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(project_path)
 
     if context_list is None:
         assert model_config.n_static_context == 0
@@ -125,16 +124,16 @@ def train_lstm(
 
     if warm_start:
         logger.info("warm start")
-        tcache = TrainCache.load(project_name, LSTM)
-        train(project_name, tcache, dataset, config=train_config)
+        tcache = TrainCache.load(project_path, LSTM)
+        train(project_path, tcache, dataset, config=train_config)
     else:
         model = LSTM(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-        train(project_name, tcache, dataset, config=train_config)
+        train(project_path, tcache, dataset, config=train_config)
 
 
 def train_chimera(
-    project_name: str,
+    project_path: Path,
     encoding_rule: EncodingRule,
     lstm_config: LSTMConfig,
     train_config: TrainConfig,
@@ -142,24 +141,22 @@ def train_chimera(
 ):  # TODO(HiroIshida): minimal args
 
     if bundle is None:
-        bundle = EpisodeBundle.load(project_name)
+        bundle = EpisodeBundle.load(project_path)
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
-    ae = TrainCache.load(project_name, AutoEncoder).best_model
+    ae = TrainCache.load(project_path, AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
     tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-    train(project_name, tcache, dataset, train_config)
+    train(project_path, tcache, dataset, train_config)
 
 
-def visualize_train_histories(project_name: str):
-    project_path = get_project_path(project_name)
-    sorted(project_path.iterdir())
+def visualize_train_histories(project_path: Path):
+    plot_dir_path = project_path / "train_history"
+    plot_dir_path.mkdir(exist_ok=True)
 
-    plot_dir_path = get_subproject_path(project_name, "train_history")
-
-    all_result_paths = TrainCache.filter_result_paths(project_name, None, None)
+    all_result_paths = TrainCache.filter_result_paths(project_path, None, None)
     for result_path in all_result_paths:
         tcache = TrainCache.load_from_base_path(result_path)
         image_path = plot_dir_path / (result_path.name + ".png")
@@ -170,12 +167,14 @@ def visualize_train_histories(project_name: str):
 
 
 def visualize_image_reconstruction(
-    project_name: str,
+    project_path: Path,
     bundle: EpisodeBundle,
     autoencoder: AutoEncoderBase,
     n_vis: int = 5,
     prefix: Optional[str] = None,
 ):
+    save_dir_path = project_path / "autoencoder_result"
+    save_dir_path.mkdir(exist_ok=True)
 
     bundle_untouch = bundle.get_untouch_bundle()
     bundle_touch = bundle.get_touch_bundle()
@@ -204,7 +203,6 @@ def visualize_image_reconstruction(
             fig.suptitle("left: original, right: reconstructed")
             ax1.imshow(img.to_rgb()._data)
             ax2.imshow(img_reconstructed.to_rgb()._data)
-            save_dir_path = get_subproject_path(project_name, "autoencoder_result")
             filename = "result-{}-{}.png".format(postfix, i)
             if prefix is not None:
                 filename = prefix + "-" + str(filename)
@@ -212,16 +210,14 @@ def visualize_image_reconstruction(
             plt.savefig(str(file_path))
 
 
-def visualize_variational_autoencoder(project_name: Optional[str] = None):
-    if project_name is None:
-        assert setting.primary_project_name is not None
-        project_name = setting.primary_project_name
+def visualize_variational_autoencoder(project_path: Path):
 
-    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
+    tcache = TrainCache.load(project_path, VariationalAutoEncoder)
     vae = tcache.best_model
     assert vae is not None
 
-    save_dir_path = get_subproject_path(project_name, "autoencoder_result")
+    save_dir_path = project_path / "autoencoder_result"
+    save_dir_path.mkdir(exist_ok=True)
 
     for axis in range(vae.config.n_bottleneck):
         images = vae.get_latent_axis_images(axis)
@@ -243,11 +239,12 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     return canvas_to_ndarray(fig)
 
 
-def visualize_lstm_propagation(project_name: str, propagator: Propagator, n_prop: int):
+def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_prop: int):
+    bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
+    save_dir_path = project_path / "lstm_result"
+    save_dir_path.mkdir(exist_ok=True)
 
-    bundle = EpisodeBundle.load(project_name).get_untouch_bundle()
-    save_dir_path = get_subproject_path(project_name, "lstm_result")
-    image_encoder = load_default_image_encoder(project_name)
+    image_encoder = load_default_image_encoder(project_path)
 
     for idx, edata in enumerate(bundle):
         episode_data = bundle[idx]

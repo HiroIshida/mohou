@@ -18,7 +18,7 @@ from rlbench.demo import Demo
 from rlbench.environment import Environment
 from utils import setup_observation_config
 
-from mohou.file import dump_object, get_subproject_path, load_objects
+from mohou.file import dump_object, get_project_path, get_subproject_path, load_objects
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -70,12 +70,12 @@ if __name__ == "__main__":
     parser.add_argument("-p", type=int, default=0, help="number of processes")
     parser.add_argument("-resol", type=int, default=112, help="epoch num")
     args = parser.parse_args()
-    n_episode = args.n
-    project_name = args.pn
-    task_name = args.tn
-    camera_name = args.cn
-    resolution = args.resol
-    n_process = args.p
+    n_episode: int = args.n
+    project_name: str = args.pn
+    task_name: str = args.tn
+    camera_name: str = args.cn
+    resolution: int = args.resol
+    n_process: int = args.p
     assert n_process > -1
 
     camera_names = {"left_shoulder", "right_shoulder", "overhead", "wrist", "front"}
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     demos = load_objects(Demo, project_name, subpath=Path("temp"))
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
     bundle = EpisodeBundle.from_data_list(episodes)
-    bundle.dump(project_name)
+    bundle.dump(get_project_path(project_name))
 
     # dump images
     gif_dir_path = get_subproject_path(project_name, "train_data_gif")

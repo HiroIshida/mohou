@@ -1,7 +1,8 @@
 import argparse
-from typing import Type
+from typing import Optional, Type
 
 from mohou.dataset import AutoEncoderDatasetConfig
+from mohou.file import get_project_path
 from mohou.model import AutoEncoder, AutoEncoderBase, VariationalAutoEncoder
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.script_utils import create_default_logger, train_autoencoder
@@ -24,20 +25,22 @@ if __name__ == "__main__":
     parser.add_argument("--warm", action="store_true", help="warm start")
     args = parser.parse_args()
 
-    project_name = args.pn
-    n_epoch = args.n
-    n_aug = args.aug
-    n_bottleneck = args.latent
-    valid_ratio = args.valid_ratio
-    use_vae = args.vae
-    warm_start = args.warm
-    bundle_postfix = args.bundle_postfix
+    project_name: str = args.pn
+    n_epoch: int = args.n
+    n_aug: int = args.aug
+    n_bottleneck: int = args.latent
+    valid_ratio: float = args.valid_ratio
+    use_vae: bool = args.vae
+    warm_start: bool = args.warm
+    bundle_postfix: Optional[str] = args.bundle_postfix
 
-    logger = create_default_logger(project_name, "autoencoder")
+    project_path = get_project_path(project_name)
+
+    logger = create_default_logger(project_path, "autoencoder")
 
     if bundle_postfix == "":
         bundle_postfix = None
-    bundle = EpisodeBundle.load(project_name, bundle_postfix)
+    bundle = EpisodeBundle.load(project_path, bundle_postfix)
 
     image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
     n_pixel, _, _ = bundle.spec.type_shape_table[RGBImage]  # Assuming bundle contains rgb
@@ -46,7 +49,7 @@ if __name__ == "__main__":
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
     ae_type: Type[AutoEncoderBase] = VariationalAutoEncoder if use_vae else AutoEncoder  # type: ignore
     train_autoencoder(
-        project_name,
+        project_path,
         image_type,
         model_config,
         dataset_config,

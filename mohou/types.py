@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import (
     ClassVar,
     Dict,
@@ -39,7 +40,6 @@ import torchvision
 import yaml
 
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
-from mohou.file import get_project_path
 from mohou.image_randomizer import (
     _f_randomize_depth_image,
     _f_randomize_gray_image,
@@ -835,7 +835,7 @@ class BundleSpec(TypeShapeTableMixin):
         return cls(**d)
 
 
-_bundle_cache: Dict[Tuple[str, Optional[str]], "EpisodeBundle"] = {}  # used EpisodeBundle.load
+_bundle_cache: Dict[Tuple[Path, Optional[str]], "EpisodeBundle"] = {}  # used EpisodeBundle.load
 
 
 @dataclass
@@ -933,7 +933,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     @classmethod
     def load(
         cls,
-        project_name: Optional[str] = None,
+        project_path: Path,
         postfix: Optional[str] = None,
         use_tar: bool = True,
     ) -> "EpisodeBundle":
@@ -941,11 +941,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         use_tar: default True. if True, load tar archive, otherwise load from a directory
         """
 
-        if project_name is None:
-            project_name = setting.primary_project_name
-        assert isinstance(project_name, str)  # for mypy check
-
-        if (project_name, postfix) not in _bundle_cache:
+        if (project_path, postfix) not in _bundle_cache:
 
             bundle_file_without_ext = "EpisodeBundle"
             if postfix is not None:
@@ -953,7 +949,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
             if use_tar:
                 bundle_tar = bundle_file_without_ext + ".tar"
-                bundle_tar_path = get_project_path(project_name) / bundle_tar
+                bundle_tar_path = project_path / bundle_tar
 
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     tmp_dir_path = pathlib.Path(tmp_dir)
@@ -965,17 +961,19 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                     bundle = cls._load(bundle_dir_path, postfix)
 
             else:
-                bundle_dir_path = get_project_path(project_name) / bundle_file_without_ext
+                bundle_dir_path = project_path / bundle_file_without_ext
                 bundle = cls._load(bundle_dir_path, postfix)
 
-            _bundle_cache[(project_name, postfix)] = bundle
+            # because loading time of bundle is not negligible, we will cache the bundle with thep project_path and postfix key
+            # and use it when the query with the same key is asked.
+            _bundle_cache[(project_path, postfix)] = bundle
 
-        bundle = _bundle_cache[(project_name, postfix)]
+        bundle = _bundle_cache[(project_path, postfix)]
         return bundle
 
     def dump(
         self,
-        project_name: Optional[str] = None,
+        project_path: Path,
         postfix: Optional[str] = None,
         use_tar: bool = True,
     ) -> None:
@@ -993,8 +991,6 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         bundle_file_without_ext = "EpisodeBundle" + (
             "" if postfix is None else "-{}".format(postfix)
         )
-
-        project_path = get_project_path(project_name)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = pathlib.Path(tmp_dir)
@@ -1060,7 +1056,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     def plot_vector_histories(
         self,
         elem_type: Type[VectorBase],
-        project_name: Optional[str] = None,
+        project_path: Path,
         hz: Optional[float] = None,
         postfix: Optional[str] = None,
     ) -> None:
@@ -1097,7 +1093,6 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         else:
             axs[-1].set_xlabel("time [s]")
 
-        project_path = get_project_path(project_name)
         if postfix is None:
             file_path = project_path / "seq-{0}.png".format(elem_type.__name__)
         else:

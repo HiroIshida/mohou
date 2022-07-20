@@ -1,6 +1,7 @@
 import argparse
 
 from mohou.default import create_chimera_propagator, create_default_propagator
+from mohou.file import get_project_path
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
 
@@ -11,12 +12,14 @@ if __name__ == "__main__":
     parser.add_argument("--chimera", action="store_true", help="use chimera")
 
     args = parser.parse_args()
-    project_name = args.pn
-    n_prop = args.n
+    project_name: str = args.pn
+    n_prop: int = args.n
+
+    project_path = get_project_path(project_name)
 
     if args.chimera:
-        propagator = create_chimera_propagator(project_name)
+        propagator = create_chimera_propagator(project_path)
     else:
-        propagator = create_default_propagator(project_name)
+        propagator = create_default_propagator(project_path)
 
-    visualize_lstm_propagation(project_name, propagator, n_prop)
+    visualize_lstm_propagation(project_path, propagator, n_prop)

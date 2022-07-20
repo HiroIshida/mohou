@@ -51,13 +51,15 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, default=250, help="step num")
     parser.add_argument("-m", type=int, default=3, help="simulation num")
     args = parser.parse_args()
-    project_name = args.pn
-    task_name = args.tn
-    camera_name = args.cn
-    n_step = args.n
-    n_sim = args.m
+    project_name: str = args.pn
+    task_name: str = args.tn
+    camera_name: str = args.cn
+    n_step: int = args.n
+    n_sim: int = args.m
 
-    bundle = EpisodeBundle.load(project_name)
+    project_path = get_project_path(project_name)
+
+    bundle = EpisodeBundle.load(project_path)
     resolution = bundle.spec.type_shape_table[RGBImage][0]
 
     obs_config = setup_observation_config(camera_name, resolution)
@@ -82,7 +84,7 @@ if __name__ == "__main__":
     for i in range(n_sim):
         task.reset()
 
-        prop = create_default_propagator(project_name)
+        prop = create_default_propagator(project_path)
 
         rgb_seq_gif = []
 
@@ -97,6 +99,6 @@ if __name__ == "__main__":
 
             rgb_seq_gif.append(RGBImage(obs.__dict__[camera_name + "_rgb"]))
 
-        file_path = get_project_path(project_name) / "feedback_simulation-{}.gif".format(i)
+        file_path = project_path / "feedback_simulation-{}.gif".format(i)
         clip = ImageSequenceClip([img.numpy() for img in rgb_seq_gif], fps=50)
         clip.write_gif(str(file_path), fps=50)

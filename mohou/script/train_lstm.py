@@ -5,6 +5,7 @@ from mohou.default import (
     create_default_encoding_rule,
     create_default_image_context_list,
 )
+from mohou.file import get_project_path
 from mohou.model.lstm import LSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
 from mohou.setting import setting
@@ -28,19 +29,21 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    project_name = args.pn
-    n_epoch = args.n
-    n_aug = args.aug
-    n_hidden = args.hidden
-    n_layer = args.layer
-    cov_scale = args.cov_scale
-    valid_ratio = args.valid_ratio
-    warm_start = args.warm
-    use_image_context = args.use_image_context
+    project_name: str = args.pn
+    n_epoch: int = args.n
+    n_aug: int = args.aug
+    n_hidden: int = args.hidden
+    n_layer: int = args.layer
+    cov_scale: float = args.cov_scale
+    valid_ratio: float = args.valid_ratio
+    warm_start: bool = args.warm
+    use_image_context: bool = args.use_image_context
 
-    logger = create_default_logger(project_name, "lstm")  # noqa
+    project_path = get_project_path(project_name)
 
-    encoding_rule = create_default_encoding_rule(project_name)
+    logger = create_default_logger(project_path, "lstm")  # noqa
+
+    encoding_rule = create_default_encoding_rule(project_path)
     model_config = LSTMConfig(
         encoding_rule.dimension,
         n_hidden=n_hidden,
@@ -53,11 +56,11 @@ if __name__ == "__main__":
 
     context_list = None
     if use_image_context:
-        context_list = create_default_image_context_list(project_name)
+        context_list = create_default_image_context_list(project_path)
         model_config.n_static_context = len(context_list[0])
 
     train_lstm(
-        project_name,
+        project_path,
         encoding_rule,
         model_config,
         dataset_config,

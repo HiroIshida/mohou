@@ -1,8 +1,10 @@
 import argparse
+from pathlib import Path
 
 from mohou.dataset import MarkovControlSystemDataset
 from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
+from mohou.file import get_project_path
 from mohou.model import ControlModel, VariationalAutoEncoder
 from mohou.model.markov import MarkoveModelConfig
 from mohou.script_utils import create_default_logger
@@ -11,8 +13,8 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import AngleVector, EpisodeBundle
 
 
-def create_obs_rule(project_name: str):
-    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
+def create_obs_rule(project_path: Path):
+    tcache = TrainCache.load(project_path, VariationalAutoEncoder)
     model = tcache.best_model
     assert model is not None
     f = model.get_encoder()
@@ -26,18 +28,19 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
 
     args = parser.parse_args()
-    project_name = args.pn
-    n_epoch = args.n
+    project_name: str = args.pn
+    n_epoch: int = args.n
     assert project_name is not None
+    project_path = get_project_path(project_name)
 
-    logger = create_default_logger(project_name, "control_model")
+    logger = create_default_logger(project_path, "control_model")
 
-    bundle = EpisodeBundle.load(project_name)
+    bundle = EpisodeBundle.load(project_path)
     n_av_dim = bundle.spec.type_shape_table[AngleVector][0]
     f = VectorIdenticalEncoder(AngleVector, n_av_dim)
     ctrl_rule = EncodingRule.from_encoders([f])
 
-    obs_rule = create_obs_rule(project_name)
+    obs_rule = create_obs_rule(project_path)
 
     dataset = MarkovControlSystemDataset.from_bundle(
         bundle, ctrl_rule, obs_rule, diff_as_control=True
@@ -48,4 +51,4 @@ if __name__ == "__main__":
     config = MarkoveModelConfig(n_input, n_output, activation="relu")
     tcache = TrainCache[ControlModel].from_model(ControlModel(config))
     tconfig = TrainConfig(n_epoch=n_epoch)
-    train(project_name, tcache, dataset, config=tconfig)
+    train(project_path, tcache, dataset, config=tconfig)

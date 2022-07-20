@@ -196,11 +196,13 @@ if __name__ == "__main__":
     parser.add_argument("-m", type=int, default=112, help="pixel num")  # same as mnist
     parser.add_argument("-seed", type=int, default=1, help="seed")  # same as mnist
     args = parser.parse_args()
-    n_epoch = args.n
-    n_pixel = args.m
-    feedback_mode = args.feedback
-    project_name = args.pn
-    seed = args.seed
+    n_epoch: int = args.n
+    n_pixel: int = args.m
+    feedback_mode: bool = args.feedback
+    project_name: str = args.pn
+    seed: int = args.seed
+
+    project_path = get_project_path(project_name)
 
     np.random.seed(seed)
 
@@ -213,16 +215,16 @@ if __name__ == "__main__":
         bm.set_box(target_pos)
 
         # prepare propagator
-        propagator = create_default_propagator(project_name)
+        propagator = create_default_propagator(project_path)
         if propagator.require_static_context:
-            image_encoder = load_default_image_encoder(project_name)
+            image_encoder = load_default_image_encoder(project_path)
             rgb, _ = bm.take_photo(n_pixel)
             context = image_encoder.forward(rgb)
             propagator.set_static_context(context)
 
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 
-        file_path = get_project_path(project_name) / "feedback_simulation.gif"
+        file_path = project_path / "feedback_simulation.gif"
         clip = ImageSequenceClip([rgb.numpy() for rgb in rgb_list], fps=50)
         clip.write_gif(str(file_path), fps=50)
     else:
@@ -262,11 +264,11 @@ if __name__ == "__main__":
                 with open(os.path.join(td, file_name), "rb") as f:
                     data_list.append(pickle.load(f))
             bundle = EpisodeBundle.from_data_list(data_list)
-            bundle.dump(project_name)
-            bundle.plot_vector_histories(AngleVector, project_name)
+            bundle.dump(project_path)
+            bundle.plot_vector_histories(AngleVector, project_path)
 
             # For debugging
             img_seq = bundle[0].get_sequence_by_type(RGBImage)
-            file_path = get_project_path(project_name) / "sample.gif"
+            file_path = project_path / "sample.gif"
             clip = ImageSequenceClip([img for img in img_seq], fps=50)
             clip.write_gif(str(file_path), fps=50)
