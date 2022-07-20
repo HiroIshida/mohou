@@ -193,13 +193,15 @@ if __name__ == "__main__":
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
     parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
     parser.add_argument("-n", type=int, default=100, help="epoch num")
-    parser.add_argument("-m", type=int, default=112, help="pixel num")  # same as mnist
-    parser.add_argument("-seed", type=int, default=1, help="seed")  # same as mnist
+    parser.add_argument("-m", type=int, default=112, help="pixel num")
+    parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
+    parser.add_argument("-seed", type=int, default=1, help="seed")
     args = parser.parse_args()
     n_epoch: int = args.n
     n_pixel: int = args.m
     feedback_mode: bool = args.feedback
     project_name: str = args.pn
+    n_untouch: int = args.untouch
     seed: int = args.seed
 
     create_project_dir(project_name)
@@ -264,7 +266,7 @@ if __name__ == "__main__":
             for file_name in os.listdir(td):
                 with open(os.path.join(td, file_name), "rb") as f:
                     data_list.append(pickle.load(f))
-            bundle = EpisodeBundle.from_data_list(data_list)
+            bundle = EpisodeBundle.from_episodes(data_list, n_untouch_episode=n_untouch)
             bundle.dump(project_path)
             bundle.plot_vector_histories(AngleVector, project_path)
 

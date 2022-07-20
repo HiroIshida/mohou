@@ -63,7 +63,7 @@ class SpringMassDumper:
                 if self.is_termianate(state):
                     break
             edata_list.append(EpisodeData.from_seq_list([av_seq]))
-        bundle = EpisodeBundle.from_data_list(edata_list)
+        bundle = EpisodeBundle.from_episodes(edata_list)
         return bundle
 
 
