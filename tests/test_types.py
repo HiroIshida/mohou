@@ -72,7 +72,7 @@ def test_elements():
     with pytest.raises(Exception):
         VectorBase(np.zeros(3))
     with pytest.raises(Exception):
-        PrimitiveImageBase(np.zeros((3, 3)))
+        PrimitiveImageBase(np.zeros((3, 3)))  # type: ignore [abstract]
 
 
 def test_gripper_state():
@@ -201,8 +201,8 @@ def test_element_sequence():
     # check inconsistent
     with pytest.raises(AssertionError):
         a = RGBImage.dummy_from_shape((100, 100))
-        b = DepthImage.dummy_from_shape((100, 100))
-        ElementSequence([a, b])
+        c = DepthImage.dummy_from_shape((100, 100))
+        ElementSequence([a, c])
 
     # test dump and load
     with tempfile.TemporaryDirectory() as dname:
@@ -355,7 +355,7 @@ def image_av_bundle_uneven():
 def test_bundle_spec():
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     extra_info = {"hz": 20, "author": "HiroIshida"}
-    spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)
+    spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)  # type: ignore [arg-type]
     spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 

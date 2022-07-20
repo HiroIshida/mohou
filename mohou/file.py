@@ -48,14 +48,12 @@ def resolve_file_path(
     obj_type: Type,
     project_name: Optional[str] = None,
     postfix: Optional[str] = None,
-    subpath: Optional[Union[Path, str]] = None,
+    subpath: Optional[Path] = None,
 ) -> Path:
 
     dir_path = get_project_path(project_name)
 
     if subpath is not None:
-        if isinstance(subpath, str):
-            subpath = Path(subpath)
         dir_path = dir_path / subpath
 
     dir_path.mkdir(parents=True, exist_ok=True)
@@ -74,7 +72,7 @@ def load_object(
     obj_type: Type[DataT],
     project_name: Optional[str] = None,
     postfix: Optional[str] = None,
-    subpath: Optional[Union[Path, str]] = None,
+    subpath: Optional[Path] = None,
 ) -> DataT:
     """load single pickle object"""
 
@@ -96,7 +94,7 @@ def load_objects(
     obj_type: Type[DataT],
     project_name: Optional[str] = None,
     postfix: Optional[str] = None,
-    subpath: Optional[Union[Path, str]] = None,
+    subpath: Optional[Path] = None,
 ) -> List[DataT]:
     """load multiple pickle objects (or could be single object)
     If postfix is specified, all the objects filename of which starts with the postfix will be loaded.
@@ -133,7 +131,7 @@ def dump_object(
     obj: Any,
     project_name: Optional[str] = None,
     postfix: Optional[str] = None,
-    subpath: Optional[Union[Path, str]] = None,
+    subpath: Optional[Path] = None,
 ) -> None:
 
     file_path = resolve_file_path(obj.__class__, project_name, postfix=postfix, subpath=subpath)

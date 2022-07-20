@@ -11,11 +11,11 @@ def test_splitting_slicers():
 
     for obj in (tensor, array):
         for i in range(n):
-            obj[i] *= i
+            obj[i] *= i  # type: ignore
 
     n_elem_list = [3, 3, 4]
     for obj in (tensor, array):
-        obj1, obj2, obj3 = [obj[sl] for sl in splitting_slices(n_elem_list)]
+        obj1, obj2, obj3 = [obj[sl] for sl in splitting_slices(n_elem_list)]  # type: ignore
         assert obj1[0][0][0] == 0
         assert obj1[-1][0][0] == 2
 

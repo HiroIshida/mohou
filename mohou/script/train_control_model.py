@@ -11,8 +11,8 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import AngleVector, EpisodeBundle
 
 
-def create_obs_rule():
-    tcache = TrainCache.load(None, VariationalAutoEncoder)
+def create_obs_rule(project_name: str):
+    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
     model = tcache.best_model
     assert model is not None
     f = model.get_encoder()
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     f = VectorIdenticalEncoder(AngleVector, n_av_dim)
     ctrl_rule = EncodingRule.from_encoders([f])
 
-    obs_rule = create_obs_rule()
+    obs_rule = create_obs_rule(project_name)
 
     dataset = MarkovControlSystemDataset.from_bundle(
         bundle, ctrl_rule, obs_rule, diff_as_control=True
