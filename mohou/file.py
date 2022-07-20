@@ -18,7 +18,7 @@ def get_root_path() -> Path:
     return path
 
 
-def create_project_dir(project_name: str) -> Path:
+def create_project_dir(project_name: str) -> None:
     root_path = get_root_path()
     project_path = root_path / project_name
     project_path.mkdir(exist_ok=True)
