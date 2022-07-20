@@ -18,7 +18,13 @@ from rlbench.demo import Demo
 from rlbench.environment import Environment
 from utils import setup_observation_config
 
-from mohou.file import dump_object, get_project_path, get_subproject_path, load_objects
+from mohou.file import (
+    create_project_dir,
+    dump_object,
+    get_project_path,
+    get_subproject_path,
+    load_objects,
+)
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -122,6 +128,7 @@ if __name__ == "__main__":
     demos = load_objects(Demo, project_name, subpath=Path("temp"))
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
     bundle = EpisodeBundle.from_data_list(episodes)
+    create_project_dir(project_name)
     bundle.dump(get_project_path(project_name))
 
     # dump images
