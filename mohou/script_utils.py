@@ -7,6 +7,7 @@ from typing import List, Optional, Type, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mohou.file import get_project_path
 from mohou.model.autoencoder import VariationalAutoEncoder
 
 try:
@@ -86,12 +87,12 @@ def train_autoencoder(
     dataset = AutoEncoderDataset.from_bundle(bundle, image_type, dataset_config)
     if warm_start:
         logger.info("warm start")
-        tcache = TrainCache.load(project_name, ae_type)
-        train(project_name, tcache, dataset, config=train_config)
+        tcache = TrainCache.load(get_project_path(project_name), ae_type)
+        train(get_project_path(project_name), tcache, dataset, config=train_config)
     else:
         model = ae_type(model_config)  # type: ignore
         tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-        train(project_name, tcache, dataset, config=train_config)
+        train(get_project_path(project_name), tcache, dataset, config=train_config)
 
 
 def train_lstm(
@@ -125,12 +126,12 @@ def train_lstm(
 
     if warm_start:
         logger.info("warm start")
-        tcache = TrainCache.load(project_name, LSTM)
-        train(project_name, tcache, dataset, config=train_config)
+        tcache = TrainCache.load(get_project_path(project_name), LSTM)
+        train(get_project_path(project_name), tcache, dataset, config=train_config)
     else:
         model = LSTM(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-        train(project_name, tcache, dataset, config=train_config)
+        train(get_project_path(project_name), tcache, dataset, config=train_config)
 
 
 def train_chimera(
@@ -145,12 +146,12 @@ def train_chimera(
         bundle = EpisodeBundle.load(project_name)
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
-    ae = TrainCache.load(project_name, AutoEncoder).best_model
+    ae = TrainCache.load(get_project_path(project_name), AutoEncoder).best_model
     assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
     tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-    train(project_name, tcache, dataset, train_config)
+    train(get_project_path(project_name), tcache, dataset, train_config)
 
 
 def visualize_train_histories(project_name: str):
@@ -159,7 +160,7 @@ def visualize_train_histories(project_name: str):
 
     plot_dir_path = get_subproject_path(project_name, "train_history")
 
-    all_result_paths = TrainCache.filter_result_paths(project_name, None, None)
+    all_result_paths = TrainCache.filter_result_paths(get_project_path(project_name), None, None)
     for result_path in all_result_paths:
         tcache = TrainCache.load_from_base_path(result_path)
         image_path = plot_dir_path / (result_path.name + ".png")
@@ -217,7 +218,7 @@ def visualize_variational_autoencoder(project_name: Optional[str] = None):
         assert setting.primary_project_name is not None
         project_name = setting.primary_project_name
 
-    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
+    tcache = TrainCache.load(get_project_path(project_name), VariationalAutoEncoder)
     vae = tcache.best_model
     assert vae is not None
 

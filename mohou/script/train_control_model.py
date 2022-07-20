@@ -3,6 +3,7 @@ import argparse
 from mohou.dataset import MarkovControlSystemDataset
 from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
+from mohou.file import get_project_path
 from mohou.model import ControlModel, VariationalAutoEncoder
 from mohou.model.markov import MarkoveModelConfig
 from mohou.script_utils import create_default_logger
@@ -12,7 +13,7 @@ from mohou.types import AngleVector, EpisodeBundle
 
 
 def create_obs_rule(project_name: str):
-    tcache = TrainCache.load(project_name, VariationalAutoEncoder)
+    tcache = TrainCache.load(get_project_path(project_name), VariationalAutoEncoder)
     model = tcache.best_model
     assert model is not None
     f = model.get_encoder()

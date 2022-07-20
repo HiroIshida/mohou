@@ -4,6 +4,7 @@ import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
+from mohou.file import get_project_path
 from mohou.model import LSTM, AutoEncoderBase, Chimera
 from mohou.propagator import Propagator
 from mohou.setting import setting
@@ -35,7 +36,7 @@ def auto_detect_autoencoder_type(project_name: Optional[str] = None) -> Type[Aut
     detect_count = 0
     for t_cand in t_cand_list:
         try:
-            TrainCache.load(project_name, t_cand)
+            TrainCache.load(get_project_path(project_name), t_cand)
             t = t_cand
             detect_count += 1
         except Exception:
@@ -57,7 +58,7 @@ def load_default_image_encoder(project_name: Optional[str] = None) -> ImageEncod
 
     ae_type = auto_detect_autoencoder_type(project_name)
     try:
-        tcache_autoencoder = TrainCache.load(project_name, ae_type)
+        tcache_autoencoder = TrainCache.load(get_project_path(project_name), ae_type)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for autoencoder is found ")
 
@@ -100,7 +101,7 @@ def create_chimera_encoding_rule(project_name: Optional[str] = None) -> Encoding
     # experimental
     encoding_rule = create_default_encoding_rule(project_name)
     image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
-    chimera = TrainCache.load(project_name, Chimera).best_model
+    chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model
     assert chimera is not None
     image_encoder_new = chimera.get_encoder()
     assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
@@ -119,7 +120,7 @@ def create_default_propagator(project_name: Optional[str] = None) -> Propagator:
         project_name = setting.primary_project_name
 
     try:
-        tcach_lstm = TrainCache.load(project_name, LSTM)
+        tcach_lstm = TrainCache.load(get_project_path(project_name), LSTM)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
@@ -136,7 +137,7 @@ def create_chimera_propagator(project_name: Optional[str] = None) -> Propagator:
 
     encoding_rule = create_chimera_encoding_rule(project_name)
 
-    chimera = TrainCache.load(project_name, Chimera).best_model
+    chimera = TrainCache.load(get_project_path(project_name), Chimera).best_model
     assert chimera is not None
 
     propagator = Propagator(chimera.lstm, encoding_rule)

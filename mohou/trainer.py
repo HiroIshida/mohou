@@ -14,7 +14,6 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
 import mohou
-from mohou.file import get_project_path
 from mohou.model import FloatLossDict, ModelConfigBase, ModelT, average_float_loss_dict
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
@@ -51,11 +50,11 @@ class TrainCache(Generic[ModelT]):
         return min_loss_sofar
 
     @staticmethod
-    def train_result_base_path(project_name: str) -> Path:
-        return get_project_path(project_name) / "train_result"
+    def train_result_base_path(project_path: Path) -> Path:
+        return project_path / "train_result"
 
-    def train_result_path(self, project_name: str):
-        base_path = self.train_result_base_path(project_name)
+    def train_result_path(self, project_path: Path):
+        base_path = self.train_result_base_path(project_path)
         class_name = self.best_model.__class__.__name__
         config_hash = self.best_model.config.hash_value
         result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
@@ -64,7 +63,7 @@ class TrainCache(Generic[ModelT]):
     @classmethod
     def filter_result_paths(
         cls,
-        project_name: str,
+        project_path: Path,
         model_type: Optional[Type[ModelT]],
         model_config: Optional[ModelConfigBase],
     ) -> List[Path]:
@@ -88,7 +87,7 @@ class TrainCache(Generic[ModelT]):
                     else:
                         return model_config.hash_value in name
 
-        ps = filter(filter_predicate, cls.train_result_base_path(project_name).iterdir())
+        ps = filter(filter_predicate, cls.train_result_base_path(project_path).iterdir())
         return list(ps)
 
     @staticmethod
@@ -114,7 +113,7 @@ class TrainCache(Generic[ModelT]):
         model: ModelT,
         train_loss_dict: FloatLossDict,
         validate_loss_dict: FloatLossDict,
-        project_name: str,
+        project_path: Path,
     ) -> None:
 
         self.train_loss_dict_seq.append(train_loss_dict)
@@ -130,7 +129,7 @@ class TrainCache(Generic[ModelT]):
 
             # save everything
             # TODO: error handling
-            base_path = self.train_result_path(project_name)
+            base_path = self.train_result_path(project_path)
             base_path.mkdir(exist_ok=True, parents=True)
             model_path = base_path / "model.pth"
             valid_loss_path = base_path / "validation_loss.npz"
@@ -169,12 +168,12 @@ class TrainCache(Generic[ModelT]):
     @classmethod
     def load_all(
         cls,
-        project_name: str,
+        project_path: Path,
         model_type: Optional[Type[ModelT]] = None,
         model_config: Optional[ModelConfigBase] = None,
     ) -> "List[TrainCache[ModelT]]":
 
-        ps = cls.filter_result_paths(project_name, model_type, model_config)
+        ps = cls.filter_result_paths(project_path, model_type, model_config)
         tcache_list = [cls.load_from_base_path(p) for p in ps]
         if len(tcache_list) == 0:
             raise FileNotFoundError
@@ -183,11 +182,11 @@ class TrainCache(Generic[ModelT]):
     @classmethod
     def load(
         cls,
-        project_name: str,
+        project_path: Path,
         model_type: Type[ModelT],
         model_config: Optional[ModelConfigBase] = None,
     ) -> "TrainCache[ModelT]":
-        tcache_list = cls.load_all(project_name, model_type, model_config)
+        tcache_list = cls.load_all(project_path, model_type, model_config)
         tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
         return tcaceh_list_sorted[0]
 
@@ -203,7 +202,7 @@ class TrainCache(Generic[ModelT]):
 
 
 def train(
-    project_name: str,
+    project_path: Path,
     tcache: TrainCache,
     dataset: Dataset,
     config: TrainConfig = TrainConfig(),
@@ -263,4 +262,4 @@ def train(
         logger.info("epoch: {}".format(epoch))
         logger.info("train loss => {}".format(train_ld_mean))
         logger.info("validate loss => {}".format(validate_ld_mean))
-        tcache.update_and_save(model, train_ld_mean, validate_ld_mean, project_name)
+        tcache.update_and_save(model, train_ld_mean, validate_ld_mean, project_path)

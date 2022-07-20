@@ -7,6 +7,7 @@ import numpy as np
 from mohou.dataset import AutoRegressiveDataset
 from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
+from mohou.file import get_project_path
 from mohou.model import LSTM, LSTMConfig
 from mohou.propagator import Propagator
 from mohou.script_utils import create_default_logger
@@ -88,9 +89,9 @@ if __name__ == "__main__":
         tconfig = TrainConfig(n_epoch=1000)
         mconfig = LSTMConfig(4)
         tcache = TrainCache[LSTM].from_model(LSTM(mconfig))
-        train(project_name, tcache, dataset, config=tconfig)
+        train(get_project_path(project_name), tcache, dataset, config=tconfig)
     else:
-        tcache = TrainCache[LSTM].load(project_name, LSTM)
+        tcache = TrainCache[LSTM].load(get_project_path(project_name), LSTM)
 
     state_init = smd.sample_random_init_state()
     n_prop = 200
