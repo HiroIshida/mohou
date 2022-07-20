@@ -1,6 +1,7 @@
 import argparse
 
 from mohou.default import create_default_encoding_rule
+from mohou.file import get_project_path
 from mohou.model import LSTMConfig
 from mohou.script_utils import create_default_logger, train_chimera
 from mohou.setting import setting
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     valid_ratio: float = args.valid_ratio
 
     logger = create_default_logger(project_name, "chimera")  # noqa
-    encoding_rule = create_default_encoding_rule(project_name)
+    encoding_rule = create_default_encoding_rule(get_project_path(project_name))
     lstm_config = LSTMConfig(encoding_rule.dimension, n_hidden=n_hidden, n_layer=n_layer)
     train_config = TrainConfig(n_epoch=n_epoch, batch_size=30, valid_data_ratio=valid_ratio)
 
