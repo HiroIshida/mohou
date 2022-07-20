@@ -16,11 +16,7 @@ from mohou.trainer import TrainConfig
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
-    parser.add_argument(
-        "-pp",
-        type=str,
-        help="project full path. If this arg is set, full path will be prefered over project name",
-    )
+    parser.add_argument("-pp", type=str, help="project path. preferred over pn.")
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")

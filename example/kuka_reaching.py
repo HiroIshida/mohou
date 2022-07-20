@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
     parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
-    parser.add_argument("-pp", type=str, help="projectpathname")
+    parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=100, help="epoch num")
     parser.add_argument("-m", type=int, default=112, help="pixel num")
     parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")

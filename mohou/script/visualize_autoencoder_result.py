@@ -15,7 +15,7 @@ from mohou.types import EpisodeBundle
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
-    parser.add_argument("-pp", type=str, help="project path. prefered over pn.")
+    parser.add_argument("-pp", type=str, help="project path. preferred over pn.")
     parser.add_argument("-n", type=int, default=5, help="number of visualization")
     parser.add_argument("--chimera", action="store_true", help="use chimera")
     args = parser.parse_args()
