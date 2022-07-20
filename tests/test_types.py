@@ -306,8 +306,8 @@ def test_two_bundle_consistency():
         return data
 
     lst = [create_edata(5) for _ in range(100)]
-    bundle = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
-    bundle2 = EpisodeBundle.from_data_list(copy.deepcopy(lst), shuffle=True)
+    bundle = EpisodeBundle.from_episodes(copy.deepcopy(lst), shuffle=True)
+    bundle2 = EpisodeBundle.from_episodes(copy.deepcopy(lst), shuffle=True)
     assert pickle.dumps(bundle) == pickle.dumps(bundle2)
 
 
@@ -321,7 +321,7 @@ def image_bundle():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    bundle = EpisodeBundle.from_data_list(lst, meta_data=MetaData({"hoge": 1.0}))
+    bundle = EpisodeBundle.from_episodes(lst, meta_data=MetaData({"hoge": 1.0}))
     return bundle
 
 
@@ -334,7 +334,7 @@ def image_av_bundle():
         return data
 
     lst = [create_edata(10) for _ in range(20)]
-    bundle = EpisodeBundle.from_data_list(lst, meta_data=MetaData({"hoge": 1.0}))
+    bundle = EpisodeBundle.from_episodes(lst, meta_data=MetaData({"hoge": 1.0}))
     return bundle
 
 
@@ -348,7 +348,7 @@ def image_av_bundle_uneven():
 
     lst = [create_edata(10) for _ in range(20)]
     lst.append(create_edata(13))
-    bundle = EpisodeBundle.from_data_list(lst, shuffle=False, leave_untouch_episode=False)
+    bundle = EpisodeBundle.from_episodes(lst, shuffle=False, n_untouch_episode=0)
     return bundle
 
 
@@ -405,4 +405,4 @@ def test_episode_bundle_assertion_type_inconsitency():
     data2 = EpisodeData.from_seq_list([depth_seq, av_seq])
 
     with pytest.raises(AssertionError):
-        EpisodeBundle.from_data_list([data1, data2])
+        EpisodeBundle.from_episodes([data1, data2])

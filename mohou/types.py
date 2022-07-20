@@ -45,7 +45,6 @@ from mohou.image_randomizer import (
     _f_randomize_gray_image,
     _f_randomize_rgb_image,
 )
-from mohou.setting import setting
 from mohou.utils import (
     assert_equal_with_message,
     assert_isinstance_with_message,
@@ -861,8 +860,8 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     def spec(self) -> BundleSpec:
         n_average = int(sum([len(data) for data in self._episode_list]) / len(self._episode_list))
         spec = BundleSpec(
-            len(self._episode_list) - setting.n_untouch_episode,
-            setting.n_untouch_episode,
+            len(self._episode_list),
+            len(self._untouch_episode_list),
             n_average,
             self.type_shape_table,
             self.metadata,
@@ -870,12 +869,17 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         return spec
 
     @classmethod
-    def from_data_list(
+    def from_data_list(cls, *args, **kwargs) -> "EpisodeBundle":
+        """same as from_episodes. just for backward compatibility"""
+        return cls.from_episodes(*args, **kwargs)
+
+    @classmethod
+    def from_episodes(
         cls,
         data_list: List[EpisodeData],
         meta_data: Optional[MetaData] = None,
         shuffle: bool = True,
-        leave_untouch_episode: bool = True,
+        n_untouch_episode: int = 5,
     ) -> "EpisodeBundle":
 
         if meta_data is None:
@@ -888,11 +892,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         assert_equal_with_message(n_type_appeared, n_type_expected, "num of element type in bundle")
 
         untouch_episode_list = []
-        if leave_untouch_episode:
-            n_episode_untouch = setting.n_untouch_episode
-            assert n_episode_untouch > 0
-            interval = len(data_list) // n_episode_untouch
-            indices_untouch = [interval * i for i in range(n_episode_untouch)]
+        if n_untouch_episode > 0:
+            interval = len(data_list) // n_untouch_episode
+            indices_untouch = [interval * i for i in range(n_untouch_episode)]
             # sorted is necessary because pop changes index
             for idx in sorted(indices_untouch, reverse=True):
                 untouch_episode_list.append(data_list.pop(idx))

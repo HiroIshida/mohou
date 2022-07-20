@@ -74,6 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("-cn", type=str, default="overhead", help="camera name")
     parser.add_argument("-n", type=int, default=55, help="epoch num")
     parser.add_argument("-p", type=int, default=0, help="number of processes")
+    parser.add_argument("-untouch", type=int, default=5, help="number of untouch episode")
     parser.add_argument("-resol", type=int, default=112, help="epoch num")
     args = parser.parse_args()
     n_episode: int = args.n
@@ -82,6 +83,7 @@ if __name__ == "__main__":
     camera_name: str = args.cn
     resolution: int = args.resol
     n_process: int = args.p
+    n_untouch: int = args.untouch
     assert n_process > -1
 
     camera_names = {"left_shoulder", "right_shoulder", "overhead", "wrist", "front"}
@@ -127,8 +129,9 @@ if __name__ == "__main__":
     # load demos in temporary files and create bundles
     demos = load_objects(Demo, project_name, subpath=Path("temp"))
     episodes = [rlbench_demo_to_mohou_episode_data(demo, camera_name, resolution) for demo in demos]
-    bundle = EpisodeBundle.from_data_list(episodes)
+
     create_project_dir(project_name)
+    bundle = EpisodeBundle.from_episodes(episodes, n_untouch_episode=n_untouch)
     bundle.dump(get_project_path(project_name))
 
     # dump images
