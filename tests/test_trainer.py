@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from test_file import tmp_project_name  # noqa
 
-from mohou.file import get_project_path, remove_project
+from mohou.file import create_project_dir, get_project_path, remove_project
 from mohou.model import LSTM, LSTMConfig
 from mohou.model.common import FloatLossDict
 from mohou.trainer import TrainCache
@@ -25,6 +25,7 @@ def dump_train_cache(conf, loss_value, project_name):
 
 
 def test_traincache_load_all(tmp_project_name):  # noqa
+    create_project_dir(tmp_project_name)
     tmp_project_path = get_project_path(tmp_project_name)
 
     conf = LSTMConfig(7, 7, 777, 2)  # whatever
@@ -44,6 +45,7 @@ def test_traincache_load_all(tmp_project_name):  # noqa
 
 
 def test_traincache_load(tmp_project_name):  # noqa
+    create_project_dir(tmp_project_name)
     tmp_project_path = get_project_path(tmp_project_name)
 
     conf = LSTMConfig(7, 7, 777, 2)
@@ -61,6 +63,7 @@ def test_traincache_load(tmp_project_name):  # noqa
 
 
 def test_traincache_load_best_one(tmp_project_name):  # noqa
+    create_project_dir(tmp_project_name)
     tmp_project_path = get_project_path(tmp_project_name)
 
     conf = LSTMConfig(7, 7, 777, 2)

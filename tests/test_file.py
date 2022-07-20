@@ -5,7 +5,13 @@ import uuid
 import numpy as np
 import pytest
 
-from mohou.file import dump_object, load_object, load_objects, remove_project
+from mohou.file import (
+    create_project_dir,
+    dump_object,
+    load_object,
+    load_objects,
+    remove_project,
+)
 
 
 @dataclasses.dataclass
@@ -15,10 +21,12 @@ class SampleClass:
 
 @pytest.fixture(scope="module")
 def tmp_project_name():
-    return "pytest-" + str(uuid.uuid4())
+    name = "pytest-" + str(uuid.uuid4())
+    return name
 
 
 def test_dump_and_load_object(tmp_project_name):
+    create_project_dir(tmp_project_name)
     a = SampleClass(np.random.randn(10, 10))
     dump_object(a, tmp_project_name)
     b = load_object(SampleClass, tmp_project_name)
@@ -28,6 +36,7 @@ def test_dump_and_load_object(tmp_project_name):
 
 
 def test_dump_and_load_object_subdir(tmp_project_name):
+    create_project_dir(tmp_project_name)
     a = SampleClass(np.random.randn(10, 10))
 
     subpath = pathlib.Path("hoge/hoge")
@@ -39,6 +48,7 @@ def test_dump_and_load_object_subdir(tmp_project_name):
 
 
 def test_load_objects(tmp_project_name):
+    create_project_dir(tmp_project_name)
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
     dump_object(a, tmp_project_name, str(uuid.uuid4()))
@@ -51,6 +61,7 @@ def test_load_objects(tmp_project_name):
 
 
 def test_load_objects_partial_match(tmp_project_name):
+    create_project_dir(tmp_project_name)
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
     common_uuid = str(uuid.uuid4())
@@ -68,6 +79,7 @@ def test_load_objects_partial_match(tmp_project_name):
 
 
 def test_load_objects_subdir(tmp_project_name):
+    create_project_dir(tmp_project_name)
     subpath = pathlib.Path("hoge/hoge")
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
@@ -81,6 +93,7 @@ def test_load_objects_subdir(tmp_project_name):
 
 
 def test_load_objects_with_postfix(tmp_project_name):
+    create_project_dir(tmp_project_name)
     postfix = "hogehoge"
     a = SampleClass(np.random.randn(10, 10))
     b = SampleClass(np.random.randn(10, 10))
@@ -94,6 +107,8 @@ def test_load_objects_with_postfix(tmp_project_name):
 
 
 def test_filenotfounderrro_in_loading(tmp_project_name):
+    create_project_dir(tmp_project_name)
+
     class HogeHoge:
         pass
 

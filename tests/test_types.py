@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from test_file import tmp_project_name  # noqa
 
-from mohou.file import get_project_path, remove_project
+from mohou.file import create_project_dir, get_project_path, remove_project
 from mohou.types import (
     AngleVector,
     BundleSpec,
@@ -361,6 +361,7 @@ def test_bundle_spec():
 
 
 def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
+    create_project_dir(tmp_project_name)
     bundle: EpisodeBundle = image_av_bundle
     assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
     tmp_project_path = get_project_path(tmp_project_name)
