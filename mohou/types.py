@@ -847,7 +847,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
 
     _episode_list: List[EpisodeData]
     _untouch_episode_list: List[EpisodeData]
-    metadata: Optional[MetaData]
+    metadata: MetaData
     postfix: Optional[str] = None
 
     def _get_has_a_list(self) -> List[EpisodeData]:
