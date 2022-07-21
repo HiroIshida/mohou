@@ -30,8 +30,6 @@ def get_project_path(project_name: Optional[str] = None) -> Path:
         assert setting.primary_project_name is not None
         project_name = setting.primary_project_name
     project_dir_path = root_path / project_name
-    if not project_dir_path.exists():
-        raise FileNotFoundError
     return project_dir_path
 
 
