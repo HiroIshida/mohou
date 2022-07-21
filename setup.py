@@ -3,6 +3,7 @@ from setuptools import find_packages, setup
 setup_requires = []
 
 install_requires = [
+    "pysdfgen",
     "natsort",
     "numpy",
     "psutil",
