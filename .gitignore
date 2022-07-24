@@ -1,5 +1,9 @@
 action.sh
 
+# other stuff
+*.new
+*.bak
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
