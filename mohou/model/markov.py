@@ -45,7 +45,7 @@ class MarkoveModelConfig(ModelConfigBase):
     n_output: int
     n_hidden: int = 200
     n_layer: int = 4
-    activation: Optional[str] = None
+    activation: Optional[str] = None  # TODO(HiroIshida): consider replace it with enum
 
     def __post_init__(self):
         if self.activation is not None:

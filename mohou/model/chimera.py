@@ -27,6 +27,14 @@ from mohou.utils import (
 
 @dataclass
 class ChimeraConfig(ModelConfigBase):
+    """config for Chimera model
+    note: considering the original roll of the model config, which constructdefault
+    model only from the config instance, ae_config should be AutoEncoderConfig.
+    However, in the chimera model it is common to first pre-train
+    the autoencoder model only, and then train the entire chimera model. Thus, chimera config
+    may contain AutoEncoder as the ae_config.
+    """
+
     lstm_config: LSTMConfig
     ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
 

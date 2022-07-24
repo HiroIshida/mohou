@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import re
 import uuid
@@ -144,15 +145,18 @@ class TrainCache(Generic[ModelT]):
             model = model.to(torch.device("cpu"))
             self.best_model = model
 
-            # save everything
-            # TODO: error handling
-            base_path = self.train_result_path(project_path)
-            base_path.mkdir(exist_ok=True, parents=True)
-            model_path = base_path / "model.pth"
-            valid_loss_path = base_path / "validation_loss.npz"
-            train_loss_path = base_path / "train_loss.npz"
-
             def save():
+                base_path = self.train_result_path(project_path)
+                base_path.mkdir(exist_ok=True, parents=True)
+                model_path = base_path / "model.pth"
+                model_config_path = base_path / "config.json"
+                valid_loss_path = base_path / "validation_loss.npz"
+                train_loss_path = base_path / "train_loss.npz"
+
+                with model_config_path.open(mode="w") as f:
+                    d = self.best_model.config.to_dict()
+                    json.dump(d, f, indent=2)
+
                 torch.save(self.best_model, model_path)
                 np.savez(
                     train_loss_path, **self.dump_lossseq_table_as_npz_dict(self.train_lossseq_table)
