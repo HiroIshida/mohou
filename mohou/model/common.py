@@ -70,7 +70,7 @@ class ModelConfigBase(HashableMixin):
                 d[key] = "none"
             elif isinstance(val, ModelConfigBase):
                 d[key] = val.to_dict()
-            elif hasattr(val, " __str__"):
+            else:
                 message = str(val)
                 message += (
                     "\n message from mohou: serialization of type {} is not supported yet.".format(
@@ -78,8 +78,6 @@ class ModelConfigBase(HashableMixin):
                     )
                 )
                 d[key] = message
-            else:
-                assert False
 
         return d
 
