@@ -21,7 +21,9 @@ def test_fld_npz_dict_conversion():
 def dump_train_cache(conf, loss_value, project_name):
     model = LSTM(conf)
     tcache = TrainCache.from_model(model)
-    fld = FloatLossDict({"loss": loss_value})
+    # NOTE: splitting the loss value into two component to test
+    # the case where fld consists of two items
+    fld = FloatLossDict({"loss_a": loss_value - 0.01, "loss_b": 0.01})
     tcache.update_and_save(model, fld, fld, project_name)
 
 
