@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import Dict, Generic, List, Tuple, Type, Union
+from typing import Generic, List, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -37,10 +37,6 @@ class ChimeraConfig(ModelConfigBase):
 
     lstm_config: LSTMConfig
     ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
-
-    def to_dict(self) -> Dict:
-        # a little bit complex because ae_config is a union type
-        raise NotImplementedError("under construction.")
 
 
 class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):

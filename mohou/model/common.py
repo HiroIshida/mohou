@@ -68,10 +68,19 @@ class ModelConfigBase(HashableMixin):
                 d[key] = val.__name__
             elif val is None:
                 d[key] = "none"
-            else:
-                assert False, "conversion for type {} is currently not implemented".format(
-                    type(val)
+            elif isinstance(val, ModelConfigBase):
+                d[key] = val.to_dict()
+            elif hasattr(val, " __str__"):
+                message = str(val)
+                message += (
+                    "\n message from mohou: serialization of type {} is not supported yet.".format(
+                        type(val)
+                    )
                 )
+                d[key] = message
+            else:
+                assert False
+
         return d
 
 
