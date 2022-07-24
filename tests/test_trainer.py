@@ -9,9 +9,10 @@ from mohou.trainer import TrainCache
 
 
 def test_fld_npz_dict_conversion():
-    table = {"loss": []}
-    for _ in range(10):
-        table["loss"].append(abs(np.random.randn()))
+    table = {
+        "loss_a": np.abs(np.random.randn(10)).tolist(),
+        "loss_b": np.abs(np.random.randn(10)).tolist(),
+    }
     npz_dict = TrainCache.dump_lossseq_table_as_npz_dict(table)
     table_again = TrainCache.load_lossseq_table_from_npz_dict(npz_dict)
     assert table == table_again
