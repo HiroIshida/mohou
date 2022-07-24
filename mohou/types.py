@@ -833,6 +833,17 @@ class BundleSpec(TypeShapeTableMixin):
         }
         return cls(**d)
 
+    @staticmethod
+    def file_path(project_path: Path, postfix: Optional[str] = None) -> Path:
+        if postfix is None:
+            return project_path / "bundle_spec.yaml"
+        else:
+            project_path / "bundle_spec-{}.yaml".format(postfix)
+
+    def dump(self, project_path: Path, postfix: Optional[str] = None) -> None:
+        self.file_path(project_path, postfix)
+        yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
+
 
 _bundle_cache: Dict[Tuple[Path, Optional[str]], "EpisodeBundle"] = {}  # used EpisodeBundle.load
 
@@ -1029,12 +1040,7 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
                 shutil.move(str(bundle_dir_path), str(destination_path))
 
         # extra dump just for debugging (the following info is not requried to load bundle)
-        if postfix is None:
-            spec_file_path = project_path / "bundle_spec.yaml"
-        else:
-            spec_file_path = project_path / "bundle_spec-{}.yaml".format(postfix)
-        with spec_file_path.open(mode="w") as f:
-            yaml.dump(self.spec.to_dict(), f, default_flow_style=False, sort_keys=False)
+        self.spec.dump(project_path, postfix)
 
     def get_untouch_bundle(self) -> "EpisodeBundle":
         """get episode bundle which is not used for training."""
