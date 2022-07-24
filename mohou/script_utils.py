@@ -145,7 +145,6 @@ def train_chimera(
 
     dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
     ae = TrainCache.load(project_path, AutoEncoder).best_model
-    assert ae is not None
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
     tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
@@ -214,7 +213,6 @@ def visualize_variational_autoencoder(project_path: Path):
 
     tcache = TrainCache.load(project_path, VariationalAutoEncoder)
     vae = tcache.best_model
-    assert vae is not None
 
     save_dir_path = project_path / "autoencoder_result"
     save_dir_path.mkdir(exist_ok=True)

@@ -16,7 +16,6 @@ from mohou.types import AngleVector, EpisodeBundle
 def create_obs_rule(project_path: Path):
     tcache = TrainCache.load(project_path, VariationalAutoEncoder)
     model = tcache.best_model
-    assert model is not None
     f = model.get_encoder()
     obs_rule = EncodingRule.from_encoders([f])
     return obs_rule
