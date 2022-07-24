@@ -819,7 +819,7 @@ class BundleSpec(TypeShapeTableMixin):
     n_untouch_episode: int
     n_average: int
     type_shape_table: Dict[Type[ElementBase], Tuple[int, ...]]
-    meta_data: Optional[MetaData] = None
+    meta_data: MetaData
 
     def to_dict(self) -> Dict:
         d = asdict(self)
