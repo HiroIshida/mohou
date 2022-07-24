@@ -85,7 +85,6 @@ def create_chimera_encoding_rule(project_path: Path) -> EncodingRule:
     encoding_rule = create_default_encoding_rule(project_path)
     image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
     chimera = TrainCache.load(project_path, Chimera).best_model
-    assert chimera is not None
     image_encoder_new = chimera.get_encoder()
     assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
     assert encoding_rule[image_type].output_size == image_encoder_new.output_size
@@ -105,17 +104,13 @@ def create_default_propagator(project_path: Path) -> Propagator:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
     encoding_rule = create_default_encoding_rule(project_path)
-    assert tcach_lstm.best_model is not None
     propagator = Propagator(tcach_lstm.best_model, encoding_rule)
     return propagator
 
 
 def create_chimera_propagator(project_path: Path) -> Propagator:
     encoding_rule = create_chimera_encoding_rule(project_path)
-
     chimera = TrainCache.load(project_path, Chimera).best_model
-    assert chimera is not None
-
     propagator = Propagator(chimera.lstm, encoding_rule)
     return propagator
 
