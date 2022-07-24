@@ -352,16 +352,26 @@ def image_av_bundle_uneven():
     return bundle
 
 
-def test_bundle_spec():
+def test_bundle_spec(tmp_project_name):  # noqa
     types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
     extra_info = {"hz": 20, "author": "HiroIshida"}
     spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)  # type: ignore [arg-type]
     spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
     assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
 
+    create_project_dir(tmp_project_name)
+
+    project_path = get_project_path(tmp_project_name)
+    spec.dump(project_path, None)
+    spec_again = BundleSpec.load(project_path, None)
+    assert spec == spec_again
+
+    remove_project(tmp_project_name)
+
 
 def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
     create_project_dir(tmp_project_name)
+
     bundle: EpisodeBundle = image_av_bundle
     assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
     tmp_project_path = get_project_path(tmp_project_name)
