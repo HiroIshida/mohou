@@ -60,7 +60,7 @@ class LossDict(Dict[str, torch.Tensor]):
 class ModelConfigBase(HashableMixin):
     def to_dict(self) -> Dict:
         d: Dict[str, Any] = {}
-        for key in self.__dataclass_fields__.keys():
+        for key in self.__dataclass_fields__.keys():  # type: ignore
             val = self.__dict__[key]
             if isinstance(val, (int, float, str)):
                 d[key] = val
@@ -73,7 +73,7 @@ class ModelConfigBase(HashableMixin):
             else:
                 message = str(val)
                 message += (
-                    "\n message from mohou: serialization of type {} is not supported yet.".format(
+                    " [note!] mohou > type {} is not supported yet. converted by str()".format(
                         type(val)
                     )
                 )
