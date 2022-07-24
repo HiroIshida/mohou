@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import uuid
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
@@ -19,6 +20,7 @@ from mohou.model import FloatLossDict, ModelConfigBase, ModelT, average_float_lo
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
+warnings.simplefilter("always")
 
 
 @dataclass
@@ -63,7 +65,8 @@ class TrainCache(Generic[ModelT]):
 
     @staticmethod
     def train_result_base_path(project_path: Path) -> Path:
-        return project_path / "train_result"
+        base_path = project_path / "models"
+        return base_path
 
     def train_result_path(self, project_path: Path):
         base_path = self.train_result_base_path(project_path)
@@ -99,7 +102,17 @@ class TrainCache(Generic[ModelT]):
                     else:
                         return model_config.hash_value in name
 
-        ps = filter(filter_predicate, cls.train_result_base_path(project_path).iterdir())
+        base_path = cls.train_result_base_path(project_path)
+        if not base_path.exists():
+            base_path = project_path / "train_result"
+
+            yellow = "\x1b[33;20m"
+            warn_msg = yellow
+            warn_msg += "please rename path/to/project/train_result to path/to/project/models."
+            warn_msg += "\n Otherwise, your model could not be loaded in the future release"
+            warnings.warn(warn_msg, DeprecationWarning)
+
+        ps = filter(filter_predicate, base_path.iterdir())
         return list(ps)
 
     @staticmethod
