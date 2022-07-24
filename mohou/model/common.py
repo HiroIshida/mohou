@@ -2,6 +2,7 @@ import copy
 import logging
 import operator
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import reduce
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
@@ -55,8 +56,23 @@ class LossDict(Dict[str, torch.Tensor]):
         return fld
 
 
+@dataclass
 class ModelConfigBase(HashableMixin):
-    pass
+    def to_dict(self) -> Dict:
+        d: Dict[str, Any] = {}
+        for key in self.__dataclass_fields__.keys():
+            val = self.__dict__[key]
+            if isinstance(val, (int, float, str)):
+                d[key] = val
+            elif isinstance(val, type):
+                d[key] = val.__name__
+            elif val is None:
+                d[key] = "none"
+            else:
+                assert False, "conversion for type {} is currently not implemented".format(
+                    type(val)
+                )
+        return d
 
 
 ModelConfigT = TypeVar("ModelConfigT", bound=ModelConfigBase)

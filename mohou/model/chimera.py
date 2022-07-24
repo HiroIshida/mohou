@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import Generic, List, Tuple, Type, Union
+from typing import Dict, Generic, List, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -27,8 +27,20 @@ from mohou.utils import (
 
 @dataclass
 class ChimeraConfig(ModelConfigBase):
+    """config for Chimera model
+    note: considering the original roll of the model config, which constructdefault
+    model only from the config instance, ae_config should be AutoEncoderConfig.
+    However, in the chimera model it is common to first pre-train
+    the autoencoder model only, and then train the entire chimera model. Thus, chimera config
+    may contain AutoEncoder as the ae_config.
+    """
+
     lstm_config: LSTMConfig
     ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
+
+    def to_dict(self) -> Dict:
+        # a little bit complex because ae_config is a union type
+        raise NotImplementedError("under construction.")
 
 
 class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
