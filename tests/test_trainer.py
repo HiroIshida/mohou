@@ -9,12 +9,12 @@ from mohou.trainer import TrainCache
 
 
 def test_fld_npz_dict_conversion():
-    flds = []
+    table = {"loss": []}
     for _ in range(10):
-        flds.append(FloatLossDict({"loss": abs(np.random.randn())}))
-    npz_dict = TrainCache.dump_flds_as_npz_dict(flds)
-    flds_again = TrainCache.load_flds_from_npz_dict(npz_dict)
-    assert flds == flds_again
+        table["loss"].append(abs(np.random.randn()))
+    npz_dict = TrainCache.dump_lossseq_table_as_npz_dict(table)
+    table_again = TrainCache.load_lossseq_table_from_npz_dict(npz_dict)
+    assert table == table_again
 
 
 def dump_train_cache(conf, loss_value, project_name):
@@ -73,6 +73,6 @@ def test_traincache_load_best_one(tmp_project_name):  # noqa
 
     tcache = TrainCache.load(tmp_project_path, LSTM)
     # must pick up the one with lowest loss
-    assert tcache.validate_loss_dict_seq[-1].total() == 3.0
+    assert tcache.min_validate_loss == 3.0
 
     remove_project(tmp_project_name)

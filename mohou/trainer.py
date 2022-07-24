@@ -34,19 +34,30 @@ TrainCacheT = TypeVar("TrainCacheT", bound="TrainCache")
 @dataclass
 class TrainCache(Generic[ModelT]):
     best_model: ModelT
-    train_loss_dict_seq: List[FloatLossDict]
-    validate_loss_dict_seq: List[FloatLossDict]
+    train_lossseq_table: Dict[str, List[float]]
+    validate_lossseq_table: Dict[str, List[float]]
     file_uuid: str
 
     @classmethod
     def from_model(cls, model: ModelT) -> "TrainCache[ModelT]":
         file_uuid = str(uuid.uuid4())[-6:]
-        return cls(model, [], [], file_uuid)
+        return cls(model, {}, {}, file_uuid)
+
+    @property
+    def keys(self) -> List[str]:
+        return list(self.train_lossseq_table.keys())
+
+    @staticmethod
+    def reduce_to_lossseq(name_lossseq_table: Dict[str, List[float]]) -> List[float]:
+        partial_lossseq_list = []
+        for partial_lossseq in name_lossseq_table.values():
+            partial_lossseq_list.append(partial_lossseq)
+        return np.array(partial_lossseq_list).sum(axis=0).tolist()
 
     @property
     def min_validate_loss(self) -> float:
-        totals = [dic.total() for dic in self.validate_loss_dict_seq]
-        min_loss_sofar = min(totals)
+        lossseq = self.reduce_to_lossseq(self.validate_lossseq_table)
+        min_loss_sofar = min(lossseq)
         return min_loss_sofar
 
     @staticmethod
@@ -91,22 +102,19 @@ class TrainCache(Generic[ModelT]):
         return list(ps)
 
     @staticmethod
-    def dump_flds_as_npz_dict(flds: List[FloatLossDict]) -> Dict:
+    def dump_lossseq_table_as_npz_dict(name_lossseq_table: Dict[str, List[float]]) -> Dict:
         kwargs = {}
-        for key in flds[0].keys():
-            values = np.array([fld[key] for fld in flds])
-            kwargs[key] = values
+        for key in name_lossseq_table.keys():
+            kwargs[key] = np.array(name_lossseq_table[key])
         return kwargs
 
     @staticmethod
-    def load_flds_from_npz_dict(npz_dict: Dict) -> List[FloatLossDict]:
+    def load_lossseq_table_from_npz_dict(npz_dict: Dict) -> Dict[str, List[float]]:
         keys = list(npz_dict.keys())
-        flds: List[FloatLossDict] = []
-        n_seqlen = len(npz_dict[keys[0]])
-        for i in range(n_seqlen):
-            fld = FloatLossDict({k: npz_dict[k][i] for k in keys})
-            flds.append(fld)
-        return flds
+        table = {}
+        for key in keys:
+            table[key] = npz_dict[key].tolist()
+        return table
 
     def update_and_save(
         self,
@@ -116,12 +124,21 @@ class TrainCache(Generic[ModelT]):
         project_path: Path,
     ) -> None:
 
-        self.train_loss_dict_seq.append(train_loss_dict)
-        self.validate_loss_dict_seq.append(validate_loss_dict)
+        assert train_loss_dict.keys() == validate_loss_dict.keys()
 
-        totals = [dic.total() for dic in self.validate_loss_dict_seq]
-        min_loss_sofar = min(totals)
-        require_update_model = totals[-1] == min_loss_sofar
+        is_dict_initialized = len(self.train_lossseq_table) > 0
+        if not is_dict_initialized:
+            for key in train_loss_dict.keys():
+                self.train_lossseq_table[key] = []
+                self.validate_lossseq_table[key] = []
+
+        # update tables
+        for key in train_loss_dict.keys():
+            self.train_lossseq_table[key].append(train_loss_dict[key])
+            self.validate_lossseq_table[key].append(validate_loss_dict[key])
+
+        validate_loss_list = self.reduce_to_lossseq(self.validate_lossseq_table)
+        require_update_model = validate_loss_list[-1] == self.min_validate_loss
         if require_update_model:
             model = copy.deepcopy(model)
             model = model.to(torch.device("cpu"))
@@ -137,8 +154,13 @@ class TrainCache(Generic[ModelT]):
 
             def save():
                 torch.save(self.best_model, model_path)
-                np.savez(train_loss_path, **self.dump_flds_as_npz_dict(self.train_loss_dict_seq))
-                np.savez(valid_loss_path, **self.dump_flds_as_npz_dict(self.validate_loss_dict_seq))
+                np.savez(
+                    train_loss_path, **self.dump_lossseq_table_as_npz_dict(self.train_lossseq_table)
+                )
+                np.savez(
+                    valid_loss_path,
+                    **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table)
+                )
 
             # error handling for keyboard interrupt
             try:
@@ -161,8 +183,8 @@ class TrainCache(Generic[ModelT]):
         file_uuid = m[3]
 
         best_model = torch.load(model_path)
-        train_loss = cls.load_flds_from_npz_dict(np.load(train_loss_path))
-        valid_loss = cls.load_flds_from_npz_dict(np.load(valid_loss_path))
+        train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
+        valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
         return cls(best_model, train_loss, valid_loss, file_uuid)
 
     @classmethod
@@ -193,10 +215,10 @@ class TrainCache(Generic[ModelT]):
     def visualize(self, fax: Optional[Tuple] = None):
         fax = plt.subplots() if fax is None else fax
         fig, ax = fax
-        train_loss_seq = [dic.total() for dic in self.train_loss_dict_seq]
-        valid_loss_seq = [dic.total() for dic in self.validate_loss_dict_seq]
-        ax.plot(train_loss_seq)
-        ax.plot(valid_loss_seq)
+        train_lossseq = self.reduce_to_lossseq(self.train_lossseq_table)
+        valid_lossseq = self.reduce_to_lossseq(self.validate_lossseq_table)
+        ax.plot(train_lossseq)
+        ax.plot(valid_lossseq)
         ax.set_yscale("log")
         ax.legend(["train", "valid"])
 
