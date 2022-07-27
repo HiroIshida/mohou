@@ -14,7 +14,39 @@ git clone https://github.com/HiroIshida/mohou.git
 cd mohou
 pip install -e . 
 ```
-After this pip install you are readly to start [pybullet demo](/pipeline/pybullet_demo.sh)! However, to run [rlbench_demo](/pipeline/rlbench_demo.sh), there is an additional step of rlbench installation. See https://github.com/stepjam/RLBench for rlbench installation. 
+After this pip install you are ready to start [pybullet demo](/pipeline/pybullet_demo.sh)! We also provide [rlbench_demo](/pipeline/rlbench_demo.sh). As for rlbench demo, additional installation step of pyrep and rlbench is required.  See https://github.com/stepjam/RLBench for the detail.
+
+
+## Introduction
+### concept of "project"
+First, the important concept of the mohou package is "project". Each "project" has each directory and the directory contains everything, e.g. dataset, trained models, visualization results.  Thanks to this concept, hard-coding the file path of `TrainCache` and  `EpisodeBundle`, and many other stuff can be avoided. The use of the concept of project enables easy loading many objects. For example, `EpisodeBundle` which is a bundle of episodic sequential data is 
+can be dumped and loaded by
+```
+EpisodeBundle.dump(project_path)
+EpisodeBundle.load(project_path)
+```
+
+### pipeline
+Except the visualization stuff, the pipeline consists of 1) generation of dataset, 2) training autoencoder, 3) trainling lstm, 4) execution using the trained policy. For example, in the `pybullet_demo.sh`, `kuka_reaching.py`, `python3 -m mohou.script.train_autoencoder`, `python3 -m mohou.script.train_lstm`, and `python3 $example_path/kuka_reaching.py --feedback` corresponds to the four core steps. The result of all trained model is saved in `{project_path}/models` directory.
+
+Note that step 1 and step 4 must vary according to the problem and `kuka_reaching.py` is just an example. That is, if you use the real robot, you must write own dataset collection program and execution program. 
+
+Other than the above steps, the software provide visualization method for autoencoder and lstm training reuslts, which are saved in `{project_path}/autoencoder_result` and `{project_path}/lstm_result` respectively.
+
+The visualization of autoencoder result is done by
+```bash
+python3 -m mohou.script.visualize_autoencoder_result  # plus options
+```
+which plots comparison of original and reconstruction images side-by-side.
+
+The visualization of lstm result is done by
+```bash
+python3 -m mohou.script.visualize_lstm_result # plus options
+```
+which plots the result of LSTM prediction of images as gif files and joint angles as png files. In the prediction, we first feeds some sequential state to LSTM and then propagate without feeding any extra images.
+
+These visualization is extremely important to know the training quality. Based on the visualization result, you can decide increase the number of episode data or increase the training epoch.
+
 
 ## Contribution
 When you make a new PR, one need to check that the tests passed and formatting is correct.
@@ -43,76 +75,6 @@ Note that to run the command you need to install packages
 pip3 install black isort flake8 autoflake
 ```
 
-## Tutorial demo (vision-based reaching task)
-
-<img src="https://user-images.githubusercontent.com/38597814/155882282-f40af02b-99aa-41b3-bd43-fe7b7d0c2d96.gif" width="30%" /><img src="https://user-images.githubusercontent.com/38597814/155882252-5739fa16-baf7-4a26-b88f-24e106ea0dd1.gif" width="30%" />
-
-left: teaching sample (`~/.mohou/pybullet_reaching_RGBD/sample.gif`)
-
-right: testing sample (`~/.mohou/pybullet_reaching_RGBD/feedback_simulation.gif`)
-
-Running [`pipeline/pybullet_demo.sh`](/pipeline/pybullet_demo.sh) is a good first step. 
-
-An important concept of this framework is a "project", where all data, learned models, result visualizations and logs are stored in a project directory `~/.mohou/{project_name}`. For example, after running `demo_batch RGBD` in [`pipeline/pybullet_demo.sh`](/pipeline/pybullet_demo.sh), we can confirm that following directly structure is created under the corresponding project directory.
-```
-h-ishida@08d7b2a2ec8f:~/.mohou$ tree pybullet_reaching_RGBD
-pybullet_reaching_RGBD
-├── MultiEpisodeChunk.pkl
-├── TrainCache-AutoEncoder-1d3443.pkl
-├── TrainCache-LSTM-688efd.pkl
-├── TrainCache-LSTM-ca69a1.pkl
-├── TrainCache-LSTM-f5fec0.pkl
-├── autoencoder_result
-│   ├── result0.png
-│   ├── result1.png
-│   ├── result2.png
-│   ├── result3.png
-│   └── result4.png
-├── feedback_simulation.gif
-├── log
-│   ├── autoencoder_20220322082534.log
-│   ├── latest_autoencoder.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/autoencoder_20220322082534.log
-│   ├── latest_lstm.log -> /home/h-ishida/.mohou/pybullet_reaching_RGBD/log/lstm_20220322114701.log
-│   ├── lstm_20220322113045.log
-│   ├── lstm_20220322113926.log
-│   └── lstm_20220322114701.log
-├── lstm_result
-│   └── result.gif
-├── sample.gif
-└── train_history
-    ├── TrainCache-AutoEncoder-1d3443.pkl.png
-    ├── TrainCache-LSTM-688efd.pkl.png
-    ├── TrainCache-LSTM-ca69a1.pkl.png
-    └── TrainCache-LSTM-f5fec0.pkl.png
-```
-
-<details open>
-<summary> detail of each component of demo.sh </summary>
-
-- `kuka_reaching.py` creates `MultiEpisodeChunk.pkl` which consists of `n` sample trajectories that reaches to the box in the image (stored in `~/.mohou/{project_name}/). The datachunk consists of sequences of `RGBImage` and `DepthImage` and `AngleVector`. Also, one of the trajectory image in the chunk is visualized as `~/.mohou/{project_name}/sample.gif`.
-
-- `train_autoencoder.py` trains an autoencoder of `$image_type`. $image_type can either be `RGBImange`, `DepthImage` or `RGBDImage`. The train cache is stored as `~/.mohou/{project_name}/TrainCache-AutoEncoder-{uuid}.pkl`.
-
-- `visualize_autoencoder_result.py` visualize the comparison of original and reconstructed image by the autoencoder (stored in `~/.mohou/{project_name}/autoencoder_result/)`. This visualization is useful for debugging/tunning, especially to determine the train epoch of autoencoder if needed.
-
-- `train_lstm.py` trains and lstm that propagate vectors concated by feature vector compressed by the trained autoencoder and `AngleVector`. Note that `train_autoencoder.py` must be run beforehand. The train cache is stored as `~/.mohou/{project_name}/TrainCache-LSTM-{uuid}.pkl`. When you run `train_lstm.py` multiple times, the train caches are stored with different uuids, and when loading the one with least validation score will be loaded among them.
-
-- `visualize_lstm_result.py` visualizes the `n` step prediction given 10 images, which can be used for debugging/tuning or determining the good training epoch of the lstm training. The gif file is stored as `~/.mohou/{project_name}/lstm_result/result.gif`
-<img src="https://user-images.githubusercontent.com/38597814/155882256-39a55b42-9973-4a66-94ee-a08df273c1cf.gif" width="30%" />
-
-- `visualize_train_history.py` visualizes the training history (test and validation loss) for all train caches in the project directory. The figures will be stored in `~/.mohou/{project_name}/train_history/`
-
-- `kuka_reaching.py --fedback` simualte the visuo-motor reaching task in the simulator using trained autoencoder and lstm. The visualization of the simulation is stored as `~/.mohou/{project_name}/feedback_simulation.gif`.
-
-Also note that logs by `train_autoencoder.py` and `train_lstm.py` will be stored in `~/.mohou/{project_name}/log/`.
-</details>
-
-
-## Applying to your own project
-Besides parameter/training epoch tuning, to applyig this software to your own project you must replace 
-- `kuka_reaching.py` (data collection) by your own data creation program using real robot (or simulated model)
-- `kuka_reaching.py --feedback` (execution) by real robot execution program
-among the `pipeline/demo.sh`.
 
 ### Data collection
 Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` are stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) such as `AngleVector` plus `RGBImage` or `AngleVector` plut `DepthImage` can be used. You can also define custom type see [this](https://github.com/HiroIshida/mohou#define-custom-element-type).
