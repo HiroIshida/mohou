@@ -125,7 +125,7 @@ while True:
     send_next_angle_vector(av_pred)  # define by yourself
 ```
 
-### Define custom element type
+### Element type hierarchy and user's custom element type
 The following figure show the type hierarchy. In the `mohou` framework, only the leaf types (filled by grey) can be instantiated. In most case, users would create custom type by inheriting from either `CompositeImageBase`, or `VectorBase` or `PrimitiveImageBase`. For the detail, please refere to [`mohou/types.py`](/mohou/types.py) for how the built-in concrete types such as `RGBDImage`, `RGBImage` and `AngleVector` are defined.
 ![graph](https://user-images.githubusercontent.com/38597814/181284718-1ae113f4-7e8b-4221-a0f2-d082c8e3a211.png)
 
