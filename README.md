@@ -47,6 +47,85 @@ which plots the result of LSTM prediction of images as gif files and joint angle
 
 These visualization is extremely important to know the training quality. Based on the visualization result, you can decide increase the number of episode data or increase the training epoch.
 
+### Data collection
+The teaching data must be saved as a `EpisodeBundle`. `EpisodeBundle` consists of multiple `EpisodeData`. `EpisodeData` consists of multiple `ElementSequence`. And, `ElementSequence` consists of sequence of each elements like `AngleVector` and `RGBImage`. The pseudo-code of data collection looks like the below. 
+```python
+import numpy as np
+from mohou.types import AngleVector, ElementSequence, EpisodeBundle, EpisodeData, RGBImage
+
+
+def obtain_rgb_from_camera() -> np.ndarray:  # type: ignore
+    # implement by your self
+    pass
+
+
+def obtain_joint_configuration() -> np.ndarray:  # type: ignore
+    # implement by your self
+    pass
+
+
+def create_episode_data() -> EpisodeData:
+    n_step = 100
+    rgb_list = []
+    av_list = []
+    for _ in range(n_step):
+        rgb_numpy = obtain_rgb_from_camera()
+        av_numpy = obtain_joint_configuration()
+
+        rgb = RGBImage(rgb_numpy, dtype=np.uint8)  # type: ignore
+        av = AngleVector(av_numpy)
+
+        rgb_list.append(rgb)
+        av_list.append(av)
+
+    # convering list of element to a sequence type
+    rgb_sequence = ElementSequence(rgb_list)
+    av_sequence = ElementSequence(av_list)
+    return EpisodeData.from_seq_list([rgb_sequence, av_sequence])
+
+
+n_episode = 20
+episode_list = []
+for _ in range(n_episode):
+    episode_list.append(create_episode_data())
+chunk = EpisodeBundle.from_data_list(episode_list)
+chunk.dump(project_path)
+```
+Of course you can make a `EpisodeBundle` consists of `DepthImage` and `GripperState` or other your custom type.
+
+### Execution
+A pseudo-code for execution can be written as below:
+```python
+from mohou.default import create_default_propagator
+from mohou.propagator import Propagator
+from mohou.types import AngleVector, ElementDict, RGBImage
+
+
+# create_default_propagator functions automatically resolve the autoencoder and lstm model path
+# given the project_path, and then create the propagator.
+propagator: Propagator = create_default_propagator(your_project_path)
+
+while True:
+    # Observation using real/simulated robot
+    rgb: RGBImage = obtain_rgb_from_camera()  # define the function by yourself
+    av: AngleVector = obtain_joint_configuration()  # define the function by yourself
+    elem_dict = ElementDict((rgb, av))
+
+    propagator.feed(elem_dict)
+
+    # If your fed elem_dict contains RGBImage and AngleVector, then propagated
+    # elem_dict_pred also has RGBImage and AngleVector
+    elem_dict_pred: ElementDict = propagator.predict(n_prop=1)[0]
+
+    # Get specific element by providing the elemen type as a key
+    rgb_pred = elem_dict_pred[AngleVector]
+    av_pred = elem_dict_pred[RGBImage]
+
+    # send command
+    send_next_angle_vector(av_pred)  # define by yourself
+```
+
+
 
 ## Contribution
 When you make a new PR, one need to check that the tests passed and formatting is correct.
@@ -76,86 +155,7 @@ pip3 install black isort flake8 autoflake
 ```
 
 
-### Data collection
-Typical data collection code looks like the following, where `AngleVector`, `RGBImage` and `DepthImage` are stored here but any combination of `ElementBase`'s subtype (see mohou/types.py) such as `AngleVector` plus `RGBImage` or `AngleVector` plut `DepthImage` can be used. You can also define custom type see [this](https://github.com/HiroIshida/mohou#define-custom-element-type).
-
-```python
-import numpy as np
-
-from mohou.types import (
-    AngleVector,
-    DepthImage,
-    ElementSequence,
-    EpisodeData,
-    MultiEpisodeChunk,
-    RGBImage,
-)
-
-
-def create_episode_data():
-    n_step = 100
-    rgb_seq = ElementSequence()
-    depth_seq = ElementSequence()
-    av_seq = ElementSequence()
-    for _ in range(n_step):
-        rgb = RGBImage(
-            np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
-        )  # replace this by actual data
-        depth = DepthImage(np.random.randn(224, 224, 1))  # replace this by actual data
-        av = AngleVector(np.random.randn(7))  # replace this by actual data
-
-        rgb_seq.append(rgb)
-        depth_seq.append(depth)
-        av_seq.append(av)
-    return EpisodeData.from_seq_list([rgb_seq, depth_seq, av_seq])
-
-
-n_episode = 20
-data_list = [create_episode_data() for _ in range(n_episode)]
-chunk = MultiEpisodeChunk.from_data_list(data_list)
-chunk.dump("dummy_project")  # dumps to ~/.mohou/dummy_project/MultiEpisodeChunk.pkl
-```
-
-### Execution
-Typical code for execution using learned propgatos is as follows. Note that type-hinting here is just for explanation and not necessarily required.
-```python
-from mohou.default import create_default_propagator
-from mohou.propagator import Propagator
-from mohou.types import AngleVector, ElementDict, RGBImage
-
-# Please change project_name and n_angle_vector
-propagator: Propagator = create_default_propagator("your_project_name")
-
-while True:
-    # Observation using real/simulated robot
-    rgb: RGBImage = obtain_rgb_image()  # define by yourself
-    av: AngleVector = obtain_angle_vector()  # define by yourself
-    elem_dict = ElementDict((rgb, av))
-
-    propagator.feed(elem_dict)
-
-    # If your fed elem_dict contains RGBImage and AngleVector, then propagated
-    # elem_dict_pred also has RGBImage and AngleVector
-    elem_dict_pred: ElementDict = propagator.predict(n_prop=1)[0]
-
-    # Get specific element
-    rgb_pred = elem_dict_pred[AngleVector]
-    av_pred = elem_dict_pred[RGBImage]
-
-    # send command
-    send_next_angle_vector(av_pred)  # define by yourself
-```
-
 ## Define custom element type
 The following figure show the type hierarchy. In this framework, only the leaf types (filled by grey) can be instantiated. In most case, users would create custom type by inheriting from either `CompositeImageBase`, or `VectorBase` or `PrimitiveImageBase`. For the detail, please refere to [`mohou/types.py`](/mohou/types.py) for how the built-in concrete types such as `RGBDImage`, `RGBImage` and `AngleVector` are defined.
 
 <img src="https://user-images.githubusercontent.com/38597814/156465428-35a54445-3c2b-498d-8983-23550d77415c.png" width="60%" />
-
-## Define custom embedder
-`Embedder` in this framework is to embed `element: ElementBase` to 1-dim `np.ndarray`. For example, the built-in embedder `ImageEmbedder` equipped with a map from an image to a vector and a map from a feature vector to an image.
-
-You could define your custom embedder by inheriting `EmbedderBase` and define both methods:
-- `_forward_impl(self, inp: ElementT) -> np.ndarray`
-- `_backward_impl(self, inp: np.ndarray) -> ElementT`
-
-For example, in the demo we create `ImageEmbedder` from `AutoEncoder` instance, but you could use PCA or other dimension reduction methods.
