@@ -15,6 +15,8 @@ if __name__ == "__main__":
         dg.node(t.__name__, style="filled" if is_concrete else None, fillcolor="lightgrey")
 
         for t_parent in t.__bases__:
+            if t_parent.__name__ in ("Generic", "ABC", "object"):
+                continue
             back_recursion(t_parent)
             dg.edge(t_parent.__name__, t.__name__)
 
