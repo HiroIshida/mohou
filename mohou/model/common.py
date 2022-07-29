@@ -103,7 +103,9 @@ class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
         logger.info("hash value of config: {}".format(self.hash_value))
         logger.info("model is initialized")
 
-    def put_on_device(self):
+    def put_on_device(self, device: Optional[torch.device] = None):
+        if device is not None:
+            self.device = device
         self.to(self.device)
 
     @property
