@@ -86,9 +86,9 @@ class LSTM(LSTMBaseMixIn, ModelBase[LSTMConfig]):
             n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
         )
 
-    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
 
-        state_sample, static_context_sample = sample
+        _, state_sample, static_context_sample = sample
 
         # sanity check
         n_batch, n_seq_len, n_dim = state_sample.shape
@@ -159,17 +159,17 @@ class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
             self.register_parameter(name, param)
             self.parametric_bias_list.append(param)
 
-    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
-        state_sample, pb_indices = sample
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+        episode_indices, state_sample, _ = sample
         # sanity check
         n_batch, n_seq_len, n_dim = state_sample.shape
-        assert pb_indices.ndim == 1
-        assert max(pb_indices) < self.config.n_pb
-        assert len(pb_indices) == n_batch
+        assert episode_indices.ndim == 1
+        assert max(episode_indices) < self.config.n_pb
+        assert len(episode_indices) == n_batch
 
         # create pb list
         assert self.parametric_bias_list is not None
-        pb_list_extracted = [self.parametric_bias_list[i] for i in pb_indices]
+        pb_list_extracted = [self.parametric_bias_list[i] for i in episode_indices]
         pb_stacked = torch.stack(pb_list_extracted)  # type: ignore
 
         # propagation
