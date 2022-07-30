@@ -143,8 +143,6 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
     lstm_layer: nn.LSTM
     output_layer: nn.Sequential
     parametric_bias_list: List[Parameter]
-    # it is slightly bit strange design, but number of parametric_bias will be determined when
-    # the loss is evaluated
 
     def _setup_from_config(self, config: PBLSTMConfig) -> None:
         n_input = config.n_state_with_flag + config.n_pb_dim
