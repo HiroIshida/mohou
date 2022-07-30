@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
+from mohou.model.third_party import VariationalLSTM
 from mohou.types import ElementBase
 
 
@@ -42,9 +43,12 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
     @staticmethod
     def _setup_inner(
         n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
-    ) -> Tuple[nn.LSTM, nn.Sequential]:
+    ) -> Tuple[Union[nn.LSTM, VariationalLSTM], nn.Sequential]:
 
-        lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
+        # lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
+        lstm_layer = VariationalLSTM(
+            n_input, n_hidden, n_layer, dropouti=0.5, dropoutw=0.5, dropouto=0.5
+        )
         output_layers = []
         for _ in range(n_output_layer):
             output_layers.append(nn.Linear(n_hidden, n_hidden))
@@ -92,7 +96,7 @@ class LSTM(LSTMBase[LSTMConfig]):
     lstm with context: x_t+1 = f(x_t, x_t-1, ..., c) where c is static (time-invariant) context
     """
 
-    lstm_layer: nn.LSTM
+    lstm_layer: Union[nn.LSTM, VariationalLSTM]
     output_layer: nn.Sequential
 
     def _setup_from_config(self, config: LSTMConfig) -> None:
@@ -148,7 +152,7 @@ class PBLSTMConfig(LSTMConfigBase):
 
 
 class PBLSTM(LSTMBase[PBLSTMConfig]):
-    lstm_layer: nn.LSTM
+    lstm_layer: Union[nn.LSTM, VariationalLSTM]
     output_layer: nn.Sequential
     parametric_bias_list: List[Parameter]
 

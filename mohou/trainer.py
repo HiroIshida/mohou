@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import re
@@ -154,8 +153,6 @@ class TrainCache(Generic[ModelT]):
         validate_loss_list = self.reduce_to_lossseq(self.validate_lossseq_table)
         require_update_model = validate_loss_list[-1] == self.min_validate_loss
         if require_update_model:
-            model = copy.deepcopy(model)
-            model = model.to(torch.device("cpu"))
             self.best_model = model
 
             def save():
