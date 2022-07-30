@@ -40,15 +40,18 @@ class LSTM(ModelBase[LSTMConfig]):
     output_layer: nn.Sequential
 
     def _setup_from_config(self, config: LSTMConfig) -> None:
-        n_state = config.n_state_with_flag
-        n_ts_input = config.n_static_context
-        self.lstm_layer = nn.LSTM(
-            n_state + n_ts_input, config.n_hidden, config.n_layer, batch_first=True
-        )
+        n_input = config.n_state_with_flag + config.n_static_context
+        n_output = config.n_state_with_flag
+        self._setup_inner(n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer)
+
+    def _setup_inner(
+        self, n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
+    ):
+        self.lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
         output_layers = []
-        for _ in range(config.n_output_layer):
-            output_layers.append(nn.Linear(config.n_hidden, config.n_hidden))
-        output_layers.append(nn.Linear(config.n_hidden, n_state))
+        for _ in range(n_output_layer):
+            output_layers.append(nn.Linear(n_hidden, n_hidden))
+        output_layers.append(nn.Linear(n_hidden, n_output))
         self.output_layer = nn.Sequential(*output_layers)
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
