@@ -48,13 +48,16 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
         n_hidden: int,
         n_layer: int,
         n_output_layer: int,
-        valational: bool,
+        variational: bool,
     ) -> Tuple[Union[nn.LSTM, VariationalLSTM], nn.Sequential]:
 
-        # lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
-        lstm_layer = VariationalLSTM(
-            n_input, n_hidden, n_layer, dropouti=0.5, dropoutw=0.5, dropouto=0.5
-        )
+        if variational:
+            lstm_layer = VariationalLSTM(
+                n_input, n_hidden, n_layer, dropouti=0.5, dropoutw=0.5, dropouto=0.5
+            )
+        else:
+            lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
+
         output_layers = []
         for _ in range(n_output_layer):
             output_layers.append(nn.Linear(n_hidden, n_hidden))
