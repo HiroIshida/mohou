@@ -1,16 +1,28 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type, TypeVar
 
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-from mohou.model.common import LossDict, ModelBase, ModelConfigBase
+from mohou.model.common import LossDict, ModelBase, ModelConfigBase, ModelConfigT
 from mohou.types import ElementBase
 
 
 @dataclass
-class LSTMConfig(ModelConfigBase):
+class LSTMConfigBase(ModelConfigBase):
+    n_state_with_flag: int
+    n_static_context: int = 0
+    n_hidden: int = 200
+    n_layer: int = 4
+    n_output_layer: int = 1
+
+
+LSTMConfigBaseT = TypeVar("LSTMConfigBaseT", bound=LSTMConfigBase)
+
+
+@dataclass
+class LSTMConfig(LSTMConfigBase):
     """
     type_wise_loss: if True, loss is computed for each type (following type_bound_table) and
     each loss is stored in the LossDict
@@ -22,18 +34,11 @@ class LSTMConfig(ModelConfigBase):
     over the loss of entire state
     """
 
-    n_state_with_flag: int
-    n_static_context: int = 0
-    n_hidden: int = 200
-    n_layer: int = 4
-    n_output_layer: int = 1
     type_wise_loss: bool = False
     type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
 
 
-class LSTMBaseMixIn:
-    """provide config independent fetures"""
-
+class LSTMBase(ModelBase[ModelConfigT]):
     @staticmethod
     def _setup_inner(
         n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
@@ -70,7 +75,7 @@ class LSTMBaseMixIn:
         return LossDict({"prediction": loss_value})
 
 
-class LSTM(LSTMBaseMixIn, ModelBase[LSTMConfig]):
+class LSTM(LSTMBase[LSTMConfig]):
     """
     lstm: x_t+1 = f(x_t, x_t-1, ...)
     lstm with context: x_t+1 = f(x_t, x_t-1, ..., c) where c is static (time-invariant) context
@@ -128,17 +133,13 @@ class LSTM(LSTMBaseMixIn, ModelBase[LSTMConfig]):
 
 
 @dataclass
-class PBLSTMConfig(ModelConfigBase):
+class PBLSTMConfig(LSTMConfigBase):
     # TODO: add static_contex, type_wise_loss
-    n_state_with_flag: int
-    n_pb: int
+    n_pb: int = -1  # override this
     n_pb_dim: int = 2
-    n_hidden: int = 200
-    n_layer: int = 4
-    n_output_layer: int = 1
 
 
-class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
+class PBLSTM(LSTMBase[PBLSTMConfig]):
     lstm_layer: nn.LSTM
     output_layer: nn.Sequential
     parametric_bias_list: List[Parameter]
