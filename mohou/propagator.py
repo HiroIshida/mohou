@@ -1,5 +1,5 @@
-from abc import abstractmethod
-from typing import Generic, List, Optional, Tuple
+from abc import ABC, abstractmethod
+from typing import ClassVar, Generic, List, Optional, Tuple, Type
 
 import numpy as np
 import torch
@@ -11,8 +11,8 @@ from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
 
 
-class PropagatorBase(Generic[LSTMBaseT]):
-    lstm: LSTMBaseT
+class PropagatorBase(ABC, Generic[LSTMBaseT]):
+    lstm_model: LSTMBaseT
     encoding_rule: EncodingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
@@ -28,7 +28,7 @@ class PropagatorBase(Generic[LSTMBaseT]):
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
     ):
-        self.lstm = lstm
+        self.lstm_model = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
         self.n_init_duplicate = n_init_duplicate
@@ -43,11 +43,11 @@ class PropagatorBase(Generic[LSTMBaseT]):
 
     @property
     def require_static_context(self) -> bool:
-        return self.lstm.config.n_static_context > 0
+        return self.lstm_model.config.n_static_context > 0
 
     def set_static_context(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert self.lstm.config.n_static_context == len(value)
+        assert self.lstm_model.config.n_static_context == len(value)
         self.static_context = value
 
     def feed(self, elem_dict: ElementDict):
@@ -99,30 +99,39 @@ class PropagatorBase(Generic[LSTMBaseT]):
 
         return pred_state_list
 
+    @property
+    @classmethod
+    @abstractmethod
+    def lstm_type(cls) -> Type[LSTMBaseT]:
+        pass
+
     @abstractmethod
     def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         pass
 
 
 class Propagator(PropagatorBase[LSTM]):
+    lstm_type: ClassVar[Type[LSTM]] = LSTM
+
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
         states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-        out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+        out, hidden = self.lstm_model.forward(states_torch, context_torch, self._hidden)
         return out, hidden
 
 
-class LSTMPBPropagator(PropagatorBase[PBLSTM]):
+class PBLSTMPropagator(PropagatorBase[PBLSTM]):
+    lstm_type: ClassVar[Type[PBLSTM]] = PBLSTM
     parametric_bias: np.ndarray
 
     def set_parametric_bias(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert len(value) == self.lstm.config.n_pb_dim
+        assert len(value) == self.lstm_model.config.n_pb_dim
         self.parametric_bias = value
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
         pb_torch = torch.from_numpy(self.parametric_bias).float().unsqueeze(dim=0)
         states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-        out, hidden = self.lstm.forward(states_torch, pb_torch, context_torch, self._hidden)
+        out, hidden = self.lstm_model.forward(states_torch, pb_torch, context_torch, self._hidden)
         return out, hidden
