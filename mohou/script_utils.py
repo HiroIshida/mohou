@@ -163,7 +163,7 @@ def visualize_train_histories(project_path: Path):
     plot_dir_path = project_path / "train_history"
     plot_dir_path.mkdir(exist_ok=True)
 
-    all_result_paths = TrainCache.filter_result_paths(project_path, None, None)
+    all_result_paths = TrainCache.filter_result_paths(project_path, None)
     for result_path in all_result_paths:
         tcache = TrainCache.load_from_base_path(result_path)
         image_path = plot_dir_path / (result_path.name + ".png")

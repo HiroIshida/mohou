@@ -15,7 +15,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
 import mohou
-from mohou.model import FloatLossDict, ModelConfigBase, ModelT, average_float_loss_dict
+from mohou.model import FloatLossDict, ModelT, average_float_loss_dict
 from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
 
 logger = logging.getLogger(__name__)
@@ -79,9 +79,21 @@ class TrainCache(Generic[ModelT]):
         cls,
         project_path: Path,
         model_type: Optional[Type[ModelT]],
-        model_config: Optional[ModelConfigBase],
+        **kwargs,
     ) -> List[Path]:
         """filter train cache path. see filter_predicate for the logic."""
+
+        def is_config_consistent(path: Path) -> bool:
+            config_path = path / "config.json"
+            with config_path.open(mode="r") as f:
+                config = json.load(f)
+            for key, val in kwargs.items():
+                assert isinstance(val, (int, float, str))
+                t = type(val)
+                val_decoded = t(config[key])
+                if val != val_decoded:
+                    return False
+            return True
 
         def filter_predicate(path: Path):
             name = path.name
@@ -95,11 +107,7 @@ class TrainCache(Generic[ModelT]):
                     # if specified, name must be start with model_type.__name__
                     return False
                 else:
-                    if model_config is None:
-                        # if not specified, always pass
-                        return True
-                    else:
-                        return model_config.hash_value in name
+                    return is_config_consistent(path)
 
         base_path = cls.train_result_base_path(project_path)
         if not base_path.exists():
@@ -173,7 +181,7 @@ class TrainCache(Generic[ModelT]):
                 )
                 np.savez(
                     valid_loss_path,
-                    **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table)
+                    **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table),
                 )
 
             # error handling for keyboard interrupt
@@ -206,10 +214,10 @@ class TrainCache(Generic[ModelT]):
         cls,
         project_path: Path,
         model_type: Optional[Type[ModelT]] = None,
-        model_config: Optional[ModelConfigBase] = None,
+        **kwargs,
     ) -> "List[TrainCache[ModelT]]":
 
-        ps = cls.filter_result_paths(project_path, model_type, model_config)
+        ps = cls.filter_result_paths(project_path, model_type, **kwargs)
         tcache_list = [cls.load_from_base_path(p) for p in ps]
         if len(tcache_list) == 0:
             raise FileNotFoundError
@@ -220,9 +228,9 @@ class TrainCache(Generic[ModelT]):
         cls,
         project_path: Path,
         model_type: Type[ModelT],
-        model_config: Optional[ModelConfigBase] = None,
+        **kwargs,
     ) -> "TrainCache[ModelT]":
-        tcache_list = cls.load_all(project_path, model_type, model_config)
+        tcache_list = cls.load_all(project_path, model_type, **kwargs)
         tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
         return tcaceh_list_sorted[0]
 

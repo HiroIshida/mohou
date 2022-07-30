@@ -31,18 +31,27 @@ def test_traincache_load_all(tmp_project_name):  # noqa
     create_project_dir(tmp_project_name)
     tmp_project_path = get_project_path(tmp_project_name)
 
-    conf = LSTMConfig(7, 7, 777, 2)  # whatever
-    for _ in range(10):
+    conf = LSTMConfig(7, n_hidden=10, n_layer=1)  # whatever
+    for _ in range(2):
         dump_train_cache(conf, np.random.rand(), tmp_project_path)
 
-    conf2 = LSTMConfig(3, 3, 3, 2)  # whatever
-    for _ in range(10):
-        dump_train_cache(conf2, np.random.rand(), tmp_project_path)
+    conf = LSTMConfig(7, n_hidden=5, n_layer=1)  # whatever
+    for _ in range(3):
+        dump_train_cache(conf, np.random.rand(), tmp_project_path)
 
-    assert len(TrainCache.load_all(tmp_project_path)) == 20
-    assert len(TrainCache.load_all(tmp_project_path, LSTM)) == 20
-    assert len(TrainCache.load_all(tmp_project_path, LSTM, conf)) == 10
-    assert len(TrainCache.load_all(tmp_project_path, LSTM, conf2)) == 10
+    conf = LSTMConfig(7, n_hidden=10, n_layer=2)  # whatever
+    for _ in range(5):
+        dump_train_cache(conf, np.random.rand(), tmp_project_path)
+
+    assert len(TrainCache.load_all(tmp_project_path)) == 10
+    assert len(TrainCache.load_all(tmp_project_path, LSTM)) == 10
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_layer=1)) == 5
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_layer=2)) == 5
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_hidden=5)) == 3
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_hidden=10)) == 7
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_hidden=10, n_layer=1)) == 2
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_hidden=5, n_layer=1)) == 3
+    assert len(TrainCache.load_all(tmp_project_path, LSTM, n_hidden=10, n_layer=2)) == 5
 
     remove_project(tmp_project_name)
 
@@ -51,16 +60,15 @@ def test_traincache_load(tmp_project_name):  # noqa
     create_project_dir(tmp_project_name)
     tmp_project_path = get_project_path(tmp_project_name)
 
-    conf = LSTMConfig(7, 7, 777, 2)
+    conf = LSTMConfig(7, n_hidden=10, n_layer=1)
     dump_train_cache(conf, 1.0, get_project_path(tmp_project_name))
 
     # test loading
     TrainCache.load(tmp_project_path, LSTM)
-    TrainCache.load(tmp_project_path, LSTM, conf)
+    TrainCache.load(tmp_project_path, LSTM, n_hidden=10)
 
     with pytest.raises(FileNotFoundError):
-        wrong_conf = LSTMConfig(6, 6, 666, 2)
-        TrainCache.load(tmp_project_path, LSTM, wrong_conf)
+        TrainCache.load(tmp_project_path, LSTM, n_hidden=11)
 
     remove_project(tmp_project_name)
 
