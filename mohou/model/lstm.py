@@ -30,7 +30,46 @@ class LSTMConfig(ModelConfigBase):
     type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
 
 
-class LSTM(ModelBase[LSTMConfig]):
+class LSTMBaseMixIn:
+    """provide config independent fetures"""
+
+    @staticmethod
+    def _setup_inner(
+        n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
+    ) -> Tuple[nn.LSTM, nn.Sequential]:
+
+        lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
+        output_layers = []
+        for _ in range(n_output_layer):
+            output_layers.append(nn.Linear(n_hidden, n_hidden))
+        output_layers.append(nn.Linear(n_hidden, n_output))
+        output_layer = nn.Sequential(*output_layers)
+        return lstm_layer, output_layer
+
+    @staticmethod
+    def _loss_inner_type_wise(
+        state_output_ref: torch.Tensor,
+        state_output_pred: torch.Tensor,
+        type_bound_table: Dict[Type[ElementBase], slice],
+    ) -> LossDict:
+        # NOTE: This is an experimental feature. Compute type-wise prediction loss. LossDict looks like
+        # d["AngleVector"] = 0.002, d["RGBImage"] = 0.0003
+        d = {}
+        for elem_type, bound in type_bound_table.items():
+            pred_typewise = state_output_pred[:, :, bound]
+            state_sample_output_typewise = state_output_ref[:, :, bound]
+            loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise)
+            key = elem_type.__name__
+            d[key] = loss_value_partial
+        return LossDict(d)
+
+    @staticmethod
+    def _loss_inner(state_output_ref: torch.Tensor, state_output_pred: torch.Tensor) -> LossDict:
+        loss_value = nn.MSELoss()(state_output_pred, state_output_ref)
+        return LossDict({"prediction": loss_value})
+
+
+class LSTM(LSTMBaseMixIn, ModelBase[LSTMConfig]):
     """
     lstm: x_t+1 = f(x_t, x_t-1, ...)
     lstm with context: x_t+1 = f(x_t, x_t-1, ..., c) where c is static (time-invariant) context
@@ -42,17 +81,9 @@ class LSTM(ModelBase[LSTMConfig]):
     def _setup_from_config(self, config: LSTMConfig) -> None:
         n_input = config.n_state_with_flag + config.n_static_context
         n_output = config.n_state_with_flag
-        self._setup_inner(n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer)
-
-    def _setup_inner(
-        self, n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
-    ):
-        self.lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
-        output_layers = []
-        for _ in range(n_output_layer):
-            output_layers.append(nn.Linear(n_hidden, n_hidden))
-        output_layers.append(nn.Linear(n_hidden, n_output))
-        self.output_layer = nn.Sequential(*output_layers)
+        self.lstm_layer, self.output_layer = self._setup_inner(
+            n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
+        )
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
 
@@ -67,27 +98,14 @@ class LSTM(ModelBase[LSTMConfig]):
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
         pred, _ = self.forward(state_sample_input, static_context_sample)
-        return self._loss_inner(state_sample_output, pred)
-
-    def _loss_inner(
-        self, state_output_ref: torch.Tensor, state_output_pred: torch.Tensor
-    ) -> LossDict:
 
         if self.config.type_wise_loss:
-            # NOTE: This is an experimental feature. Compute type-wise prediction loss. LossDict looks like
-            # d["AngleVector"] = 0.002, d["RGBImage"] = 0.0003
             assert self.config.type_bound_table is not None
-            d = {}
-            for elem_type, bound in self.config.type_bound_table.items():
-                pred_typewise = state_output_pred[:, :, bound]
-                state_sample_output_typewise = state_output_ref[:, :, bound]
-                loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise)
-                key = elem_type.__name__
-                d[key] = loss_value_partial
-            return LossDict(d)
+            return self._loss_inner_type_wise(
+                state_sample_output, pred, self.config.type_bound_table
+            )
         else:
-            loss_value = nn.MSELoss()(state_output_pred, state_output_ref)
-            return LossDict({"prediction": loss_value})
+            return self._loss_inner(state_sample_output, pred)
 
     def forward(
         self,
