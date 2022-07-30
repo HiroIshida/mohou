@@ -15,7 +15,7 @@ from mohou.model.common import (
     ModelT,
     average_float_loss_dict,
 )
-from mohou.model.lstm import LSTM, LSTMConfig
+from mohou.model.lstm import LSTM, PBLSTM, LSTMConfig, PBLSTMConfig
 from mohou.model.markov import ControlModel, MarkoveModelConfig
 
 from mohou.model.chimera import Chimera, ChimeraConfig  # isort: skip

@@ -155,7 +155,7 @@ class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
         self.parametric_bias_list = []
         for i in range(config.n_pb):
             name = "pb{}".format(i)
-            param = Parameter(torch.zeros(self.config.n_pb_dim))
+            param = Parameter(torch.zeros(config.n_pb_dim))
             self.register_parameter(name, param)
             self.parametric_bias_list.append(param)
 
@@ -164,11 +164,12 @@ class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
         # sanity check
         n_batch, n_seq_len, n_dim = state_sample.shape
         assert pb_indices.ndim == 1
-        assert len(pb_indices) == self.config.n_pb
+        assert max(pb_indices) < self.config.n_pb
+        assert len(pb_indices) == n_batch
 
         # create pb list
         assert self.parametric_bias_list is not None
-        pb_list_extracted = [self.parametric_bias_list[i] for i in range(pb_indices)]
+        pb_list_extracted = [self.parametric_bias_list[i] for i in pb_indices]
         pb_stacked = torch.stack(pb_list_extracted)  # type: ignore
 
         # propagation
@@ -184,11 +185,13 @@ class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         _, n_seq_len, _ = state_sample.shape
-        assert state_sample.ndim == 4
+        assert state_sample.ndim == 3
+        assert parametric_bias.ndim == 2
         assert len(state_sample) == len(parametric_bias)
 
         # similar to normal LSTM ...
-        parametric_bias.expand(-1, n_seq_len, -1)
+        parametric_bias = parametric_bias.unsqueeze(dim=1)
+        parametric_bias = parametric_bias.expand(-1, n_seq_len, -1)
         context_auged_state_sample = torch.cat((state_sample, parametric_bias), dim=2)
 
         preout, hidden = self.lstm_layer(context_auged_state_sample, hidden)
