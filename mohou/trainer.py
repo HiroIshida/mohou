@@ -88,7 +88,9 @@ class TrainCache(Generic[ModelT]):
             with config_path.open(mode="r") as f:
                 config = json.load(f)
             for key, val in kwargs.items():
-                assert isinstance(val, (int, float, str))
+                assert isinstance(
+                    val, (int, float, str)
+                ), "currently only naive cast from native type is supported"  # TODO
                 t = type(val)
                 val_decoded = t(config[key])
                 if val != val_decoded:
