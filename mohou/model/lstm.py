@@ -64,6 +64,11 @@ class LSTM(ModelBase[LSTMConfig]):
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
         pred, _ = self.forward(state_sample_input, static_context_sample)
+        return self._loss_inner(state_sample_output, pred)
+
+    def _loss_inner(
+        self, state_output_ref: torch.Tensor, state_output_pred: torch.Tensor
+    ) -> LossDict:
 
         if self.config.type_wise_loss:
             # NOTE: This is an experimental feature. Compute type-wise prediction loss. LossDict looks like
@@ -71,14 +76,14 @@ class LSTM(ModelBase[LSTMConfig]):
             assert self.config.type_bound_table is not None
             d = {}
             for elem_type, bound in self.config.type_bound_table.items():
-                pred_typewise = pred[:, :, bound]
-                state_sample_output_typewise = state_sample_output[:, :, bound]
+                pred_typewise = state_output_pred[:, :, bound]
+                state_sample_output_typewise = state_output_ref[:, :, bound]
                 loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise)
                 key = elem_type.__name__
                 d[key] = loss_value_partial
             return LossDict(d)
         else:
-            loss_value = nn.MSELoss()(pred, state_sample_output)
+            loss_value = nn.MSELoss()(state_output_pred, state_output_ref)
             return LossDict({"prediction": loss_value})
 
     def forward(
