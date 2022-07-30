@@ -144,6 +144,16 @@ class AutoRegressiveDataset(Dataset):
     static_context_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
+    def __post_init__(self):
+        assert_equal_with_message(
+            len(self.static_context_list), len(self.state_seq_list), "length of sequence"
+        )
+
+        # state sequence consists of n_seqlen x n_dim
+        assert_equal_with_message(self.state_seq_list[0].ndim, 2, "dimension of state sequence")
+        # context sequence consists of n_dim (because its static througout the context list)
+        assert_equal_with_message(self.static_context_list[0].ndim, 1, "dimension of context")
+
     def __len__(self) -> int:
         return len(self.state_seq_list)
 
@@ -151,11 +161,6 @@ class AutoRegressiveDataset(Dataset):
         state = torch.from_numpy(self.state_seq_list[idx]).float()
         context = torch.from_numpy(self.static_context_list[idx]).float()
         return state, context
-
-    def __post_init__(self):  # validation
-        assert_equal_with_message(
-            len(self.static_context_list), len(self.state_seq_list), "length of sequence"
-        )
 
     @classmethod
     def from_bundle(
