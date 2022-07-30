@@ -6,7 +6,7 @@ import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
 from mohou.encoding_rule import EncodingRule
-from mohou.model import LSTM
+from mohou.model import LSTM, PBLSTM
 from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
 
@@ -73,10 +73,6 @@ class PropagatorBase(Generic[LSTMBaseT]):
             elem_dict_list.append(elem_dict)
         return elem_dict_list
 
-    @abstractmethod
-    def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
-        pass
-
     def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
@@ -103,10 +99,30 @@ class PropagatorBase(Generic[LSTMBaseT]):
 
         return pred_state_list
 
+    @abstractmethod
+    def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        pass
+
 
 class Propagator(PropagatorBase[LSTM]):
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
         states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
         out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+        return out, hidden
+
+
+class LSTMPBPropagator(PropagatorBase[PBLSTM]):
+    parametric_bias: np.ndarray
+
+    def set_parametric_bias(self, value: np.ndarray) -> None:
+        assert value.ndim == 1
+        assert len(value) == self.lstm.config.n_pb_dim
+        self.parametric_bias = value
+
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
+        pb_torch = torch.from_numpy(self.parametric_bias).float().unsqueeze(dim=0)
+        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        out, hidden = self.lstm.forward(states_torch, pb_torch, context_torch, self._hidden)
         return out, hidden
