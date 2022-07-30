@@ -5,8 +5,8 @@ import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
-from mohou.model import LSTM, AutoEncoderBase, Chimera
-from mohou.propagator import Propagator
+from mohou.model import AutoEncoderBase, Chimera
+from mohou.propagator import Propagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -96,15 +96,17 @@ def create_chimera_encoding_rule(project_path: Path) -> EncodingRule:
     return encoding_rule
 
 
-def create_default_propagator(project_path: Path) -> Propagator:
-
+def create_default_propagator(
+    project_path: Path, prop_type: Type[PropagatorBaseT]
+) -> PropagatorBaseT:
     try:
-        tcach_lstm = TrainCache.load(project_path, LSTM)
+        compat_lstm_type = prop_type.lstm_type()
+        tcach_lstm = TrainCache.load(project_path, compat_lstm_type)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
     encoding_rule = create_default_encoding_rule(project_path)
-    propagator = Propagator(tcach_lstm.best_model, encoding_rule)
+    propagator = prop_type(tcach_lstm.best_model, encoding_rule)
     return propagator
 
 

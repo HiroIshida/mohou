@@ -226,7 +226,7 @@ if __name__ == "__main__":
         bm.set_box(target_pos)
 
         # prepare propagator
-        propagator = create_default_propagator(project_path)
+        propagator = create_default_propagator(project_path, Propagator)
         if propagator.require_static_context:
             image_encoder = load_default_image_encoder(project_path)
             rgb, _ = bm.take_photo(n_pixel)

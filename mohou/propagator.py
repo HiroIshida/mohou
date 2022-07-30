@@ -1,16 +1,18 @@
-from typing import List, Optional
+from abc import ABC, abstractmethod
+from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
 from mohou.encoding_rule import EncodingRule
-from mohou.model import LSTM
+from mohou.model import LSTM, PBLSTM
+from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
 
 
-class Propagator:
-    lstm: LSTM
+class PropagatorBase(ABC, Generic[LSTMBaseT]):
+    lstm_model: LSTMBaseT
     encoding_rule: EncodingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
@@ -21,12 +23,12 @@ class Propagator:
 
     def __init__(
         self,
-        lstm: LSTM,
+        lstm: LSTMBaseT,
         encoding_rule: EncodingRule,
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
     ):
-        self.lstm = lstm
+        self.lstm_model = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
         self.n_init_duplicate = n_init_duplicate
@@ -41,11 +43,11 @@ class Propagator:
 
     @property
     def require_static_context(self) -> bool:
-        return self.lstm.config.n_static_context > 0
+        return self.lstm_model.config.n_static_context > 0
 
     def set_static_context(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert self.lstm.config.n_static_context == len(value)
+        assert self.lstm_model.config.n_static_context == len(value)
         self.static_context = value
 
     def feed(self, elem_dict: ElementDict):
@@ -75,13 +77,10 @@ class Propagator:
         pred_state_list: List[np.ndarray] = []
 
         assert self.static_context is not None, "forgot setting static_context ??"
-        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
 
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
-            states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-
-            out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+            out, hidden = self._forward(states)
 
             if self.prop_hidden:
                 # From the definition, propagating also hidden with the state is supporsed to
@@ -99,3 +98,52 @@ class Propagator:
             pred_state_list.append(state_pred)
 
         return pred_state_list
+
+    @classmethod
+    @abstractmethod
+    def lstm_type(cls) -> Type[LSTMBaseT]:
+        pass
+
+    @abstractmethod
+    def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        pass
+
+
+PropagatorBaseT = TypeVar("PropagatorBaseT", bound=PropagatorBase)
+
+
+class Propagator(PropagatorBase[LSTM]):
+    @classmethod
+    def lstm_type(cls) -> Type[LSTM]:
+        return LSTM
+
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
+        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        out, hidden = self.lstm_model.forward(states_torch, context_torch, self._hidden)
+        return out, hidden
+
+
+class PBLSTMPropagator(PropagatorBase[PBLSTM]):
+    parametric_bias: np.ndarray
+
+    def set_parametric_bias(self, value: np.ndarray) -> None:
+        assert value.ndim == 1
+        assert len(value) == self.lstm_model.config.n_pb_dim
+        self.parametric_bias = value
+
+    def set_pb_to_zero(self) -> None:
+        n_pb_dim = self.lstm_model.config.n_pb_dim
+        vec = np.zeros(n_pb_dim)
+        self.set_parametric_bias(vec)
+
+    @classmethod
+    def lstm_type(cls) -> Type[PBLSTM]:
+        return PBLSTM
+
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
+        pb_torch = torch.from_numpy(self.parametric_bias).float().unsqueeze(dim=0)
+        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        out, hidden = self.lstm_model.forward(states_torch, pb_torch, context_torch, self._hidden)
+        return out, hidden

@@ -34,7 +34,7 @@ from mohou.model import (
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.propagator import Propagator
+from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
@@ -245,10 +245,11 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     return canvas_to_ndarray(fig)
 
 
-def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_prop: int):
+def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     save_dir_path = project_path / "lstm_result"
     save_dir_path.mkdir(exist_ok=True)
+    prop_name = propagator.__class__.__name__
 
     image_encoder = load_default_image_encoder(project_path)
 
@@ -333,7 +334,7 @@ def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_pro
         for ax in axs:
             ax.grid()
 
-        image_path = save_dir_path / "seq-{}{}.png".format(AngleVector.__name__, idx)
+        image_path = save_dir_path / "seq-{}-{}{}.png".format(prop_name, AngleVector.__name__, idx)
         fig.savefig(str(image_path), format="png", dpi=300)
         print("saved to {}".format(image_path))
 
@@ -352,7 +353,7 @@ def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_pro
 
         images_with_text = fed_images_with_text + pred_images_with_text
 
-        image_path = save_dir_path / "result-image{}.gif".format(idx)
+        image_path = save_dir_path / "seq-{}-rgb{}.gif".format(prop_name, idx)
         assert ImageSequenceClip is not None, "check if your moviepy is properly installed"
         clip = ImageSequenceClip(images_with_text, fps=20)
         clip.write_gif(str(image_path), fps=20)
