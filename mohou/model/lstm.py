@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-from mohou.model.common import LossDict, ModelBase, ModelConfigBase, ModelConfigT
+from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ElementBase
 
 
@@ -38,7 +38,7 @@ class LSTMConfig(LSTMConfigBase):
     type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
 
 
-class LSTMBase(ModelBase[ModelConfigT]):
+class LSTMBase(ModelBase[LSTMConfigBaseT]):
     @staticmethod
     def _setup_inner(
         n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
@@ -74,6 +74,14 @@ class LSTMBase(ModelBase[ModelConfigT]):
         loss_value = nn.MSELoss()(state_output_pred, state_output_ref)
         return LossDict({"prediction": loss_value})
 
+    def _sanity_check_context_sample(
+        self, state_sample: torch.Tensor, context_sample: torch.Tensor
+    ) -> None:
+        n_batch, n_seq_len, n_dim = state_sample.shape
+        assert context_sample.ndim == 2
+        assert context_sample.shape[0] == n_batch
+        assert context_sample.shape[1] == self.config.n_static_context
+
 
 class LSTM(LSTMBase[LSTMConfig]):
     """
@@ -94,12 +102,7 @@ class LSTM(LSTMBase[LSTMConfig]):
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
 
         _, state_sample, static_context_sample = sample
-
-        # sanity check
-        n_batch, n_seq_len, n_dim = state_sample.shape
-        assert static_context_sample.ndim == 2
-        assert static_context_sample.shape[0] == n_batch
-        assert static_context_sample.shape[1] == self.config.n_static_context
+        self._sanity_check_context_sample(state_sample, static_context_sample)
 
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
@@ -116,13 +119,15 @@ class LSTM(LSTMBase[LSTMConfig]):
     def forward(
         self,
         state_sample: torch.Tensor,
-        static_context: torch.Tensor,
+        context_sample: torch.Tensor,
         hidden: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self._sanity_check_context_sample(state_sample, context_sample)
+
         # arrange bais_sample and create concat state_sample
-        _, n_seq_len, _ = state_sample.shape
-        context_unsqueezed = static_context.unsqueeze(dim=1)
-        context_sequenced = context_unsqueezed.expand(-1, n_seq_len, -1)
+        _, n_seqlen, _ = state_sample.shape
+        context_unsqueezed = context_sample.unsqueeze(dim=1)
+        context_sequenced = context_unsqueezed.expand(-1, n_seqlen, -1)
         context_auged_state_sample = torch.cat((state_sample, context_sequenced), dim=2)
 
         # propagation
@@ -145,7 +150,7 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
     parametric_bias_list: List[Parameter]
 
     def _setup_from_config(self, config: PBLSTMConfig) -> None:
-        n_input = config.n_state_with_flag + config.n_pb_dim
+        n_input = config.n_state_with_flag + config.n_pb_dim + config.n_static_context
         n_output = config.n_state_with_flag
         self.lstm_layer, self.output_layer = self._setup_inner(
             n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
@@ -159,12 +164,8 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
             self.parametric_bias_list.append(param)
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
-        episode_indices, state_sample, _ = sample
-        # sanity check
-        n_batch, n_seq_len, n_dim = state_sample.shape
-        assert episode_indices.ndim == 1
-        assert max(episode_indices) < self.config.n_pb
-        assert len(episode_indices) == n_batch
+        episode_indices, state_sample, context_sample = sample
+        self._sanity_check_context_sample(state_sample, context_sample)
 
         # create pb list
         assert self.parametric_bias_list is not None
@@ -173,27 +174,37 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
 
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
-        pred, _ = self.forward(state_sample_input, pb_stacked)
+        pred, _ = self.forward(state_sample_input, pb_stacked, context_sample)
         return self._loss_inner(state_sample_output, pred)
 
     def forward(
         self,
         state_sample: torch.Tensor,
-        parametric_bias: torch.Tensor,
+        pb_sample: torch.Tensor,
+        context_sample: torch.Tensor,
         hidden: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        _, n_seq_len, _ = state_sample.shape
+        self._sanity_check_pb_sample(state_sample, pb_sample)
+        self._sanity_check_context_sample(state_sample, context_sample)
+
+        n_batch, n_seq_len, _ = state_sample.shape
         assert state_sample.ndim == 3
-        assert parametric_bias.ndim == 2
-        assert len(state_sample) == len(parametric_bias)
+        assert pb_sample.ndim == 2
+        assert len(state_sample) == len(pb_sample)
 
         # similar to normal LSTM ...
-        parametric_bias = parametric_bias.unsqueeze(dim=1)
-        parametric_bias = parametric_bias.expand(-1, n_seq_len, -1)
-        context_auged_state_sample = torch.cat((state_sample, parametric_bias), dim=2)
+        pb_sample = pb_sample.unsqueeze(dim=1)
+        pb_sample = pb_sample.expand(-1, n_seq_len, -1)
+        context_auged_state_sample = torch.cat((state_sample, pb_sample), dim=2)
 
         preout, hidden = self.lstm_layer(context_auged_state_sample, hidden)
         out = self.output_layer(preout)
         assert hidden is not None
         return out, hidden
+
+    def _sanity_check_pb_sample(self, state_sample: torch.Tensor, pb_sample: torch.Tensor) -> None:
+        n_batch, n_seq_len, n_dim = state_sample.shape
+        assert pb_sample.ndim == 2
+        assert pb_sample.shape[0] == n_batch
+        assert pb_sample.shape[1] == self.config.n_pb_dim
