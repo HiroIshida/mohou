@@ -58,7 +58,7 @@ def test_pblstm(image_av_bundle):  # noqa
     pb_sample = torch.randn(n_sample, n_pb_dim)
 
     # test forward
-    state_prop, _ = model.forward(state_sample, pb_sample)
+    state_prop, _ = model.forward(state_sample, pb_sample, context_sample)
     assert state_prop.shape == (n_sample, n_seq_len, n_state_dim)
 
     # test normal loss
