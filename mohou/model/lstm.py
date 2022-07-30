@@ -185,6 +185,7 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
         hidden: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
+        self._sanity_check_pb_sample(state_sample, pb_sample)
         self._sanity_check_context_sample(state_sample, context_sample)
 
         n_batch, n_seq_len, _ = state_sample.shape
@@ -201,3 +202,9 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
         out = self.output_layer(preout)
         assert hidden is not None
         return out, hidden
+
+    def _sanity_check_pb_sample(self, state_sample: torch.Tensor, pb_sample: torch.Tensor) -> None:
+        n_batch, n_seq_len, n_dim = state_sample.shape
+        assert pb_sample.ndim == 2
+        assert pb_sample.shape[0] == n_batch
+        assert pb_sample.shape[1] == self.config.n_pb_dim
