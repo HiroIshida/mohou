@@ -52,7 +52,7 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
     ) -> Tuple[Union[nn.LSTM, VariationalLSTM], nn.Sequential]:
 
         if variational:
-            lstm_layer = VariationalLSTM(
+            lstm_layer: Union[nn.LSTM, VariationalLSTM] = VariationalLSTM(
                 n_input, n_hidden, n_layer, dropouti=0.5, dropoutw=0.5, dropouto=0.5
             )
         else:
