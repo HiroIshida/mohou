@@ -132,6 +132,11 @@ class PBLSTMPropagator(PropagatorBase[PBLSTM]):
         assert len(value) == self.lstm_model.config.n_pb_dim
         self.parametric_bias = value
 
+    def set_pb_to_zero(self) -> None:
+        n_pb_dim = self.lstm_model.config.n_pb_dim
+        vec = np.zeros(n_pb_dim)
+        self.set_parametric_bias(vec)
+
     @classmethod
     def lstm_type(cls) -> Type[PBLSTM]:
         return PBLSTM
