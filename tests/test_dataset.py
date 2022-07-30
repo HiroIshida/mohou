@@ -14,6 +14,7 @@ from mohou.dataset import (
 from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, EpisodeBundle, RGBImage
+from mohou.utils import flatten_lists
 
 
 def test_autoencoder_dataset(image_av_bundle_uneven):  # noqa
@@ -128,6 +129,9 @@ def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
         n_length, n_dim = state_seq.shape
         assert n_length == 13 + config.n_dummy_after_termination
         assert n_dim == rule.dimension
+
+    episode_index_list_ref = flatten_lists([[i] * (n_aug + 1) for i in range(len(bundle))])
+    assert dataset.episode_index_list == episode_index_list_ref
 
 
 def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa

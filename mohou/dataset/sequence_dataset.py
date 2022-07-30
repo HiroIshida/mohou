@@ -141,6 +141,7 @@ class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
 @dataclass
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
+    episode_index_list: List[int]
     static_context_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
@@ -157,10 +158,12 @@ class AutoRegressiveDataset(Dataset):
     def __len__(self) -> int:
         return len(self.state_seq_list)
 
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
-        state = torch.from_numpy(self.state_seq_list[idx]).float()
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """return tuple of episode index of the state_seq, state_esq, and static context"""
+        state_seq = torch.from_numpy(self.state_seq_list[idx]).float()
         context = torch.from_numpy(self.static_context_list[idx]).float()
-        return state, context
+        episode_index = torch.tensor(self.episode_index_list[idx], dtype=torch.int32)
+        return episode_index, state_seq, context
 
     @classmethod
     def from_bundle(
@@ -187,7 +190,13 @@ class AutoRegressiveDataset(Dataset):
 
         # augmentation
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
-        state_seq_list_auged = flatten_lists([augmentor.apply(seq) for seq in state_seq_list])
+
+        episode_indices_list_auged = []
+        state_seq_list_auged = []
+        for index, seq in enumerate(state_seq_list):
+            seq_auged = augmentor.apply(seq)
+            episode_indices_list_auged.extend([index] * len(seq_auged))
+            state_seq_list_auged.extend(seq_auged)
 
         static_context_list_auged = flatten_lists(
             [[copy.deepcopy(c) for _ in range(augconfig.n_aug + 1)] for c in static_context_list]
@@ -201,6 +210,7 @@ class AutoRegressiveDataset(Dataset):
 
         return cls(
             state_seq_list_auged_adjusted,
+            episode_indices_list_auged,
             static_context_list_auged,
             encoding_rule,
         )

@@ -3,7 +3,7 @@ import random
 import time
 from logging import Logger
 from pathlib import Path
-from typing import List, Optional, Type
+from typing import Dict, List, Optional, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,12 +25,15 @@ from mohou.default import load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import (
     LSTM,
+    PBLSTM,
     AutoEncoder,
     AutoEncoderBase,
     AutoEncoderConfig,
     LSTMConfig,
+    PBLSTMConfig,
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
+from mohou.model.lstm import LSTMBase, LSTMConfigBase
 from mohou.propagator import Propagator
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
@@ -95,13 +98,21 @@ def train_autoencoder(
 def train_lstm(
     project_path: Path,
     encoding_rule: EncodingRule,
-    model_config: LSTMConfig,
+    model_config: LSTMConfigBase,
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
+    model_type: Type[LSTMBase] = LSTM,
     bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
 ):
+    # a dirty assertion TODO: do this by generic typing
+    compat_table: Dict[Type[LSTMBase], Type[LSTMConfigBase]] = {
+        LSTM: LSTMConfig,
+        PBLSTM: PBLSTMConfig,
+    }
+    assert model_type in compat_table
+    assert compat_table[model_type] == type(model_config)
 
     if bundle is None:
         bundle = EpisodeBundle.load(project_path)
@@ -124,8 +135,8 @@ def train_lstm(
         tcache = TrainCache.load(project_path, LSTM)
         train(project_path, tcache, dataset, config=train_config)
     else:
-        model = LSTM(model_config)
-        tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
+        model = model_type(model_config)
+        tcache = TrainCache.from_model(model)  # type: ignore
         train(project_path, tcache, dataset, config=train_config)
 
 
