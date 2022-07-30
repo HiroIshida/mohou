@@ -17,6 +17,7 @@ class LSTMConfigBase(ModelConfigBase):
     n_hidden: int = 200
     n_layer: int = 4
     n_output_layer: int = 1
+    variational: bool = False
 
 
 LSTMConfigBaseT = TypeVar("LSTMConfigBaseT", bound=LSTMConfigBase)
@@ -42,7 +43,12 @@ class LSTMConfig(LSTMConfigBase):
 class LSTMBase(ModelBase[LSTMConfigBaseT]):
     @staticmethod
     def _setup_inner(
-        n_input: int, n_output: int, n_hidden: int, n_layer: int, n_output_layer: int
+        n_input: int,
+        n_output: int,
+        n_hidden: int,
+        n_layer: int,
+        n_output_layer: int,
+        valational: bool,
     ) -> Tuple[Union[nn.LSTM, VariationalLSTM], nn.Sequential]:
 
         # lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
@@ -103,7 +109,12 @@ class LSTM(LSTMBase[LSTMConfig]):
         n_input = config.n_state_with_flag + config.n_static_context
         n_output = config.n_state_with_flag
         self.lstm_layer, self.output_layer = self._setup_inner(
-            n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
+            n_input,
+            n_output,
+            config.n_hidden,
+            config.n_layer,
+            config.n_output_layer,
+            config.variational,
         )
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
@@ -160,7 +171,12 @@ class PBLSTM(LSTMBase[PBLSTMConfig]):
         n_input = config.n_state_with_flag + config.n_pb_dim + config.n_static_context
         n_output = config.n_state_with_flag
         self.lstm_layer, self.output_layer = self._setup_inner(
-            n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
+            n_input,
+            n_output,
+            config.n_hidden,
+            config.n_layer,
+            config.n_output_layer,
+            config.variational,
         )
 
         self.parametric_bias_list = []
