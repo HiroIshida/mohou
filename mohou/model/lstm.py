@@ -83,6 +83,9 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
         assert context_sample.shape[1] == self.config.n_static_context
 
 
+LSTMBaseT = TypeVar("LSTMBaseT", bound=LSTMBase)
+
+
 class LSTM(LSTMBase[LSTMConfig]):
     """
     lstm: x_t+1 = f(x_t, x_t-1, ...)

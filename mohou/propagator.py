@@ -1,4 +1,5 @@
-from typing import List, Optional
+from abc import abstractmethod
+from typing import Generic, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -6,11 +7,12 @@ import torch
 from mohou.constant import CONTINUE_FLAG_VALUE
 from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM
+from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
 
 
-class Propagator:
-    lstm: LSTM
+class PropagatorBase(Generic[LSTMBaseT]):
+    lstm: LSTMBaseT
     encoding_rule: EncodingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
@@ -21,7 +23,7 @@ class Propagator:
 
     def __init__(
         self,
-        lstm: LSTM,
+        lstm: LSTMBaseT,
         encoding_rule: EncodingRule,
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
@@ -71,17 +73,18 @@ class Propagator:
             elem_dict_list.append(elem_dict)
         return elem_dict_list
 
+    @abstractmethod
+    def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        pass
+
     def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
         assert self.static_context is not None, "forgot setting static_context ??"
-        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
 
         for i in range(n_prop):
             states = np.vstack(self.fed_state_list + pred_state_list)
-            states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
-
-            out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+            out, hidden = self._forward(states)
 
             if self.prop_hidden:
                 # From the definition, propagating also hidden with the state is supporsed to
@@ -99,3 +102,11 @@ class Propagator:
             pred_state_list.append(state_pred)
 
         return pred_state_list
+
+
+class Propagator(PropagatorBase[LSTM]):
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
+        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        out, hidden = self.lstm.forward(states_torch, context_torch, self._hidden)
+        return out, hidden
