@@ -27,6 +27,6 @@ if __name__ == "__main__":
     if args.chimera:
         propagator = create_chimera_propagator(project_path)
     else:
-        propagator = create_default_propagator(project_path, propagator_type=Propagator)
+        propagator = create_default_propagator(project_path, prop_type=Propagator)
 
     visualize_lstm_propagation(project_path, propagator, n_prop)

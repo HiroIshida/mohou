@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Generic, List, Optional, Tuple, Type, TypeVar
+from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
@@ -99,7 +99,6 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
 
         return pred_state_list
 
-    @property
     @classmethod
     @abstractmethod
     def lstm_type(cls) -> Type[LSTMBaseT]:
@@ -114,7 +113,9 @@ PropagatorBaseT = TypeVar("PropagatorBaseT", bound=PropagatorBase)
 
 
 class Propagator(PropagatorBase[LSTM]):
-    lstm_type: ClassVar[Type[LSTM]] = LSTM
+    @classmethod
+    def lstm_type(cls) -> Type[LSTM]:
+        return LSTM
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
@@ -124,13 +125,16 @@ class Propagator(PropagatorBase[LSTM]):
 
 
 class PBLSTMPropagator(PropagatorBase[PBLSTM]):
-    lstm_type: ClassVar[Type[PBLSTM]] = PBLSTM
     parametric_bias: np.ndarray
 
     def set_parametric_bias(self, value: np.ndarray) -> None:
         assert value.ndim == 1
         assert len(value) == self.lstm_model.config.n_pb_dim
         self.parametric_bias = value
+
+    @classmethod
+    def lstm_type(cls) -> Type[PBLSTM]:
+        return PBLSTM
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)

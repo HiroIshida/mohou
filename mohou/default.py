@@ -97,16 +97,16 @@ def create_chimera_encoding_rule(project_path: Path) -> EncodingRule:
 
 
 def create_default_propagator(
-    project_path: Path, propagator_type: Type[PropagatorBaseT]
+    project_path: Path, prop_type: Type[PropagatorBaseT]
 ) -> PropagatorBaseT:
     try:
-        compat_lstm_type = propagator_type.lstm_type
+        compat_lstm_type = prop_type.lstm_type()
         tcach_lstm = TrainCache.load(project_path, compat_lstm_type)
     except Exception:
         raise DefaultNotFoundError("not TrainCache for lstm is found ")
 
     encoding_rule = create_default_encoding_rule(project_path)
-    propagator = propagator_type(tcach_lstm.best_model, encoding_rule)
+    propagator = prop_type(tcach_lstm.best_model, encoding_rule)
     return propagator
 
 
