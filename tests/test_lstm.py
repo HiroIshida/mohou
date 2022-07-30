@@ -27,9 +27,7 @@ def test_lstm(image_av_bundle):  # noqa
     state_prop, _ = model.forward(state_sample, ti_inputs)
     assert state_prop.shape == (n_sample, n_seq_len, n_dim_with_flag)
 
-    # test loss
-    weight_sample = torch.rand(n_sample, n_seq_len)
-    sample = (state_sample, ti_inputs, weight_sample)
+    sample = (state_sample, ti_inputs)
     loss_dict = model.loss(sample)
     assert len(loss_dict.keys()) == 1
 

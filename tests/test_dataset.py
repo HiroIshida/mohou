@@ -14,7 +14,6 @@ from mohou.dataset import (
 from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
 from mohou.encoding_rule import EncodingRule
 from mohou.types import AngleVector, EpisodeBundle, RGBImage
-from mohou.utils import assert_seq_list_list_compatible
 
 
 def test_autoencoder_dataset(image_av_bundle_uneven):  # noqa
@@ -124,7 +123,6 @@ def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
     dataset = AutoRegressiveDataset.from_bundle(bundle, rule, config)
     assert len(dataset.state_seq_list) == len(bundle.get_touch_bundle()) * (n_aug + 1)
-    assert_seq_list_list_compatible([dataset.state_seq_list, dataset.weight_seq_list])
 
     for state_seq in dataset.state_seq_list:
         n_length, n_dim = state_seq.shape
