@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
+from torch.nn.parameter import Parameter
 
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ElementBase
@@ -120,6 +121,76 @@ class LSTM(LSTMBaseMixIn, ModelBase[LSTMConfig]):
         context_auged_state_sample = torch.cat((state_sample, context_sequenced), dim=2)
 
         # propagation
+        preout, hidden = self.lstm_layer(context_auged_state_sample, hidden)
+        out = self.output_layer(preout)
+        assert hidden is not None
+        return out, hidden
+
+
+@dataclass
+class PBLSTMConfig(ModelConfigBase):
+    # TODO: add static_contex, type_wise_loss
+    n_state_with_flag: int
+    n_pb: int
+    n_pb_dim: int = 2
+    n_hidden: int = 200
+    n_layer: int = 4
+    n_output_layer: int = 1
+
+
+class PBLSTM(LSTMBaseMixIn, ModelBase[PBLSTMConfig]):
+    lstm_layer: nn.LSTM
+    output_layer: nn.Sequential
+    parametric_bias_list: List[Parameter]
+    # it is slightly bit strange design, but number of parametric_bias will be determined when
+    # the loss is evaluated
+
+    def _setup_from_config(self, config: PBLSTMConfig) -> None:
+        n_input = config.n_state_with_flag + config.n_pb_dim
+        n_output = config.n_state_with_flag
+        self.lstm_layer, self.output_layer = self._setup_inner(
+            n_input, n_output, config.n_hidden, config.n_layer, config.n_output_layer
+        )
+
+        self.parametric_bias_list = []
+        for i in range(config.n_pb):
+            name = "pb{}".format(i)
+            param = Parameter(torch.zeros(self.config.n_pb_dim))
+            self.register_parameter(name, param)
+            self.parametric_bias_list.append(param)
+
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
+        state_sample, pb_indices = sample
+        # sanity check
+        n_batch, n_seq_len, n_dim = state_sample.shape
+        assert pb_indices.ndim == 1
+        assert len(pb_indices) == self.config.n_pb
+
+        # create pb list
+        assert self.parametric_bias_list is not None
+        pb_list_extracted = [self.parametric_bias_list[i] for i in range(pb_indices)]
+        pb_stacked = torch.stack(pb_list_extracted)  # type: ignore
+
+        # propagation
+        state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
+        pred, _ = self.forward(state_sample_input, pb_stacked)
+        return self._loss_inner(state_sample_output, pred)
+
+    def forward(
+        self,
+        state_sample: torch.Tensor,
+        parametric_bias: torch.Tensor,
+        hidden: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        _, n_seq_len, _ = state_sample.shape
+        assert state_sample.ndim == 4
+        assert len(state_sample) == len(parametric_bias)
+
+        # similar to normal LSTM ...
+        parametric_bias.expand(-1, n_seq_len, -1)
+        context_auged_state_sample = torch.cat((state_sample, parametric_bias), dim=2)
+
         preout, hidden = self.lstm_layer(context_auged_state_sample, hidden)
         out = self.output_layer(preout)
         assert hidden is not None
