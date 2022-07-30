@@ -34,7 +34,7 @@ from mohou.model import (
 )
 from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.propagator import Propagator
+from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     AngleVector,
@@ -245,7 +245,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     return canvas_to_ndarray(fig)
 
 
-def visualize_lstm_propagation(project_path: Path, propagator: Propagator, n_prop: int):
+def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     save_dir_path = project_path / "lstm_result"
     save_dir_path.mkdir(exist_ok=True)
