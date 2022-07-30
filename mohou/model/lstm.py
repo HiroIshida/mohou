@@ -51,9 +51,9 @@ class LSTM(ModelBase[LSTMConfig]):
         output_layers.append(nn.Linear(config.n_hidden, n_state))
         self.output_layer = nn.Sequential(*output_layers)
 
-    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
 
-        state_sample, static_context_sample, weight_seqs = sample
+        state_sample, static_context_sample = sample
 
         # sanity check
         n_batch, n_seq_len, n_dim = state_sample.shape
@@ -61,32 +61,24 @@ class LSTM(ModelBase[LSTMConfig]):
         assert static_context_sample.shape[0] == n_batch
         assert static_context_sample.shape[1] == self.config.n_static_context
 
-        assert weight_seqs.ndim == 2
-        assert weight_seqs.shape[0] == n_batch
-        assert weight_seqs.shape[1] == n_seq_len
-
         # propagation
         state_sample_input, state_sample_output = state_sample[:, :-1], state_sample[:, 1:]
-        pred_output, _ = self.forward(state_sample_input, static_context_sample)
-        weight_seqs_expaneded = weight_seqs[:, :-1, None].expand_as(state_sample_input)
+        pred, _ = self.forward(state_sample_input, static_context_sample)
 
         if self.config.type_wise_loss:
+            # NOTE: This is an experimental feature. Compute type-wise prediction loss. LossDict looks like
+            # d["AngleVector"] = 0.002, d["RGBImage"] = 0.0003
             assert self.config.type_bound_table is not None
             d = {}
             for elem_type, bound in self.config.type_bound_table.items():
-                pred_output_partial = pred_output[:, :, bound]
-                state_sample_output_partial = state_sample_output[:, :, bound]
-                weight_seqs_partial = weight_seqs_expaneded[:, :, bound]
-                loss_value_partial = torch.mean(
-                    weight_seqs_partial * (pred_output_partial - state_sample_output_partial) ** 2
-                )
+                pred_typewise = pred[:, :, bound]
+                state_sample_output_typewise = state_sample_output[:, :, bound]
+                loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise)
                 key = elem_type.__name__
                 d[key] = loss_value_partial
             return LossDict(d)
         else:
-            loss_value = torch.mean(
-                weight_seqs_expaneded * (pred_output - state_sample_output) ** 2
-            )
+            loss_value = nn.MSELoss()(pred, state_sample_output)
             return LossDict({"prediction": loss_value})
 
     def forward(

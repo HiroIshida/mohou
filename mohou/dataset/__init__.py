@@ -6,9 +6,6 @@ from mohou.dataset.autoencoder_dataset import (
 from mohou.dataset.sequence_dataset import (
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
-    ConstantWeightPolicy,
     MarkovControlSystemDataset,
-    PWLinearWeightPolicy,
     SequenceDatasetConfig,
-    WeightPolicy,
 )

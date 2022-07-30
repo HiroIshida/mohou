@@ -1,6 +1,5 @@
 import copy
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
@@ -134,26 +133,6 @@ class PaddingSequenceAligner:
         return padded_seq  # type: ignore
 
 
-class WeightPolicy(ABC):
-    @abstractmethod
-    def __call__(self, n_seq_lne: int) -> np.ndarray:
-        pass
-
-
-class ConstantWeightPolicy(WeightPolicy):
-    def __call__(self, n_seq_lne: int) -> np.ndarray:
-        return np.ones(n_seq_lne)
-
-
-@dataclass
-class PWLinearWeightPolicy(WeightPolicy):
-    w_left: float
-    w_right: float
-
-    def __call__(self, n_seq_len: int) -> np.ndarray:
-        return np.linspace(self.w_left, self.w_right, n_seq_len)
-
-
 @dataclass
 class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
     n_dummy_after_termination: int = 20
@@ -163,20 +142,17 @@ class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
 class AutoRegressiveDataset(Dataset):
     state_seq_list: List[np.ndarray]  # with flag info
     static_context_list: List[np.ndarray]
-    weight_seq_list: List[np.ndarray]
     encoding_rule: EncodingRule
 
     def __len__(self) -> int:
         return len(self.state_seq_list)
 
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         state = torch.from_numpy(self.state_seq_list[idx]).float()
         context = torch.from_numpy(self.static_context_list[idx]).float()
-        weight = torch.tensor(self.weight_seq_list[idx]).float()
-        return state, context, weight
+        return state, context
 
     def __post_init__(self):  # validation
-        assert_seq_list_list_compatible([self.state_seq_list, self.weight_seq_list])
         assert_equal_with_message(
             len(self.static_context_list), len(self.state_seq_list), "length of sequence"
         )
@@ -188,7 +164,6 @@ class AutoRegressiveDataset(Dataset):
         encoding_rule: EncodingRule,
         augconfig: Optional[AutoRegressiveDatasetConfig] = None,
         static_context_list: Optional[List[np.ndarray]] = None,
-        weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     ) -> "AutoRegressiveDataset":
 
         last_key_of_rule = list(encoding_rule.keys())[-1]
@@ -197,17 +172,6 @@ class AutoRegressiveDataset(Dataset):
             augconfig = AutoRegressiveDatasetConfig()
 
         state_seq_list = encoding_rule.apply_to_episode_bundle(bundle)
-
-        # setting up weighting
-        if weighting is None:
-            weighting = ConstantWeightPolicy()
-        if isinstance(weighting, list):
-            weight_seq_list: List[np.ndarray] = weighting
-            logger.info("use user-provided numpy weighting")
-        else:
-            logger.info("use weight policy: {}".format(weighting))
-            weight_seq_list = [weighting(len(seq)) for seq in state_seq_list]
-            assert_seq_list_list_compatible([state_seq_list, weight_seq_list])
 
         # setting up biases
         if static_context_list is None:  # create sequence of 0-dim vector
@@ -219,25 +183,20 @@ class AutoRegressiveDataset(Dataset):
         # augmentation
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
         state_seq_list_auged = flatten_lists([augmentor.apply(seq) for seq in state_seq_list])
-        weight_seq_list_auged = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(augconfig.n_aug + 1)] for seq in weight_seq_list]
-        )  # +1 for original data
+
         static_context_list_auged = flatten_lists(
             [[copy.deepcopy(c) for _ in range(augconfig.n_aug + 1)] for c in static_context_list]
         )  # +1 for original data
 
         # make all sequence to the same length due to torch batch computation requirement
-        assert_seq_list_list_compatible([state_seq_list_auged, weight_seq_list_auged])
         aligner = PaddingSequenceAligner.from_seqs(
             state_seq_list_auged, augconfig.n_dummy_after_termination
         )
         state_seq_list_auged_adjusted = [aligner.apply(seq) for seq in state_seq_list_auged]
-        weight_seq_list_auged_adjusted = [aligner.apply(seq) for seq in weight_seq_list_auged]
 
         return cls(
             state_seq_list_auged_adjusted,
             static_context_list_auged,
-            weight_seq_list_auged_adjusted,
             encoding_rule,
         )
 

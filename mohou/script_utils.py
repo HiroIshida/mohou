@@ -3,7 +3,7 @@ import random
 import time
 from logging import Logger
 from pathlib import Path
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +20,6 @@ from mohou.dataset import (
     AutoEncoderDatasetConfig,
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
-    WeightPolicy,
 )
 from mohou.default import load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
@@ -99,7 +98,6 @@ def train_lstm(
     model_config: LSTMConfig,
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
-    weighting: Optional[Union[WeightPolicy, List[np.ndarray]]] = None,
     bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
@@ -118,7 +116,6 @@ def train_lstm(
         bundle,
         encoding_rule,
         augconfig=dataset_config,
-        weighting=weighting,
         static_context_list=context_list,
     )
 
