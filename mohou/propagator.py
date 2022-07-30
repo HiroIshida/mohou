@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Generic, List, Optional, Tuple, Type
+from typing import ClassVar, Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
@@ -108,6 +108,9 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
     @abstractmethod
     def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         pass
+
+
+PropagatorBaseT = TypeVar("PropagatorBaseT", bound=PropagatorBase)
 
 
 class Propagator(PropagatorBase[LSTM]):

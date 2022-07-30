@@ -3,6 +3,7 @@ from pathlib import Path
 
 from mohou.default import create_chimera_propagator, create_default_propagator
 from mohou.file import get_project_path
+from mohou.propagator import Propagator
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
 
@@ -26,6 +27,6 @@ if __name__ == "__main__":
     if args.chimera:
         propagator = create_chimera_propagator(project_path)
     else:
-        propagator = create_default_propagator(project_path)
+        propagator = create_default_propagator(project_path, propagator_type=Propagator)
 
     visualize_lstm_propagation(project_path, propagator, n_prop)
