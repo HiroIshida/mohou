@@ -206,7 +206,8 @@ class TrainCache(Generic[ModelT]):
         assert m is not None
         file_uuid = m[3]
 
-        best_model = torch.load(model_path)
+        best_model: ModelT = torch.load(model_path)
+        best_model.device = torch.device("cpu")
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
         return cls(best_model, train_loss, valid_loss, file_uuid)
@@ -223,6 +224,7 @@ class TrainCache(Generic[ModelT]):
         tcache_list = [cls.load_from_base_path(p) for p in ps]
         if len(tcache_list) == 0:
             raise FileNotFoundError
+
         return tcache_list
 
     @classmethod
