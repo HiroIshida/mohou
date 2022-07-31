@@ -207,7 +207,7 @@ class TrainCache(Generic[ModelT]):
         file_uuid = m[3]
 
         best_model: ModelT = torch.load(model_path)
-        best_model.device = torch.device("cpu")
+        best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
         return cls(best_model, train_loss, valid_loss, file_uuid)
