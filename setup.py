@@ -23,11 +23,20 @@ install_requires = [
 
 setup(
     name="mohou",
-    version="0.3.7",
+    version="0.3.8",
     description="Visuomotor imitation learning framework",
     author="Hirokazu Ishida",
     author_email="h-ishida@jsk.imi.i.u-tokyo.ac.jp",
     license="MIT",
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
     install_requires=install_requires,
     packages=find_packages(exclude=("tests", "docs")),
     package_data={"mohou": ["py.typed"]},
