@@ -712,6 +712,7 @@ class EpisodeData(TypeShapeTableMixin):
     def set_sequence(
         self, elem_type: Type[PrimitiveElementT], seq: ElementSequence[PrimitiveElementT]
     ) -> None:
+        """set element sequence corresponding to elem_type"""
         assert issubclass(elem_type, PrimitiveElementBase)
         assert seq.elem_type == elem_type
         self.sequence_dict[elem_type] = seq  # type: ignore
