@@ -262,6 +262,21 @@ def test_episode_data():
         assert episode == episode_again
 
 
+def test_episode_data_element_dict_converesion():
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
+    ts_seq = TimeStampSequence([i for i in range(10)])
+    episode = EpisodeData.from_seq_list(
+        [image_seq, av_seq], timestamp_seq=ts_seq, metadata=MetaData({"id": "hogehoge"})
+    )
+    # convert to edict and construct EpisodeData from edict_list agani
+    edict_list = [episode.__getitem__(i) for i in range(len(episode))]
+    episode_again = EpisodeData.from_edict_list(
+        edict_list, episode.time_stamp_seq, episode.metadata
+    )
+    assert episode == episode_again
+
+
 def test_episode_data_set_sequence():
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     episode = EpisodeData.from_seq_list([av_seq])
@@ -269,19 +284,19 @@ def test_episode_data_set_sequence():
     im_seq = ElementSequence([RGBImage.dummy_from_shape((10, 10)) for _ in range(10)])
     episode.set_sequence(RGBImage, im_seq)  # ok
 
-    # check inconsistent type
+    # check inconsistent type (NG case)
     with pytest.raises(AssertionError):
-        episode.set_sequence(RGBImage, av_seq)  # NG
+        episode.set_sequence(RGBImage, av_seq)  # type: ignore
 
-    # check inconsistent length
+    # check inconsistent length (NG case)
     with pytest.raises(AssertionError):
         av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(11)])
         episode.set_sequence(AngleVector, av_seq)  # NG
 
-    # check non-primitive elem
+    # check non-primitive elem (NG case)
     with pytest.raises(AssertionError):
         rgbd_seq = ElementSequence([RGBDImage.dummy_from_shape((10, 10)) for _ in range(10)])
-        episode.set_sequence(RGBDImage, rgbd_seq)  # NG
+        episode.set_sequence(RGBDImage, rgbd_seq)  # type: ignore
 
 
 def test_episode_data_assertion_different_size():

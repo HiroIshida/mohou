@@ -653,7 +653,7 @@ class EpisodeData(TypeShapeTableMixin):
         sequence_list: List[ElementSequence],
         timestamp_seq: Optional[TimeStampSequence] = None,
         metadata: Optional[MetaData] = None,
-    ):
+    ) -> "EpisodeData":
         if metadata is None:
             metadata = MetaData({})
 
@@ -677,6 +677,28 @@ class EpisodeData(TypeShapeTableMixin):
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
         return cls(sequence_dict, metadata, timestamp_seq)  # type: ignore
 
+    @classmethod
+    def from_edict_list(
+        cls,
+        edict_list: List[ElementDict],
+        timestamp_seq: Optional[TimeStampSequence] = None,
+        metadata: Optional[MetaData] = None,
+    ) -> "EpisodeData":
+
+        # all edict must have the same keys
+        key_set_ref = set(edict_list[0].keys())
+        for edict in edict_list:
+            assert set(edict.keys()) == key_set_ref
+
+        elem_seq_list = []
+        for key in key_set_ref:
+            elem_list = []
+            for edict in edict_list:
+                elem_list.append(edict[key])
+            elem_seq = ElementSequence(elem_list)
+            elem_seq_list.append(elem_seq)
+        return cls.from_seq_list(elem_seq_list, timestamp_seq, metadata)
+
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
         if issubclass(elem_type, PrimitiveElementBase):
@@ -690,6 +712,7 @@ class EpisodeData(TypeShapeTableMixin):
     def set_sequence(
         self, elem_type: Type[PrimitiveElementT], seq: ElementSequence[PrimitiveElementT]
     ) -> None:
+        """set element sequence corresponding to elem_type"""
         assert issubclass(elem_type, PrimitiveElementBase)
         assert seq.elem_type == elem_type
         self.sequence_dict[elem_type] = seq  # type: ignore
