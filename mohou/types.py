@@ -193,6 +193,13 @@ class GripperState(VectorBase):
     pass
 
 
+class AnotherGripperState(VectorBase):
+    # I know naming RarmGripperState and LarmGripperState is cleaner.
+    # But for the backward-compatibility, we cannot change type name of
+    # GripperState
+    pass
+
+
 class TerminateFlag(VectorBase):
     @classmethod
     def from_bool(cls, flag: bool) -> "TerminateFlag":
