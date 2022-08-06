@@ -262,6 +262,21 @@ def test_episode_data():
         assert episode == episode_again
 
 
+def test_episode_data_element_dict_converesion():
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
+    ts_seq = TimeStampSequence([i for i in range(10)])
+    episode = EpisodeData.from_seq_list(
+        [image_seq, av_seq], timestamp_seq=ts_seq, metadata=MetaData({"id": "hogehoge"})
+    )
+    # convert to edict and construct EpisodeData from edict_list agani
+    edict_list = [episode.__getitem__(i) for i in range(len(episode))]
+    episode_again = EpisodeData.from_edict_list(
+        edict_list, episode.time_stamp_seq, episode.metadata
+    )
+    assert episode == episode_again
+
+
 def test_episode_data_set_sequence():
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
     episode = EpisodeData.from_seq_list([av_seq])
