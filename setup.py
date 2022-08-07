@@ -27,6 +27,9 @@ setup(
     description="Visuomotor imitation learning framework",
     author="Hirokazu Ishida",
     author_email="h-ishida@jsk.imi.i.u-tokyo.ac.jp",
+    url="https://github.com/HiroIshida/mohou",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     license="MIT",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
