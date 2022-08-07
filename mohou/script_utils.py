@@ -217,9 +217,11 @@ def visualize_image_reconstruction(
             plt.savefig(str(file_path))
 
 
-def visualize_variational_autoencoder(project_path: Path):
+def visualize_variational_autoencoder(project_path: Path) -> None:
 
-    tcache = TrainCache.load(project_path, VariationalAutoEncoder)
+    tcache = TrainCache[VariationalAutoEncoder[ImageBase]].load(
+        project_path, VariationalAutoEncoder
+    )
     vae = tcache.best_model
 
     save_dir_path = project_path / "autoencoder_result"
@@ -228,7 +230,7 @@ def visualize_variational_autoencoder(project_path: Path):
     for axis in range(vae.config.n_bottleneck):
         images = vae.get_latent_axis_images(axis)
         assert ImageSequenceClip is not None, "check if your moviepy is properly installed"
-        clip = ImageSequenceClip([im.numpy() for im in images], fps=20)
+        clip = ImageSequenceClip([im.to_rgb().numpy() for im in images], fps=20)
         file_path = save_dir_path / "vae-axis{}.gif".format(axis)
         clip.write_gif(str(file_path), fps=20)
 
