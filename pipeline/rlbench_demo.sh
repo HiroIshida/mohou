@@ -29,4 +29,4 @@ function demo_batch {
     python3 $example_path/rlbench/simulate_feedback.py -pn $project_name -n 250
 }
 
-demo_batch RGBD 6 CloseDrawer overhead 112 0
+demo_batch RGBD 45 CloseDrawer overhead 112 0
