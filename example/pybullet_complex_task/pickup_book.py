@@ -15,7 +15,7 @@ from skrobot.coordinates.math import (
 )
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
-from utils import BoxConfig, create_box
+from pybullet_utils import BoxConfig, create_box
 
 
 class IKFailError(Exception):
