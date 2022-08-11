@@ -83,8 +83,8 @@ class Environment:
         panda_urdf_path = pb_data_path / "franka_panda/panda.urdf"
 
         pb.connect(pb.GUI)
-        pb.setPhysicsEngineParameter(numSolverIterations=50)
-        pb.setTimeStep(timeStep=0.005)
+        pb.setPhysicsEngineParameter(numSolverIterations=100)
+        pb.setTimeStep(timeStep=0.02)
         pb.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         pb.loadURDF("plane.urdf")
         robot_id = pb.loadURDF(str(panda_urdf_path), useFixedBase=True)
