@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pybullet as pb
 import pybullet_data
+from pybullet_utils import BoxConfig, create_box
 from skrobot.coordinates import Coordinates
 from skrobot.coordinates.math import (
     quaternion2matrix,
@@ -15,7 +16,6 @@ from skrobot.coordinates.math import (
 )
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
-from pybullet_utils import BoxConfig, create_box
 
 
 class IKFailError(Exception):
@@ -29,6 +29,7 @@ class Environment:
     link_to_id_table: Dict[str, int]
     urdf_path: str
     elapsed_time: int = 0
+    default_callback: Optional[Callable] = None
 
     def __post_init__(self):
         self.reset_world()
@@ -136,6 +137,14 @@ class Environment:
             joint = robot.robot_model.__dict__[name]
             self.set_joint_angle(name, joint.joint_angle())
 
+    def get_angle_vector(self, joint_names: List[str]) -> np.ndarray:
+        angle_list = []
+        for name in joint_names:
+            joint_id = self.joint_to_id_table[name]
+            pos, _, _, _ = pb.getJointState(self.handles["robot"], joint_id)
+            angle_list.append(pos)
+        return np.array(angle_list)
+
     def change_gripper_position(self, pos: float):
         assert pos > -1e-3 and pos < 0.08 + 1e-3
         name1 = "panda_finger_joint1"
@@ -145,9 +154,7 @@ class Environment:
 
     def wait_interpolation(self, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
         while True:
-            self.step(1, sleep)
-            if callback is not None:
-                callback()
+            self.step(1, sleep, callback=callback)
             velocities = []
             for joint_id in self.joint_to_id_table.values():
                 _, vel, _, _ = pb.getJointState(self.handles["robot"], joint_id)
@@ -156,9 +163,16 @@ class Environment:
             if vel_max < 0.05:
                 break
 
-    def step(self, n: int, sleep: float = 0.0) -> None:
+    def step(self, n: int, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
         for _ in range(n):
             pb.stepSimulation()
+
+            if callback is not None:
+                callback(self)
+            else:
+                if self.default_callback is not None:
+                    self.default_callback(self)
+
             self.elapsed_time += 1
             time.sleep(sleep)
 
@@ -207,6 +221,16 @@ class PandaModel:
 
 
 def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
+
+    av_list = []
+
+    def callback(env: Environment):
+        av = env.get_angle_vector(robot.control_joint_names)
+        av_list.append(av)
+        print("append")
+
+    env.default_callback = callback
+
     env.reset_world()
     robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
     env.set_angle_vetor(robot)
@@ -275,7 +299,7 @@ def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
     env.wait_interpolation(sleep=global_sleep)
     print(env.elapsed_time)
 
-    env.step(1000, 0)
+    env.step(100, 0)
     co = env.get_skrobot_coords("box2")
     if co.translation[2] > 0.2:
         print("success")
@@ -287,6 +311,6 @@ env = Environment.create()
 robot = PandaModel.from_urdf(env.urdf_path)
 for _ in range(30):
     try:
-        single_rollout(env, robot, 0.0)
+        single_rollout(env, robot, 0.01)
     except IKFailError:
         pass
