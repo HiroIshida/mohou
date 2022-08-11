@@ -1,13 +1,18 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Callable
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pybullet as pb
 import pybullet_data
 from skrobot.coordinates import Coordinates
-from skrobot.coordinates.math import quaternion2matrix, xyzw2wxyz
+from skrobot.coordinates.math import (
+    quaternion2matrix,
+    rpy2quaternion,
+    wxyz2xyzw,
+    xyzw2wxyz,
+)
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 from utils import BoxConfig, create_box
@@ -25,13 +30,25 @@ class Environment:
     urdf_path: str
 
     def __post_init__(self):
-        self.set_point("box1", (0.5, 0, 0.03))
-        self.set_point("box2", (0.5, 0, 0.08))
+        self.randomize()
 
-    def set_point(self, body_name: str, point: Tuple[float, float, float]):
+    def randomize(self):
+        x_pos = 0.45 + np.random.randn() * 0.05
+        y_pos = 0.1 + np.random.randn() * 0.05
+        yaw = np.random.randn() * 0.1
+        np.random.randn(3) * 0.06
+        self.set_pose("box1", (x_pos, y_pos, 0.03), (yaw, 0, 0))
+        self.set_pose("box2", (x_pos, y_pos, 0.08), (yaw, 0, 0))
+
+    def set_pose(
+        self,
+        body_name: str,
+        point: Tuple[float, float, float],
+        rpy: Tuple[float, float, float] = (0, 0, 0),
+    ):
         body_id = self.handles[body_name]
-        (point_now, quat_now) = pb.getBasePositionAndOrientation(body_id)
-        pb.resetBasePositionAndOrientation(body_id, point, quat_now)
+        q = rpy2quaternion(rpy)
+        pb.resetBasePositionAndOrientation(body_id, point, wxyz2xyzw(q))
 
     def get_skrobot_coords(self, body_name: str, link_name: Optional[str] = None) -> Coordinates:
         # NOTE quat is xyzw order
@@ -87,7 +104,7 @@ class Environment:
                 controlMode=pb.POSITION_CONTROL,
                 targetPosition=angle,
                 targetVelocity=0.0,
-                force=200,
+                force=300,
                 positionGain=gain,
                 velocityGain=1.0,
                 maxVelocity=1.0,
@@ -95,8 +112,9 @@ class Environment:
         else:
             pb.resetJointState(self.handles["robot"], joint_id, angle)
 
-    def wait_interpolation(self, callback: Optional[Callable] = None) -> None:
+    def wait_interpolation(self, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
         while True:
+            time.sleep(sleep)
             pb.stepSimulation()
             if callback is not None:
                 callback()
@@ -108,7 +126,7 @@ class Environment:
             if vel_max < 0.05:
                 break
 
-    def step(self, n: int, sleep: float) -> None:
+    def step(self, n: int, sleep: float = 0.0) -> None:
         for _ in range(n):
             pb.stepSimulation()
             time.sleep(sleep)
@@ -187,7 +205,8 @@ target.translate([0.0, 0.15, 0.02])
 target.rotate(np.pi * 0.5, "y")
 
 robot.solve_ik(target)
-robot.send_angel_vector(env)
+robot.send_angel_vector(env, real_time=True)
+env.wait_interpolation()
 
 # push
 target.translate([0.0, -0.06, 0.0], wrt="world")
@@ -212,6 +231,14 @@ env.wait_interpolation()
 target = env.get_skrobot_coords("box2").copy_worldcoords()
 target.translate([0.0, -0.18, 0.04])
 target.rotate(np.pi * 0.5, "y")
+target.rotate(np.pi * 0.1, "z")
+robot.solve_ik(target)
+robot.send_angel_vector(env, real_time=True)
+env.wait_interpolation()
+
+target = env.get_skrobot_coords("box2").copy_worldcoords()
+target.translate([0.0, -0.18, 0.04])
+target.rotate(np.pi * 0.5, "y")
 target.rotate(np.pi * 0.35, "z")
 robot.solve_ik(target)
 robot.send_angel_vector(env, real_time=True)
@@ -219,12 +246,12 @@ env.wait_interpolation()
 
 # open and grasp
 robot.change_gripper_position(0.07, env)
-env.step(3000, 1e-5)
-robot.move_end_pos([0.1, 0.0, 0])
+env.wait_interpolation()
+robot.move_end_pos([0.09, 0.0, 0])
 robot.send_angel_vector(env, real_time=True)
-env.wait_interpolation()
+env.step(300, sleep=0.01)
 robot.change_gripper_position(0.02, env)
-env.wait_interpolation()
+env.wait_interpolation(sleep=0.01)
 
 # lift
 robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
@@ -232,5 +259,4 @@ robot.move_end_rot(np.pi * 0.15, "z")
 robot.send_angel_vector(env, real_time=True)
 env.wait_interpolation()
 
-# create_debug_axis(co_ef, 0.3)
 time.sleep(30)
