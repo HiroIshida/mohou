@@ -28,8 +28,14 @@ class Environment:
     joint_to_id_table: Dict[str, int]
     link_to_id_table: Dict[str, int]
     urdf_path: str
+    elapsed_time: int = 0
 
     def __post_init__(self):
+        self.reset_world()
+
+    def reset_world(self):
+        self.elapsed_time = 0
+
         # reset robot
         robot_id = self.handles["robot"]
         for joint_id in self.joint_to_id_table.values():
@@ -41,9 +47,6 @@ class Environment:
                 object_id, linearVelocity=(0.0, 0.0, 0.0), angularVelocity=(0.0, 0.0, 0.0)
             )
 
-        self.randomize_world()
-
-    def randomize_world(self):
         x_pos = 0.45 + np.random.randn() * 0.05
         y_pos = 0.1 + np.random.randn() * 0.05
         yaw = np.random.randn() * 0.1
@@ -80,7 +83,7 @@ class Environment:
 
         pb.connect(pb.GUI)
         pb.setPhysicsEngineParameter(numSolverIterations=50)
-        pb.setTimeStep(timeStep=0.001)
+        pb.setTimeStep(timeStep=0.005)
         pb.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         pb.loadURDF("plane.urdf")
         robot_id = pb.loadURDF(str(panda_urdf_path), useFixedBase=True)
@@ -142,8 +145,7 @@ class Environment:
 
     def wait_interpolation(self, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
         while True:
-            time.sleep(sleep)
-            pb.stepSimulation()
+            self.step(1, sleep)
             if callback is not None:
                 callback()
             velocities = []
@@ -157,6 +159,7 @@ class Environment:
     def step(self, n: int, sleep: float = 0.0) -> None:
         for _ in range(n):
             pb.stepSimulation()
+            self.elapsed_time += 1
             time.sleep(sleep)
 
 
@@ -204,7 +207,7 @@ class PandaModel:
 
 
 def single_rollout(env: Environment, robot: PandaModel):
-    env.randomize_world()
+    env.reset_world()
     robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
     env.set_angle_vetor(robot)
 
@@ -259,9 +262,9 @@ def single_rollout(env: Environment, robot: PandaModel):
     env.wait_interpolation()
     robot.move_end_pos([0.09, 0.0, 0])
     env.send_angel_vector(robot)
-    env.step(300, sleep=0.0)
+    env.step(30, sleep=0.0)
     env.change_gripper_position(0.02)
-    env.step(300, sleep=0.0)
+    #env.step(30, sleep=0.0)
     # env.wait_interpolation(sleep=0.01)
 
     # lift
@@ -269,6 +272,7 @@ def single_rollout(env: Environment, robot: PandaModel):
     robot.move_end_rot(np.pi * 0.15, "z")
     env.send_angel_vector(robot)
     env.wait_interpolation()
+    print(env.elapsed_time)
 
     env.step(1000, 0)
     co = env.get_skrobot_coords("box2")
