@@ -87,8 +87,10 @@ class Environment:
         pb.configureDebugVisualizer(pb.COV_ENABLE_GUI, 0)
         pb.setGravity(0, 0, -10)
 
-        box_id = create_box(BoxConfig(size=(0.3, 0.2, 0.08), rgba=(1, 0.7, 0.7, 1.0)))
-        box2_id = create_box(BoxConfig(size=(0.3, 0.2, 0.04), rgba=(0.7, 1.0, 0.7, 1.0)))
+        box_id = create_box(BoxConfig(size=(0.3, 0.2, 0.08), rgba=(1, 0.7, 0.7, 1.0)), friction=3.0)
+        box2_id = create_box(
+            BoxConfig(size=(0.3, 0.2, 0.04), rgba=(0.7, 1.0, 0.7, 1.0)), friction=0.5
+        )
 
         handles = {"robot": robot_id, "box1": box_id, "box2": box2_id}
 
@@ -139,7 +141,6 @@ class Environment:
         self.set_joint_angle(name2, pos * 0.5, True)
 
     def wait_interpolation(self, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
-        counter = 0
         while True:
             time.sleep(sleep)
             pb.stepSimulation()
@@ -150,10 +151,8 @@ class Environment:
                 _, vel, _, _ = pb.getJointState(self.handles["robot"], joint_id)
                 velocities.append(vel)
             vel_max = np.max(np.abs(velocities))
-            counter += 1
             if vel_max < 0.05:
                 break
-        print(counter)
 
     def step(self, n: int, sleep: float = 0.0) -> None:
         for _ in range(n):
@@ -204,10 +203,7 @@ class PandaModel:
         self.solve_ik(co_end_link)
 
 
-env = Environment.create()
-robot = PandaModel.from_urdf(env.urdf_path)
-
-for _ in range(30):
+def single_rollout(env: Environment, robot: PandaModel):
     env.randomize_world()
     robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
     env.set_angle_vetor(robot)
@@ -223,7 +219,7 @@ for _ in range(30):
     # time.sleep(2)
 
     # push
-    target.translate([0.0, -0.06, 0.0], wrt="world")
+    target.translate([0.0, -0.07, 0.0], wrt="world")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
     env.wait_interpolation()
@@ -251,9 +247,9 @@ for _ in range(30):
     env.wait_interpolation()
 
     target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.18, 0.04])
+    target.translate([0.0, -0.18, 0.025])
     target.rotate(np.pi * 0.5, "y")
-    target.rotate(np.pi * 0.35, "z")
+    target.rotate(np.pi * 0.4, "z")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
     env.wait_interpolation()
@@ -273,3 +269,19 @@ for _ in range(30):
     robot.move_end_rot(np.pi * 0.15, "z")
     env.send_angel_vector(robot)
     env.wait_interpolation()
+
+    env.step(1000, 0)
+    co = env.get_skrobot_coords("box2")
+    if co.translation[2] > 0.2:
+        print("success")
+    else:
+        print("fail")
+
+
+env = Environment.create()
+robot = PandaModel.from_urdf(env.urdf_path)
+for _ in range(30):
+    try:
+        single_rollout(env, robot)
+    except IKFailError:
+        pass
