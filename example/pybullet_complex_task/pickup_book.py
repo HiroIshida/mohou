@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable
 
 import numpy as np
 import pybullet as pb
@@ -11,6 +11,10 @@ from skrobot.coordinates.math import quaternion2matrix, xyzw2wxyz
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 from utils import BoxConfig, create_box
+
+
+class IKFailError(Exception):
+    pass
 
 
 @dataclass
@@ -91,7 +95,20 @@ class Environment:
         else:
             pb.resetJointState(self.handles["robot"], joint_id, angle)
 
-    def step(self, n: int, sleep: float):
+    def wait_interpolation(self, callback: Optional[Callable] = None) -> None:
+        while True:
+            pb.stepSimulation()
+            if callback is not None:
+                callback()
+            velocities = []
+            for joint_id in self.joint_to_id_table.values():
+                _, vel, _, _ = pb.getJointState(self.handles["robot"], joint_id)
+                velocities.append(vel)
+            vel_max = np.max(np.abs(velocities))
+            if vel_max < 0.05:
+                break
+
+    def step(self, n: int, sleep: float) -> None:
         for _ in range(n):
             pb.stepSimulation()
             time.sleep(sleep)
@@ -106,13 +123,14 @@ class PandaModel:
         robot_model = RobotModelFromURDF(urdf_file=urdf_path)
         return cls(robot_model)
 
-    def solve_ik(self, coords: Coordinates) -> bool:
+    def solve_ik(self, coords: Coordinates) -> None:
         joints = [self.robot_model.__dict__[jname] for jname in self.control_joint_names]
         link_list = [joint.child_link for joint in joints]
         end_effector = self.robot_model.__dict__[self.end_effector_name]
         av_next = self.robot_model.inverse_kinematics(coords, end_effector, link_list)
         solved = isinstance(av_next, np.ndarray)
-        return solved
+        if not solved:
+            raise IKFailError
 
     def set_angle_vector(self, angles: List[float]):
         for name, angle in zip(self.control_joint_names, angles):
@@ -143,18 +161,16 @@ class PandaModel:
     def end_effector_name(self) -> str:
         return "panda_grasptarget"
 
-    def move_end_pos(self, pos, wrt: str = "local") -> bool:
+    def move_end_pos(self, pos, wrt: str = "local") -> None:
         pos = np.array(pos, dtype=np.float64)
         co_end_link = self.robot_model.__dict__[self.end_effector_name].copy_worldcoords()
         co_end_link.translate(pos, wrt=wrt)
-        solved = self.solve_ik(co_end_link)
-        return solved
+        self.solve_ik(co_end_link)
 
-    def move_end_rot(self, angle, axis, wrt: str = "local") -> bool:
+    def move_end_rot(self, angle, axis, wrt: str = "local") -> None:
         co_end_link = self.robot_model.__dict__[self.end_effector_name].copy_worldcoords()
         co_end_link.rotate(angle, axis, wrt=wrt)
-        solved = self.solve_ik(co_end_link)
-        return solved
+        self.solve_ik(co_end_link)
 
 
 env = Environment.create()
@@ -170,63 +186,51 @@ target = env.get_skrobot_coords("box2").copy_worldcoords()
 target.translate([0.0, 0.15, 0.02])
 target.rotate(np.pi * 0.5, "y")
 
-solved = robot.solve_ik(target)
-assert solved
+robot.solve_ik(target)
 robot.send_angel_vector(env)
 
 # push
 target.translate([0.0, -0.06, 0.0], wrt="world")
-solved = robot.solve_ik(target)
-assert solved
+robot.solve_ik(target)
 robot.send_angel_vector(env, real_time=True)
-env.step(3000, 1e-5)
+env.wait_interpolation()
 
-
-# up
+# go up
 target.translate([0.0, 0.0, 0.1], wrt="world")
-solved = robot.solve_ik(target)
-assert solved
+robot.solve_ik(target)
 robot.send_angel_vector(env, real_time=True)
-env.step(3000, 1e-5)
+env.wait_interpolation()
 
-# pre-grasp
+# move around
 target = env.get_skrobot_coords("box2").copy_worldcoords()
 target.translate([0.0, -0.25, 0.12])
 target.rotate(np.pi * 0.5, "y")
-solved = robot.solve_ik(target)
-assert solved
+robot.solve_ik(target)
 robot.send_angel_vector(env, real_time=True)
-env.step(3000, 1e-5)
-# env.step(200, 1e-5)
+env.wait_interpolation()
 
 target = env.get_skrobot_coords("box2").copy_worldcoords()
 target.translate([0.0, -0.18, 0.04])
 target.rotate(np.pi * 0.5, "y")
 target.rotate(np.pi * 0.35, "z")
-solved = robot.solve_ik(target)
-assert solved
+robot.solve_ik(target)
 robot.send_angel_vector(env, real_time=True)
-env.step(3000, 1e-5)
+env.wait_interpolation()
 
-
-# grasp
+# open and grasp
 robot.change_gripper_position(0.07, env)
 env.step(3000, 1e-5)
-solved = robot.move_end_pos([0.1, 0.0, 0])
-assert solved
+robot.move_end_pos([0.1, 0.0, 0])
 robot.send_angel_vector(env, real_time=True)
-env.step(300, 1e-2)
-
+env.wait_interpolation()
 robot.change_gripper_position(0.02, env)
-env.step(3000, 1e-5)
+env.wait_interpolation()
 
 # lift
-solved = robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
-assert solved
-solved = robot.move_end_rot(np.pi * 0.15, "z")
-assert solved
+robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
+robot.move_end_rot(np.pi * 0.15, "z")
 robot.send_angel_vector(env, real_time=True)
-env.step(3000, 1e-5)
+env.wait_interpolation()
 
 # create_debug_axis(co_ef, 0.3)
 time.sleep(30)
