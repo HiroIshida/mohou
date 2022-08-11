@@ -206,7 +206,7 @@ class PandaModel:
         self.solve_ik(co_end_link)
 
 
-def single_rollout(env: Environment, robot: PandaModel):
+def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
     env.reset_world()
     robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
     env.set_angle_vetor(robot)
@@ -215,23 +215,24 @@ def single_rollout(env: Environment, robot: PandaModel):
     target = env.get_skrobot_coords("box2").copy_worldcoords()
     target.translate([0.0, 0.15, 0.04])
     target.rotate(np.pi * 0.5, "y")
+    target.rotate(np.pi * 0.5, "x")
 
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
     # time.sleep(2)
 
     # push
     target.translate([0.0, -0.07, 0.0], wrt="world")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
 
     # go up
     target.translate([0.0, 0.0, 0.1], wrt="world")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
 
     # move around
     target = env.get_skrobot_coords("box2").copy_worldcoords()
@@ -239,7 +240,7 @@ def single_rollout(env: Environment, robot: PandaModel):
     target.rotate(np.pi * 0.5, "y")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
 
     target = env.get_skrobot_coords("box2").copy_worldcoords()
     target.translate([0.0, -0.18, 0.04])
@@ -247,7 +248,7 @@ def single_rollout(env: Environment, robot: PandaModel):
     target.rotate(np.pi * 0.1, "z")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
 
     target = env.get_skrobot_coords("box2").copy_worldcoords()
     target.translate([0.0, -0.18, 0.025])
@@ -255,23 +256,23 @@ def single_rollout(env: Environment, robot: PandaModel):
     target.rotate(np.pi * 0.4, "z")
     robot.solve_ik(target)
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
 
     # open and grasp
     env.change_gripper_position(0.07)
     env.wait_interpolation()
     robot.move_end_pos([0.09, 0.0, 0])
     env.send_angel_vector(robot)
-    env.step(30, sleep=0.0)
+    env.step(30, sleep=global_sleep)
     env.change_gripper_position(0.02)
-    #env.step(30, sleep=0.0)
+    env.step(30, sleep=global_sleep)
     # env.wait_interpolation(sleep=0.01)
 
     # lift
     robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
     robot.move_end_rot(np.pi * 0.15, "z")
     env.send_angel_vector(robot)
-    env.wait_interpolation()
+    env.wait_interpolation(sleep=global_sleep)
     print(env.elapsed_time)
 
     env.step(1000, 0)
@@ -286,6 +287,6 @@ env = Environment.create()
 robot = PandaModel.from_urdf(env.urdf_path)
 for _ in range(30):
     try:
-        single_rollout(env, robot)
+        single_rollout(env, robot, 0.0)
     except IKFailError:
         pass
