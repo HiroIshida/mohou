@@ -17,6 +17,8 @@ from skrobot.coordinates.math import (
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 
+np.random.seed(0)
+
 
 class IKFailError(Exception):
     pass
@@ -28,54 +30,9 @@ class Environment:
     joint_to_id_table: Dict[str, int]
     link_to_id_table: Dict[str, int]
     urdf_path: str
+    latest_command: Dict[str, float]
     elapsed_time: int = 0
     default_callback: Optional[Callable] = None
-
-    def __post_init__(self):
-        self.reset_world()
-
-    def reset_world(self):
-        self.elapsed_time = 0
-
-        # reset robot
-        robot_id = self.handles["robot"]
-        for joint_id in self.joint_to_id_table.values():
-            pb.resetJointState(robot_id, joint_id, 0.0, targetVelocity=0.0)
-
-        # reset base
-        for object_id in self.handles.values():
-            pb.resetBaseVelocity(
-                object_id, linearVelocity=(0.0, 0.0, 0.0), angularVelocity=(0.0, 0.0, 0.0)
-            )
-
-        x_pos = 0.45 + np.random.randn() * 0.05
-        y_pos = 0.1 + np.random.randn() * 0.05
-        yaw = np.random.randn() * 0.1
-        np.random.randn(3) * 0.06
-        self.set_pose("box1", (x_pos, y_pos, 0.05), (yaw, 0, 0))
-        self.set_pose("box2", (x_pos, y_pos, 0.08), (yaw, 0, 0))
-
-    def set_pose(
-        self,
-        body_name: str,
-        point: Tuple[float, float, float],
-        rpy: Tuple[float, float, float] = (0, 0, 0),
-    ):
-        body_id = self.handles[body_name]
-        q = rpy2quaternion(rpy)
-        pb.resetBasePositionAndOrientation(body_id, point, wxyz2xyzw(q))
-
-    def get_skrobot_coords(self, body_name: str, link_name: Optional[str] = None) -> Coordinates:
-        # NOTE quat is xyzw order
-        body_id = self.handles[body_name]
-        if link_name is None:
-            trans, quat = pb.getBasePositionAndOrientation(body_id)
-        else:
-            link_id = self.link_to_id_table[link_name]
-            ret = pb.getLinkState(body_id, link_id, computeForwardKinematics=1)
-            trans, quat = ret[0], ret[1]
-        mat = quaternion2matrix(xyzw2wxyz(quat))
-        return Coordinates(trans, mat)
 
     @classmethod
     def create(cls) -> "Environment":
@@ -110,9 +67,62 @@ class Environment:
             name = "_".join(tmp.split("/"))
             link_table[name] = idx
 
-        return cls(handles, joint_table, link_table, str(panda_urdf_path))
+        return cls(handles, joint_table, link_table, str(panda_urdf_path), {})
+
+    def __post_init__(self):
+        self.reset_world()
+
+    def reset_world(self, x_bias: float = 0.0, y_bias: float = 0.0, yaw_bias: float = 0.0):
+        self.elapsed_time = 0
+
+        # initialize latest command
+        joint_names = list(self.joint_to_id_table.keys())
+        angles = self.get_angle_vector(joint_names)
+        for name, angle in zip(joint_names, angles):
+            self.latest_command[name] = angle
+
+        # reset robot
+        robot_id = self.handles["robot"]
+        for joint_id in self.joint_to_id_table.values():
+            pb.resetJointState(robot_id, joint_id, 0.0, targetVelocity=0.0)
+
+        # reset base
+        for object_id in self.handles.values():
+            pb.resetBaseVelocity(
+                object_id, linearVelocity=(0.0, 0.0, 0.0), angularVelocity=(0.0, 0.0, 0.0)
+            )
+
+        x_pos = 0.45 + x_bias
+        y_pos = 0.1 + y_bias
+        yaw = 0.0 + yaw_bias
+        self.set_pose("box1", (x_pos, y_pos, 0.05), (yaw, 0, 0))
+        self.set_pose("box2", (x_pos, y_pos, 0.08), (yaw, 0, 0))
+
+    def set_pose(
+        self,
+        body_name: str,
+        point: Tuple[float, float, float],
+        rpy: Tuple[float, float, float] = (0, 0, 0),
+    ):
+        body_id = self.handles[body_name]
+        q = rpy2quaternion(rpy)
+        pb.resetBasePositionAndOrientation(body_id, point, wxyz2xyzw(q))
+
+    def get_skrobot_coords(self, body_name: str, link_name: Optional[str] = None) -> Coordinates:
+        # NOTE quat is xyzw order
+        body_id = self.handles[body_name]
+        if link_name is None:
+            trans, quat = pb.getBasePositionAndOrientation(body_id)
+        else:
+            link_id = self.link_to_id_table[link_name]
+            ret = pb.getLinkState(body_id, link_id, computeForwardKinematics=1)
+            trans, quat = ret[0], ret[1]
+        mat = quaternion2matrix(xyzw2wxyz(quat))
+        return Coordinates(trans, mat)
 
     def set_joint_angle(self, joint_name: str, angle: float, gain: float = 1.0):
+        self.latest_command[joint_name] = angle
+
         joint_id = self.joint_to_id_table[joint_name]
         pb.setJointMotorControl2(
             bodyIndex=self.handles["robot"],
@@ -132,7 +142,7 @@ class Environment:
             joint_id = self.joint_to_id_table[name]
             pb.resetJointState(self.handles["robot"], joint_id, joint.joint_angle())
 
-    def send_angel_vector(self, robot: "PandaModel"):
+    def send_angle_vector(self, robot: "PandaModel"):
         for name in robot.control_joint_names:
             joint = robot.robot_model.__dict__[name]
             self.set_joint_angle(name, joint.joint_angle())
@@ -145,12 +155,19 @@ class Environment:
             angle_list.append(pos)
         return np.array(angle_list)
 
-    def change_gripper_position(self, pos: float):
+    def change_gripper_position(self, pos: float) -> None:
         assert pos > -1e-3 and pos < 0.08 + 1e-3
         name1 = "panda_finger_joint1"
         name2 = "panda_finger_joint2"
         self.set_joint_angle(name1, pos * 0.5, True)
         self.set_joint_angle(name2, pos * 0.5, True)
+
+    def get_gripper_position_target(self) -> float:
+        name1 = "panda_finger_joint1"
+        name2 = "panda_finger_joint2"
+        pos1 = self.latest_command[name1]
+        pos2 = self.latest_command[name2]
+        return pos1 + pos2
 
     def wait_interpolation(self, sleep: float = 0.0, callback: Optional[Callable] = None) -> None:
         while True:
@@ -223,17 +240,19 @@ class PandaModel:
 def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
 
     av_list = []
+    gs_list = []
 
     def callback(env: Environment):
         av = env.get_angle_vector(robot.control_joint_names)
         av_list.append(av)
-        print("append")
+        pos = env.get_gripper_position_target()
+        gs_list.append(pos)
 
     env.default_callback = callback
 
-    env.reset_world()
     robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
     env.set_angle_vetor(robot)
+    env.change_gripper_position(0.07)
 
     # pre-push pose
     target = env.get_skrobot_coords("box2").copy_worldcoords()
@@ -242,20 +261,20 @@ def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
     target.rotate(np.pi * 0.5, "x")
 
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
     # time.sleep(2)
 
     # push
-    target.translate([0.0, -0.07, 0.0], wrt="world")
+    target.translate([0.0, -0.12, 0.0], wrt="world")
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
 
     # go up
     target.translate([0.0, 0.0, 0.1], wrt="world")
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
 
     # move around
@@ -263,42 +282,43 @@ def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
     target.translate([0.0, -0.25, 0.12])
     target.rotate(np.pi * 0.5, "y")
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
 
     target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.18, 0.04])
+    target.translate([0.0, -0.23, 0.04])
     target.rotate(np.pi * 0.5, "y")
     target.rotate(np.pi * 0.1, "z")
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
 
     target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.18, 0.025])
+    target.translate([0.0, -0.18, 0.0])
     target.rotate(np.pi * 0.5, "y")
-    target.rotate(np.pi * 0.4, "z")
+    target.rotate(np.pi * 0.43, "z")
     robot.solve_ik(target)
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
 
     # open and grasp
     env.change_gripper_position(0.07)
     env.wait_interpolation()
-    robot.move_end_pos([0.09, 0.0, 0])
-    env.send_angel_vector(robot)
-    env.step(30, sleep=global_sleep)
+    robot.move_end_pos([0.11, 0.0, 0])
+    env.send_angle_vector(robot)
+    env.step(20, sleep=global_sleep)
     env.change_gripper_position(0.02)
-    env.step(30, sleep=global_sleep)
+    env.step(20, sleep=global_sleep)
     # env.wait_interpolation(sleep=0.01)
 
     # lift
     robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
     robot.move_end_rot(np.pi * 0.15, "z")
-    env.send_angel_vector(robot)
+    env.send_angle_vector(robot)
     env.wait_interpolation(sleep=global_sleep)
     print(env.elapsed_time)
 
+    env.default_callback = None
     env.step(100, 0)
     co = env.get_skrobot_coords("box2")
     if co.translation[2] > 0.2:
@@ -306,11 +326,29 @@ def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
     else:
         print("fail")
 
+    return av_list, gs_list
+
 
 env = Environment.create()
 robot = PandaModel.from_urdf(env.urdf_path)
+
 for _ in range(30):
-    try:
-        single_rollout(env, robot, 0.01)
-    except IKFailError:
-        pass
+    x_bias = np.random.randn() * 0.06
+    y_bias = np.random.randn() * 0.06
+    yaw_bias = np.random.randn() * 0.1
+    env.reset_world(*(x_bias, y_bias, yaw_bias))
+    av_list, gs_list = single_rollout(env, robot, 0.0)
+
+    env.reset_world(*(x_bias, y_bias, yaw_bias))
+    robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
+    env.set_angle_vetor(robot)
+
+    w = 2
+    print(len(gs_list[::w]))
+    for av, gs in zip(av_list[::w], gs_list[::w]):
+        robot.set_angle_vector(av)
+        env.send_angle_vector(robot)
+        env.change_gripper_position(gs)
+        env.step(w, sleep=0.01)
+
+time.sleep(10)
