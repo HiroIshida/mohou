@@ -411,6 +411,16 @@ def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noq
     remove_project(tmp_project_name)
 
 
+def test_episode_bundle_duplication_assertion(image_bundle):
+    episode_list = []
+    for e in image_bundle:
+        episode_list.append(e)
+        episode_list.append(e)
+
+    with pytest.raises(AssertionError):
+        EpisodeBundle.from_episodes(episode_list)
+
+
 def test_episode_bundle_add(image_av_bundle, image_bundle):
 
     image_av_bundle_double = image_av_bundle + image_av_bundle  # ok
