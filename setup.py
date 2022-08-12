@@ -19,6 +19,7 @@ install_requires = [
     "moviepy",
     "PyYAML>=5.1",
     "types-PyYAML",
+    "gdown",
 ]
 
 setup(
