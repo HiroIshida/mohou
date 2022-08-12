@@ -197,14 +197,12 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, default=100, help="epoch num")
     parser.add_argument("-m", type=int, default=112, help="pixel num")
     parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
-    parser.add_argument("-seed", type=int, default=1, help="seed")
     args = parser.parse_args()
     n_epoch: int = args.n
     n_pixel: int = args.m
     feedback_mode: bool = args.feedback
     project_name: str = args.pn
     n_untouch: int = args.untouch
-    seed: int = args.seed
     project_path_str: Optional[str] = args.pp
 
     if project_path_str is None:
@@ -214,8 +212,6 @@ if __name__ == "__main__":
     else:
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
-
-    np.random.seed(seed)
 
     if feedback_mode:
         pbdata_path = pybullet_data.getDataPath()
@@ -243,6 +239,7 @@ if __name__ == "__main__":
 
             def data_generation_task(arg):
                 cpu_idx, n_data_gen = arg
+                np.random.seed(cpu_idx)
                 disable_tqdm = cpu_idx != 0
 
                 pbdata_path = pybullet_data.getDataPath()
