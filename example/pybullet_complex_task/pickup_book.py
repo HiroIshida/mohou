@@ -1,10 +1,15 @@
 import argparse
+import multiprocessing
+import pickle
+import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+import psutil
 import pybullet as pb
 import pybullet_data
 import tqdm
@@ -452,28 +457,49 @@ if __name__ == "__main__":
     # create bundle
     episode_list: List[EpisodeData] = []
 
-    with tqdm.tqdm(total=n_epoch) as pbar:
-        while len(episode_list) < n_epoch:
-            x_bias = np.random.randn() * 0.06
-            y_bias = np.random.randn() * 0.06
-            yaw_bias = np.random.randn() * 0.1
+    with tempfile.TemporaryDirectory() as td:
 
-            task.reset((x_bias, y_bias, yaw_bias))
-            try:
-                episode = task.run_prescribed_motion()
-            except IKFailError:
-                continue
-            is_rollout_successful = task.is_successful()
+        def data_generation_per_process(arg):
+            cpu_idx, n_data_gen = arg
+            disable_tqdm = cpu_idx != 0
 
-            task.reset((x_bias, y_bias, yaw_bias))
-            task.replay(episode)
-            is_replay_successful = task.is_successful()
+            with tqdm.tqdm(total=n_data_gen, disable=disable_tqdm) as pbar:
+                count = 0
+                while count < n_data_gen:
+                    x_bias = np.random.randn() * 0.06
+                    y_bias = np.random.randn() * 0.06
+                    yaw_bias = np.random.randn() * 0.1
 
-            if is_rollout_successful and is_replay_successful:
-                episode_list.append(episode)
-                pbar.update(1)
+                    task.reset((x_bias, y_bias, yaw_bias))
+                    try:
+                        episode = task.run_prescribed_motion()
+                    except IKFailError:
+                        continue
+                    is_rollout_successful = task.is_successful()
 
-    bundle = EpisodeBundle.from_episodes(episode_list)
+                    task.reset((x_bias, y_bias, yaw_bias))
+                    task.replay(episode)
+                    is_replay_successful = task.is_successful()
+
+                    if is_rollout_successful and is_replay_successful:
+                        count += 1
+                        pbar.update(1)
+                        file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
+                        with file_path.open(mode="wb") as f:
+                            pickle.dump(episode, f)
+
+        n_cpu = psutil.cpu_count(logical=False)
+        print("{} physical cpus are detected".format(n_cpu))
+        pool = multiprocessing.Pool(n_cpu)
+        n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
+        pool.map(data_generation_per_process, zip(range(n_cpu), n_process_list_assign))
+
+        episode_list = []
+        for file_path in Path(td).iterdir():
+            with file_path.open(mode="rb") as f:
+                episode_list.append(pickle.load(f))
+
+    bundle = EpisodeBundle.from_data_list(episode_list)
     bundle.dump(project_path)
     bundle.plot_vector_histories(AngleVector, project_path)
 
