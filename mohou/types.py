@@ -67,7 +67,7 @@ VectorT = TypeVar("VectorT", bound="VectorBase")
 CompositeListElementT = TypeVar("CompositeListElementT")
 
 
-class HashableMixin:
+class Hashable:
     @property
     def hash_value(self) -> str:
         data_pickle = pickle.dumps(self)
@@ -75,7 +75,7 @@ class HashableMixin:
         return data_md5[:8]
 
 
-class MetaData(Dict[str, Union[str, int, float]], HashableMixin):
+class MetaData(Dict[str, Union[str, int, float]], Hashable):
     pass
 
 
@@ -560,7 +560,7 @@ def create_composite_image_sequence(
     return ElementSequence(composite_image_list)
 
 
-class TypeShapeTableMixin:
+class HasTypeShapeTable:
     def types(self) -> List[Type[ElementBase]]:
         return list(self.type_shape_table.keys())  # type: ignore
 
@@ -600,7 +600,7 @@ class TimeStampSequence(HasAList[float]):
 
 
 @dataclass
-class EpisodeData(TypeShapeTableMixin):
+class EpisodeData(HasTypeShapeTable, Hashable):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     metadata: MetaData
     time_stamp_seq: Optional[TimeStampSequence] = None
@@ -844,7 +844,7 @@ class EpisodeData(TypeShapeTableMixin):
 
 
 @dataclass(frozen=True)
-class BundleSpec(TypeShapeTableMixin):
+class BundleSpec(HasTypeShapeTable):
     n_episode: int
     n_untouch_episode: int
     n_average: int
@@ -887,7 +887,7 @@ _bundle_cache: Dict[Tuple[Path, Optional[str]], "EpisodeBundle"] = {}  # used Ep
 
 
 @dataclass
-class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
+class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
     """Bundle of episode
     The collection of episodes.
     we call it 'bundle' because 'Dataset' is already used by pytorch
@@ -897,6 +897,21 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     _untouch_episode_list: List[EpisodeData]
     metadata: MetaData
     postfix: Optional[str] = None
+
+    def __post_init__(self):
+        # check if episode data's hash value is all different
+        # This is for avoiding episode duplication.
+        # This check is espatialy useful when the data is created via multiprocess
+        # parallel computing, where mistake around setting random seed is common.
+        # If you are don't like this feature, please make a PR to add a option
+        hash_list = [e.hash_value for e in self._episode_list + self._untouch_episode_list]
+        hash_set = set(hash_list)
+
+        n_list = len(hash_list)
+        n_set = len(hash_set)
+        assert n_list == n_set, "episode duplication found. list length {}, set length {}".format(
+            n_list, n_set
+        )
 
     def _get_has_a_list(self) -> List[EpisodeData]:
         return self._episode_list

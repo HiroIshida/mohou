@@ -21,7 +21,7 @@ from mohou.types import (
     EpisodeData,
     GrayImage,
     GripperState,
-    HashableMixin,
+    Hashable,
     MetaData,
     PrimitiveImageBase,
     RGBDImage,
@@ -40,12 +40,12 @@ def sample_image_path():
 
 
 @dataclass
-class Hoge(HashableMixin):
+class Hoge(Hashable):
     a: int
 
 
 @dataclass
-class Fuga(HashableMixin):
+class Fuga(Hashable):
     b: int
 
 
