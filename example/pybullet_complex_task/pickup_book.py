@@ -462,14 +462,13 @@ if __name__ == "__main__":
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
 
-    np.random.seed(seed)
-
     # create bundle
     with tempfile.TemporaryDirectory() as td:
 
         def data_generation_per_process(arg):
             cpu_idx, n_data_gen = arg
             disable_tqdm = cpu_idx != 0
+            np.random.seed(cpu_idx)
 
             # create task
             camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
