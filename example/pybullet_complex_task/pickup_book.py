@@ -27,6 +27,7 @@ from skrobot.coordinates.math import (
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 
+from mohou.asset import get_panda_urdf_path
 from mohou.file import create_project_dir, get_project_path
 from mohou.types import (
     AngleVector,
@@ -99,21 +100,20 @@ class Environment:
     handles: Dict[str, int]
     joint_to_id_table: Dict[str, int]
     link_to_id_table: Dict[str, int]
-    urdf_path: str
     latest_command: Dict[str, float]
     elapsed_time: int = 0
     default_callback: Optional[Callable] = None
 
     @classmethod
     def create(cls) -> "Environment":
-        pb_data_path = Path(pybullet_data.__file__).parent
-        panda_urdf_path = pb_data_path / "franka_panda/panda.urdf"
-
         pb.setPhysicsEngineParameter(numSolverIterations=100)
         pb.setTimeStep(timeStep=0.02)
         pb.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         pb.loadURDF("plane.urdf")
+
+        panda_urdf_path = get_panda_urdf_path()
         robot_id = pb.loadURDF(str(panda_urdf_path), useFixedBase=True)
+
         pb.configureDebugVisualizer(pb.COV_ENABLE_GUI, 0)
         pb.setGravity(0, 0, -10)
 
@@ -136,7 +136,7 @@ class Environment:
             name = "_".join(tmp.split("/"))
             link_table[name] = idx
 
-        return cls(handles, joint_table, link_table, str(panda_urdf_path), {})
+        return cls(handles, joint_table, link_table, {})
 
     def __post_init__(self):
         self.reset_world()
@@ -314,7 +314,7 @@ class Task:
     def __init__(self, camera: Camera):
         self.camera = camera
         self.env = Environment.create()
-        self.robot = PandaModel.from_urdf(self.env.urdf_path)
+        self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
 
     def reset(self, biases) -> None:
         self.env.reset_world(*biases)
