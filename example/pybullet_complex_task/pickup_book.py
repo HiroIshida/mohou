@@ -312,6 +312,7 @@ class Task:
     robot: PandaModel
 
     def __init__(self, camera: Camera):
+        pb.connect(pb.DIRECT)
         self.camera = camera
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
@@ -321,6 +322,21 @@ class Task:
         self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
         self.env.change_gripper_position(0.07)
+
+    def create_episode_data(self) -> EpisodeData:
+        while True:
+            x_bias = np.random.randn() * 0.06
+            y_bias = np.random.randn() * 0.06
+            yaw_bias = np.random.randn() * 0.1
+
+            self.reset((x_bias, y_bias, yaw_bias))
+            try:
+                episode = self.run_prescribed_motion()
+            except IKFailError:
+                continue
+            is_rollout_successful = self.is_successful()
+            if is_rollout_successful:
+                return episode
 
     def is_successful(self) -> bool:
         self.env.step(100, 0)
@@ -448,45 +464,23 @@ if __name__ == "__main__":
 
     np.random.seed(seed)
 
-    # create task
-    pb.connect(pb.DIRECT)
-    camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
-    camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
-    task = Task(camera)
-
     # create bundle
-    episode_list: List[EpisodeData] = []
-
     with tempfile.TemporaryDirectory() as td:
 
         def data_generation_per_process(arg):
             cpu_idx, n_data_gen = arg
             disable_tqdm = cpu_idx != 0
 
-            with tqdm.tqdm(total=n_data_gen, disable=disable_tqdm) as pbar:
-                count = 0
-                while count < n_data_gen:
-                    x_bias = np.random.randn() * 0.06
-                    y_bias = np.random.randn() * 0.06
-                    yaw_bias = np.random.randn() * 0.1
+            # create task
+            camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
+            camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+            task = Task(camera)
 
-                    task.reset((x_bias, y_bias, yaw_bias))
-                    try:
-                        episode = task.run_prescribed_motion()
-                    except IKFailError:
-                        continue
-                    is_rollout_successful = task.is_successful()
-
-                    task.reset((x_bias, y_bias, yaw_bias))
-                    task.replay(episode)
-                    is_replay_successful = task.is_successful()
-
-                    if is_rollout_successful and is_replay_successful:
-                        count += 1
-                        pbar.update(1)
-                        file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
-                        with file_path.open(mode="wb") as f:
-                            pickle.dump(episode, f)
+            for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
+                episode = task.create_episode_data()
+                file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
+                with file_path.open(mode="wb") as f:
+                    pickle.dump(episode, f)
 
         n_cpu = psutil.cpu_count(logical=False)
         print("{} physical cpus are detected".format(n_cpu))
@@ -494,7 +488,7 @@ if __name__ == "__main__":
         n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
         pool.map(data_generation_per_process, zip(range(n_cpu), n_process_list_assign))
 
-        episode_list = []
+        episode_list: List[EpisodeData] = []
         for file_path in Path(td).iterdir():
             with file_path.open(mode="rb") as f:
                 episode_list.append(pickle.load(f))
