@@ -67,7 +67,7 @@ VectorT = TypeVar("VectorT", bound="VectorBase")
 CompositeListElementT = TypeVar("CompositeListElementT")
 
 
-class HashableMixin:
+class Hashable:
     @property
     def hash_value(self) -> str:
         data_pickle = pickle.dumps(self)
@@ -75,7 +75,7 @@ class HashableMixin:
         return data_md5[:8]
 
 
-class MetaData(Dict[str, Union[str, int, float]], HashableMixin):
+class MetaData(Dict[str, Union[str, int, float]], Hashable):
     pass
 
 
@@ -560,7 +560,7 @@ def create_composite_image_sequence(
     return ElementSequence(composite_image_list)
 
 
-class TypeShapeTableMixin:
+class HasTypeShapeTable:
     def types(self) -> List[Type[ElementBase]]:
         return list(self.type_shape_table.keys())  # type: ignore
 
@@ -600,7 +600,7 @@ class TimeStampSequence(HasAList[float]):
 
 
 @dataclass
-class EpisodeData(TypeShapeTableMixin):
+class EpisodeData(HasTypeShapeTable, Hashable):
     sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]]
     metadata: MetaData
     time_stamp_seq: Optional[TimeStampSequence] = None
@@ -844,7 +844,7 @@ class EpisodeData(TypeShapeTableMixin):
 
 
 @dataclass(frozen=True)
-class BundleSpec(TypeShapeTableMixin):
+class BundleSpec(HasTypeShapeTable):
     n_episode: int
     n_untouch_episode: int
     n_average: int
@@ -887,7 +887,7 @@ _bundle_cache: Dict[Tuple[Path, Optional[str]], "EpisodeBundle"] = {}  # used Ep
 
 
 @dataclass
-class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
+class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
     """Bundle of episode
     The collection of episodes.
     we call it 'bundle' because 'Dataset' is already used by pytorch
@@ -925,28 +925,42 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
     @classmethod
     def from_episodes(
         cls,
-        data_list: List[EpisodeData],
+        episode_list: List[EpisodeData],
         meta_data: Optional[MetaData] = None,
         shuffle: bool = True,
         n_untouch_episode: int = 5,
+        check_duplication: bool = True,
     ) -> "EpisodeBundle":
+
+        # check if episode data dupliation
+        if check_duplication:
+            hash_list = [e.hash_value for e in episode_list]
+            hash_set = set(hash_list)
+
+            n_list = len(hash_list)
+            n_set = len(hash_set)
+            assert (
+                n_list == n_set
+            ), "episode duplication found. list length {}, set length {}".format(n_list, n_set)
 
         if meta_data is None:
             meta_data = MetaData({})
 
-        set_types = set(functools.reduce(operator.add, [list(data.types()) for data in data_list]))
+        set_types = set(
+            functools.reduce(operator.add, [list(data.types()) for data in episode_list])
+        )
 
         n_type_appeared = len(set_types)
-        n_type_expected = len(data_list[0].types())
+        n_type_expected = len(episode_list[0].types())
         assert_equal_with_message(n_type_appeared, n_type_expected, "num of element type in bundle")
 
         untouch_episode_list = []
         if n_untouch_episode > 0:
-            interval = len(data_list) // n_untouch_episode
+            interval = len(episode_list) // n_untouch_episode
             indices_untouch = [interval * i for i in range(n_untouch_episode)]
             # sorted is necessary because pop changes index
             for idx in sorted(indices_untouch, reverse=True):
-                untouch_episode_list.append(data_list.pop(idx))
+                untouch_episode_list.append(episode_list.pop(idx))
 
         # use fixed random seed where it's scope is only in this function
         # The reason why I used fixed seed is to keep two different shuffled
@@ -956,9 +970,9 @@ class EpisodeBundle(HasAList[EpisodeData], TypeShapeTableMixin):
         rn = random.Random()
         rn.seed(0)
         if shuffle:
-            rn.shuffle(data_list)
+            rn.shuffle(episode_list)
 
-        return cls(data_list, untouch_episode_list, meta_data)
+        return cls(episode_list, untouch_episode_list, meta_data)
 
     @classmethod
     def _load(cls, bundle_dir_path: pathlib.Path, postfix: Optional[str]) -> "EpisodeBundle":

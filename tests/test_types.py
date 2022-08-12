@@ -21,7 +21,7 @@ from mohou.types import (
     EpisodeData,
     GrayImage,
     GripperState,
-    HashableMixin,
+    Hashable,
     MetaData,
     PrimitiveImageBase,
     RGBDImage,
@@ -40,12 +40,12 @@ def sample_image_path():
 
 
 @dataclass
-class Hoge(HashableMixin):
+class Hoge(Hashable):
     a: int
 
 
 @dataclass
-class Fuga(HashableMixin):
+class Fuga(Hashable):
     b: int
 
 
@@ -409,6 +409,16 @@ def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noq
     assert extra_bundle == extra_bundle_loaded
 
     remove_project(tmp_project_name)
+
+
+def test_episode_bundle_duplication_assertion(image_bundle):
+    episode_list = []
+    for e in image_bundle:
+        episode_list.append(e)
+        episode_list.append(e)
+
+    with pytest.raises(AssertionError):
+        EpisodeBundle.from_episodes(episode_list)
 
 
 def test_episode_bundle_add(image_av_bundle, image_bundle):
