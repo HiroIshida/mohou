@@ -1,3 +1,4 @@
+import argparse
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,10 +7,14 @@ from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pybullet as pb
 import pybullet_data
+import tqdm
+from moviepy.editor import ImageSequenceClip
 from pybullet_utils import BoxConfig, create_box
 from skrobot.coordinates import Coordinates
+from skrobot.coordinates.geo import orient_coords_to_axis
 from skrobot.coordinates.math import (
     quaternion2matrix,
+    rotation_matrix_from_axis,
     rpy2quaternion,
     wxyz2xyzw,
     xyzw2wxyz,
@@ -17,11 +22,71 @@ from skrobot.coordinates.math import (
 from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 
-np.random.seed(0)
+from mohou.file import create_project_dir, get_project_path
+from mohou.types import (
+    AngleVector,
+    ElementDict,
+    EpisodeBundle,
+    EpisodeData,
+    GripperState,
+    MetaData,
+    RGBImage,
+)
 
 
 class IKFailError(Exception):
     pass
+
+
+@dataclass
+class Camera:
+    """Camera
+    Most of the functions in this class
+    are took from https://github.com/kosuke55/hanging_points_cnn
+    Copyright (c)  2021 Kosuke Takeuchi
+    """
+
+    coords: Coordinates
+    resolution: int
+
+    def draw_camera_pos(self):
+        pb.removeAllUserDebugItems()
+        start = self.coords.worldpos()
+        end_x = start + self.coords.rotate_vector([0.1, 0, 0])
+        pb.addUserDebugLine(start, end_x, [1, 0, 0], 3)
+        end_y = start + self.coords.rotate_vector([0, 0.1, 0])
+        pb.addUserDebugLine(start, end_y, [0, 1, 0], 3)
+        end_z = start + self.coords.rotate_vector([0, 0, 0.1])
+        pb.addUserDebugLine(start, end_z, [0, 0, 1], 3)
+
+    def look_at(self, p: np.ndarray, horizontal=False):
+        if np.all(p == self.coords.worldpos()):
+            return
+        z = p - self.coords.worldpos()
+        orient_coords_to_axis(self.coords, z)
+        if horizontal:
+            self.coords.newcoords(
+                Coordinates(
+                    pos=self.coords.worldpos(),
+                    rot=rotation_matrix_from_axis(z, [0, 0, -1], axes="zy"),
+                )
+            )
+
+    def render(self):
+        target = self.coords.worldpos() + self.coords.rotate_vector([0, 0, 1.0])
+        up = self.coords.rotate_vector([0, -1.0, 0])
+        vm = pb.computeViewMatrix(self.coords.worldpos(), target, up)
+        fov, aspect, near, far = 45.0, 1.0, 0.01, 5.1
+        pm = pb.computeProjectionMatrixFOV(fov, aspect, near, far)
+        _, _, rgba, depth, _ = pb.getCameraImage(
+            self.resolution,
+            self.resolution,
+            vm,
+            pm,
+            renderer=pb.ER_TINY_RENDERER,
+        )
+        rgb = rgba[:, :, :3]
+        return rgb
 
 
 @dataclass
@@ -39,7 +104,6 @@ class Environment:
         pb_data_path = Path(pybullet_data.__file__).parent
         panda_urdf_path = pb_data_path / "franka_panda/panda.urdf"
 
-        pb.connect(pb.GUI)
         pb.setPhysicsEngineParameter(numSolverIterations=100)
         pb.setTimeStep(timeStep=0.02)
         pb.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
@@ -238,14 +302,16 @@ class PandaModel:
 
 
 class Task:
+    camera: Camera
     env: Environment
     robot: PandaModel
 
-    def __init__(self):
+    def __init__(self, camera: Camera):
+        self.camera = camera
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(self.env.urdf_path)
 
-    def reset(self, biases):
+    def reset(self, biases) -> None:
         self.env.reset_world(*biases)
         self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
@@ -256,24 +322,25 @@ class Task:
         co = self.env.get_skrobot_coords("box2")
         return co.translation[2] > 0.2
 
-    def replay(self, av_list, gs_list, global_sleep=0.01):
-        w = 2
-        for av, gs in zip(av_list[::w], gs_list[::w]):
-            self.robot.set_angle_vector(av)
+    def replay(self, episode: EpisodeData, global_sleep=0.0) -> None:
+        width: int = episode.metadata["sampling_width"]  # type: ignore
+        av_seq = episode.get_sequence_by_type(AngleVector)
+        gs_seq = episode.get_sequence_by_type(GripperState)
+        for av, gs in zip(av_seq, gs_seq):
+            self.robot.set_angle_vector(list(av.numpy()))
             self.env.send_angle_vector(self.robot)
-            self.env.change_gripper_position(gs)
-            self.env.step(w, sleep=global_sleep)
+            self.env.change_gripper_position(gs.numpy().item())
+            self.env.step(width, sleep=global_sleep)
 
-    def run_prescribed_motion(self, global_sleep=0.01):
-
-        av_list = []
-        gs_list = []
+    def run_prescribed_motion(self, global_sleep=0.0) -> EpisodeData:
+        edict_list: List[ElementDict] = []
 
         def callback(env: Environment):
             av = env.get_angle_vector(self.robot.control_joint_names)
-            av_list.append(av)
-            pos = env.get_gripper_position_target()
-            gs_list.append(pos)
+            gs = env.get_gripper_position_target()
+            rgb = self.camera.render()
+            edict = ElementDict([AngleVector(av), GripperState(np.array([gs])), RGBImage(rgb)])
+            edict_list.append(edict)
 
         self.env.default_callback = callback
 
@@ -286,7 +353,6 @@ class Task:
         self.robot.solve_ik(target)
         self.env.send_angle_vector(self.robot)
         self.env.wait_interpolation(sleep=global_sleep)
-        # time.sleep(2)
 
         # push
         target.translate([0.0, -0.12, 0.0], wrt="world")
@@ -332,36 +398,87 @@ class Task:
         self.env.step(20, sleep=global_sleep)
         self.env.change_gripper_position(0.02)
         self.env.step(20, sleep=global_sleep)
-        # self.env.wait_interpolation(sleep=0.01)
 
         # lift
         self.robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
         self.robot.move_end_rot(np.pi * 0.15, "z")
         self.env.send_angle_vector(self.robot)
         self.env.wait_interpolation(sleep=global_sleep)
+
         self.env.default_callback = None
-        return av_list, gs_list
+        sampling_width = 2
+        metadata = MetaData(sampling_width=sampling_width)
+        episode = EpisodeData.from_edict_list(edict_list[::sampling_width], metadata=metadata)
+        return episode
 
 
-demo = Task()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--feedback", action="store_true", help="feedback mode")
+    parser.add_argument("-pn", type=str, default="panda_pickup_book", help="project name")
+    parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
+    parser.add_argument("-n", type=int, default=105, help="epoch num")
+    parser.add_argument("-m", type=int, default=224, help="pixel num")
+    parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
+    parser.add_argument("-seed", type=int, default=1, help="seed")
 
-for _ in range(30):
-    x_bias = np.random.randn() * 0.06
-    y_bias = np.random.randn() * 0.06
-    yaw_bias = np.random.randn() * 0.1
+    args = parser.parse_args()
+    n_epoch: int = args.n
+    n_pixel: int = args.m
+    feedback_mode: bool = args.feedback
+    project_name: str = args.pn
+    n_untouch: int = args.untouch
+    seed: int = args.seed
+    project_path_str: Optional[str] = args.pp
 
-    demo.reset((x_bias, y_bias, yaw_bias))
-    try:
-        av_list, gs_list = demo.run_prescribed_motion(global_sleep=0.0)
-    except IKFailError:
-        continue
-    is_rollout_successful = demo.is_successful()
+    assert n_epoch - n_untouch > 0
 
-    demo.reset((x_bias, y_bias, yaw_bias))
-    demo.replay(av_list, gs_list, global_sleep=0.0)
-    is_replay_successful = demo.is_successful()
+    if project_path_str is None:
+        assert project_name is not None
+        create_project_dir(project_name)
+        project_path = get_project_path(project_name)
+    else:
+        project_path = Path(project_path_str)
+        project_path.mkdir(exist_ok=True)
 
-    if is_rollout_successful and is_replay_successful:
-        print("success")
+    np.random.seed(seed)
 
-time.sleep(10)
+    # create task
+    pb.connect(pb.DIRECT)
+    camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
+    camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+    task = Task(camera)
+
+    # create bundle
+    episode_list: List[EpisodeData] = []
+
+    with tqdm.tqdm(total=n_epoch) as pbar:
+        while len(episode_list) < n_epoch:
+            x_bias = np.random.randn() * 0.06
+            y_bias = np.random.randn() * 0.06
+            yaw_bias = np.random.randn() * 0.1
+
+            task.reset((x_bias, y_bias, yaw_bias))
+            try:
+                episode = task.run_prescribed_motion()
+            except IKFailError:
+                continue
+            is_rollout_successful = task.is_successful()
+
+            task.reset((x_bias, y_bias, yaw_bias))
+            task.replay(episode)
+            is_replay_successful = task.is_successful()
+
+            if is_rollout_successful and is_replay_successful:
+                episode_list.append(episode)
+                pbar.update(1)
+
+    bundle = EpisodeBundle.from_episodes(episode_list)
+    bundle.dump(project_path)
+    bundle.plot_vector_histories(AngleVector, project_path)
+
+    # dump debug gif
+    img_seq = bundle[0].get_sequence_by_type(RGBImage)
+    file_path = project_path / "sample.gif"
+    clip = ImageSequenceClip([img for img in img_seq], fps=50)
+    clip.write_gif(str(file_path), fps=50)
