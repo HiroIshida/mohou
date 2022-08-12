@@ -237,118 +237,131 @@ class PandaModel:
         self.solve_ik(co_end_link)
 
 
-def single_rollout(env: Environment, robot: PandaModel, global_sleep=0.01):
+class Task:
+    env: Environment
+    robot: PandaModel
 
-    av_list = []
-    gs_list = []
+    def __init__(self):
+        self.env = Environment.create()
+        self.robot = PandaModel.from_urdf(self.env.urdf_path)
 
-    def callback(env: Environment):
-        av = env.get_angle_vector(robot.control_joint_names)
-        av_list.append(av)
-        pos = env.get_gripper_position_target()
-        gs_list.append(pos)
+    def reset(self, biases):
+        self.env.reset_world(*biases)
+        self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
+        self.env.set_angle_vetor(self.robot)
+        self.env.change_gripper_position(0.07)
 
-    env.default_callback = callback
+    def is_successful(self) -> bool:
+        self.env.step(100, 0)
+        co = self.env.get_skrobot_coords("box2")
+        return co.translation[2] > 0.2
 
-    robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
-    env.set_angle_vetor(robot)
-    env.change_gripper_position(0.07)
+    def replay(self, av_list, gs_list, global_sleep=0.01):
+        w = 2
+        for av, gs in zip(av_list[::w], gs_list[::w]):
+            self.robot.set_angle_vector(av)
+            self.env.send_angle_vector(self.robot)
+            self.env.change_gripper_position(gs)
+            self.env.step(w, sleep=global_sleep)
 
-    # pre-push pose
-    target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, 0.15, 0.04])
-    target.rotate(np.pi * 0.5, "y")
-    target.rotate(np.pi * 0.5, "x")
+    def run_prescribed_motion(self, global_sleep=0.01):
 
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
-    # time.sleep(2)
+        av_list = []
+        gs_list = []
 
-    # push
-    target.translate([0.0, -0.12, 0.0], wrt="world")
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
+        def callback(env: Environment):
+            av = env.get_angle_vector(self.robot.control_joint_names)
+            av_list.append(av)
+            pos = env.get_gripper_position_target()
+            gs_list.append(pos)
 
-    # go up
-    target.translate([0.0, 0.0, 0.1], wrt="world")
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
+        self.env.default_callback = callback
 
-    # move around
-    target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.25, 0.12])
-    target.rotate(np.pi * 0.5, "y")
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
+        # pre-push pose
+        target = self.env.get_skrobot_coords("box2").copy_worldcoords()
+        target.translate([0.0, 0.15, 0.04])
+        target.rotate(np.pi * 0.5, "y")
+        target.rotate(np.pi * 0.5, "x")
 
-    target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.23, 0.04])
-    target.rotate(np.pi * 0.5, "y")
-    target.rotate(np.pi * 0.1, "z")
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
+        # time.sleep(2)
 
-    target = env.get_skrobot_coords("box2").copy_worldcoords()
-    target.translate([0.0, -0.18, 0.0])
-    target.rotate(np.pi * 0.5, "y")
-    target.rotate(np.pi * 0.43, "z")
-    robot.solve_ik(target)
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
+        # push
+        target.translate([0.0, -0.12, 0.0], wrt="world")
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
 
-    # open and grasp
-    env.change_gripper_position(0.07)
-    env.wait_interpolation()
-    robot.move_end_pos([0.11, 0.0, 0])
-    env.send_angle_vector(robot)
-    env.step(20, sleep=global_sleep)
-    env.change_gripper_position(0.02)
-    env.step(20, sleep=global_sleep)
-    # env.wait_interpolation(sleep=0.01)
+        # go up
+        target.translate([0.0, 0.0, 0.1], wrt="world")
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
 
-    # lift
-    robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
-    robot.move_end_rot(np.pi * 0.15, "z")
-    env.send_angle_vector(robot)
-    env.wait_interpolation(sleep=global_sleep)
-    print(env.elapsed_time)
+        # move around
+        target = self.env.get_skrobot_coords("box2").copy_worldcoords()
+        target.translate([0.0, -0.25, 0.12])
+        target.rotate(np.pi * 0.5, "y")
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
 
-    env.default_callback = None
-    env.step(100, 0)
-    co = env.get_skrobot_coords("box2")
-    if co.translation[2] > 0.2:
-        print("success")
-    else:
-        print("fail")
+        target = self.env.get_skrobot_coords("box2").copy_worldcoords()
+        target.translate([0.0, -0.23, 0.04])
+        target.rotate(np.pi * 0.5, "y")
+        target.rotate(np.pi * 0.1, "z")
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
 
-    return av_list, gs_list
+        target = self.env.get_skrobot_coords("box2").copy_worldcoords()
+        target.translate([0.0, -0.18, 0.0])
+        target.rotate(np.pi * 0.5, "y")
+        target.rotate(np.pi * 0.43, "z")
+        self.robot.solve_ik(target)
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
+
+        # open and grasp
+        self.env.change_gripper_position(0.07)
+        self.env.wait_interpolation()
+        self.robot.move_end_pos([0.11, 0.0, 0])
+        self.env.send_angle_vector(self.robot)
+        self.env.step(20, sleep=global_sleep)
+        self.env.change_gripper_position(0.02)
+        self.env.step(20, sleep=global_sleep)
+        # self.env.wait_interpolation(sleep=0.01)
+
+        # lift
+        self.robot.move_end_pos(pos=(0, 0, 0.15), wrt="world")
+        self.robot.move_end_rot(np.pi * 0.15, "z")
+        self.env.send_angle_vector(self.robot)
+        self.env.wait_interpolation(sleep=global_sleep)
+        self.env.default_callback = None
+        return av_list, gs_list
 
 
-env = Environment.create()
-robot = PandaModel.from_urdf(env.urdf_path)
+demo = Task()
 
 for _ in range(30):
     x_bias = np.random.randn() * 0.06
     y_bias = np.random.randn() * 0.06
     yaw_bias = np.random.randn() * 0.1
-    env.reset_world(*(x_bias, y_bias, yaw_bias))
-    av_list, gs_list = single_rollout(env, robot, 0.0)
 
-    env.reset_world(*(x_bias, y_bias, yaw_bias))
-    robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
-    env.set_angle_vetor(robot)
+    demo.reset((x_bias, y_bias, yaw_bias))
+    try:
+        av_list, gs_list = demo.run_prescribed_motion(global_sleep=0.0)
+    except IKFailError:
+        continue
+    is_rollout_successful = demo.is_successful()
 
-    w = 2
-    print(len(gs_list[::w]))
-    for av, gs in zip(av_list[::w], gs_list[::w]):
-        robot.set_angle_vector(av)
-        env.send_angle_vector(robot)
-        env.change_gripper_position(gs)
-        env.step(w, sleep=0.01)
+    demo.reset((x_bias, y_bias, yaw_bias))
+    demo.replay(av_list, gs_list, global_sleep=0.0)
+    is_replay_successful = demo.is_successful()
+
+    if is_rollout_successful and is_replay_successful:
+        print("success")
 
 time.sleep(10)
