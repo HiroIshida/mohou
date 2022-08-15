@@ -402,17 +402,15 @@ def test_episode_bundle(image_av_bundle, image_bundle):  # noqa
         assert extra_bundle == extra_bundle_loaded
 
 
-def test_episode_bundle_dump_exist_ok(image_bundle, tmp_project_name):  # noqa
-    create_project_dir(tmp_project_name)
-    tmp_project_path = get_project_path(tmp_project_name)
+def test_episode_bundle_dump_exist_ok(image_bundle):  # noqa
+    with tempfile.TemporaryDirectory() as td:
+        tmp_project_path = Path(td)
 
-    bundle: EpisodeBundle = image_bundle
-    bundle.dump(tmp_project_path)
-    bundle.dump(tmp_project_path, exist_ok=True)
-    with pytest.raises(FileExistsError):
+        bundle: EpisodeBundle = image_bundle
         bundle.dump(tmp_project_path)
-
-    remove_project(tmp_project_name)
+        bundle.dump(tmp_project_path, exist_ok=True)
+        with pytest.raises(FileExistsError):
+            bundle.dump(tmp_project_path)
 
 
 def test_episode_bundle_duplication_assertion(image_bundle):
