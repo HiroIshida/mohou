@@ -28,7 +28,9 @@ from skrobot.model import RobotModel
 from skrobot.models.urdf import RobotModelFromURDF
 
 from mohou.asset import get_panda_urdf_path
+from mohou.default import create_default_propagator
 from mohou.file import create_project_dir, get_project_path
+from mohou.propagator import Propagator
 from mohou.types import (
     AngleVector,
     ElementDict,
@@ -55,7 +57,7 @@ class Camera:
     coords: Coordinates
     resolution: int
 
-    def draw_camera_pos(self):
+    def draw_camera_pos(self) -> None:
         pb.removeAllUserDebugItems()
         start = self.coords.worldpos()
         end_x = start + self.coords.rotate_vector([0.1, 0, 0])
@@ -65,7 +67,7 @@ class Camera:
         end_z = start + self.coords.rotate_vector([0, 0, 0.1])
         pb.addUserDebugLine(start, end_z, [0, 0, 1], 3)
 
-    def look_at(self, p: np.ndarray, horizontal=False):
+    def look_at(self, p: np.ndarray, horizontal=False) -> None:
         if np.all(p == self.coords.worldpos()):
             return
         z = p - self.coords.worldpos()
@@ -78,7 +80,7 @@ class Camera:
                 )
             )
 
-    def render(self):
+    def render(self) -> np.ndarray:
         target = self.coords.worldpos() + self.coords.rotate_vector([0, 0, 1.0])
         up = self.coords.rotate_vector([0, -1.0, 0])
         vm = pb.computeViewMatrix(self.coords.worldpos(), target, up)
@@ -103,6 +105,7 @@ class Environment:
     latest_command: Dict[str, float]
     elapsed_time: int = 0
     default_callback: Optional[Callable] = None
+    env_bias: Optional[Tuple[float, ...]] = None
 
     @classmethod
     def create(cls) -> "Environment":
@@ -141,7 +144,14 @@ class Environment:
     def __post_init__(self):
         self.reset_world()
 
-    def reset_world(self, x_bias: float = 0.0, y_bias: float = 0.0, yaw_bias: float = 0.0):
+    def randomize(self):
+        x_bias = np.random.randn() * 0.06
+        y_bias = np.random.randn() * 0.06
+        yaw_bias = np.random.randn() * 0.1
+        env_bias = (x_bias, y_bias, yaw_bias)
+        self.env_bias = env_bias
+
+    def reset_world(self):
         self.elapsed_time = 0
 
         # initialize latest command
@@ -161,6 +171,10 @@ class Environment:
                 object_id, linearVelocity=(0.0, 0.0, 0.0), angularVelocity=(0.0, 0.0, 0.0)
             )
 
+        if self.env_bias is None:
+            x_bias, y_bias, yaw_bias = 0.0, 0.0, 0.0
+        else:
+            x_bias, y_bias, yaw_bias = self.env_bias
         x_pos = 0.45 + x_bias
         y_pos = 0.1 + y_bias
         yaw = 0.0 + yaw_bias
@@ -311,31 +325,66 @@ class Task:
     env: Environment
     robot: PandaModel
 
-    def __init__(self, camera: Camera):
-        pb.connect(pb.DIRECT)
+    def __init__(self, camera: Camera, headless: bool = True):
+        if headless:
+            pb.connect(pb.DIRECT)
+        else:
+            pb.connect(pb.GUI)
         self.camera = camera
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
 
-    def reset(self, biases) -> None:
-        self.env.reset_world(*biases)
+    def reset(self) -> None:
+        self.env.reset_world()
         self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
         self.env.change_gripper_position(0.07)
 
+    def feedback_run(self, project_path: Path) -> List[RGBImage]:
+        """load trained policy model and run by feedback"""
+        bundle = EpisodeBundle.load(project_path)
+        w: int = bundle[0].metadata["sampling_width"]  # type: ignore
+
+        propagator = create_default_propagator(project_path, Propagator)
+        assert not propagator.require_static_context, "if needed please make a PR"
+
+        self.env.randomize()
+        rgb_list: List[RGBImage] = []
+        for i in tqdm.tqdm(range(250)):
+            rgb = self.camera.render()
+            av = self.env.get_angle_vector(self.robot.control_joint_names)
+            gs = self.env.get_gripper_position_target()
+            edict = ElementDict([AngleVector(av), GripperState(np.array([gs])), RGBImage(rgb)])
+            rgb_list.append(edict[RGBImage])
+
+            propagator.feed(edict)
+            edict_next = propagator.predict(n_prop=1)[0]
+            av_predicted = edict_next[AngleVector]
+            gs_predicted = edict_next[GripperState]
+            self.robot.set_angle_vector(list(av_predicted.numpy()))
+            self.env.send_angle_vector(self.robot)
+            self.env.change_gripper_position(gs_predicted.numpy().item())
+            self.env.step(w, sleep=0.0)
+        return rgb_list
+
     def create_episode_data(self) -> EpisodeData:
         while True:
-            x_bias = np.random.randn() * 0.06
-            y_bias = np.random.randn() * 0.06
-            yaw_bias = np.random.randn() * 0.1
-
-            self.reset((x_bias, y_bias, yaw_bias))
+            self.env.randomize()
+            self.reset()
             try:
                 episode = self.run_prescribed_motion()
             except IKFailError:
                 continue
+
             is_rollout_successful = self.is_successful()
-            if is_rollout_successful:
+            if not is_rollout_successful:
+                continue
+
+            # replay the obtained command and check if successful
+            self.reset()
+            self.replay(episode)
+            is_replay_successful = self.is_successful()
+            if is_replay_successful:
                 return episode
 
     def is_successful(self) -> bool:
@@ -436,6 +485,7 @@ class Task:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
+    parser.add_argument("--headless", action="store_true", help="headless mode")
     parser.add_argument("-pn", type=str, default="panda_pickup_book", help="project name")
     parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=105, help="epoch num")
@@ -447,6 +497,7 @@ if __name__ == "__main__":
     n_epoch: int = args.n
     n_pixel: int = args.m
     feedback_mode: bool = args.feedback
+    headless_mode: bool = args.headless
     project_name: str = args.pn
     n_untouch: int = args.untouch
     seed: int = args.seed
@@ -462,42 +513,61 @@ if __name__ == "__main__":
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
 
-    # create bundle
-    with tempfile.TemporaryDirectory() as td:
+    if feedback_mode:
+        camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
+        camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+        task = Task(camera)
+        rgb_list = task.feedback_run(project_path)
 
-        def data_generation_per_process(arg):
-            cpu_idx, n_data_gen = arg
-            disable_tqdm = cpu_idx != 0
-            np.random.seed(cpu_idx)
+        file_path = project_path / "feedback_simulation.gif"
+        with file_path.open(mode="w") as f:
+            clip = ImageSequenceClip([rgb.numpy() for rgb in rgb_list], fps=50)
+            clip.write_gif(str(file_path), fps=50)
+    else:
+        # create bundle
+        with tempfile.TemporaryDirectory() as td:
 
-            # create task
-            camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
-            camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
-            task = Task(camera)
+            def data_generation_per_process(arg):
+                process_idx, n_data_gen = arg
+                disable_tqdm = process_idx != 0
+                if not headless_mode:
+                    headless_per_process = process_idx != 0
+                else:
+                    headless_per_process = True
+                np.random.seed(process_idx)
 
-            for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
-                episode = task.create_episode_data()
-                file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
-                with file_path.open(mode="wb") as f:
-                    pickle.dump(episode, f)
+                # create task
+                camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
+                camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+                task = Task(camera, headless=headless_per_process)
 
-        n_cpu = psutil.cpu_count(logical=False)
-        print("{} physical cpus are detected".format(n_cpu))
-        pool = multiprocessing.Pool(n_cpu)
-        n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
-        pool.map(data_generation_per_process, zip(range(n_cpu), n_process_list_assign))
+                for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
+                    episode = task.create_episode_data()
+                    file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
+                    with file_path.open(mode="wb") as f:
+                        pickle.dump(episode, f)
+                print("process idx: {} => finished".format(process_idx))
 
-        episode_list: List[EpisodeData] = []
-        for file_path in Path(td).iterdir():
-            with file_path.open(mode="rb") as f:
-                episode_list.append(pickle.load(f))
+            n_cpu = psutil.cpu_count(logical=False)
+            print("{} physical cpus are detected".format(n_cpu))
+            pool = multiprocessing.Pool(n_cpu)
+            n_process_list_assign = [len(lst) for lst in np.array_split(range(n_epoch), n_cpu)]
+            pool.map(data_generation_per_process, zip(range(n_cpu), n_process_list_assign))
 
-    bundle = EpisodeBundle.from_data_list(episode_list)
-    bundle.dump(project_path)
-    bundle.plot_vector_histories(AngleVector, project_path)
+            episode_list: List[EpisodeData] = []
+            print("loading created episode...")
+            for pickl_file_path in tqdm.tqdm(Path(td).iterdir()):
+                with pickl_file_path.open(mode="rb") as ff:
+                    episode_list.append(pickle.load(ff))
 
-    # dump debug gif
-    img_seq = bundle[0].get_sequence_by_type(RGBImage)
-    file_path = project_path / "sample.gif"
-    clip = ImageSequenceClip([img for img in img_seq], fps=50)
-    clip.write_gif(str(file_path), fps=50)
+        print("dump the bundle")
+        bundle = EpisodeBundle.from_data_list(episode_list)
+        bundle.dump(project_path)
+        bundle.plot_vector_histories(AngleVector, project_path)
+
+        # dump debug gif
+        print("dump debug gif")
+        img_seq = bundle[0].get_sequence_by_type(RGBImage)
+        file_path = project_path / "sample.gif"
+        clip = ImageSequenceClip([img for img in img_seq], fps=50)
+        clip.write_gif(str(file_path), fps=50)
