@@ -4,13 +4,12 @@ import pathlib
 import pickle
 import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Type
 
 import numpy as np
 import pytest
-from test_file import tmp_project_name  # noqa
 
-from mohou.file import create_project_dir, get_project_path, remove_project
 from mohou.types import (
     AngleVector,
     BundleSpec,
@@ -367,44 +366,40 @@ def image_av_bundle_uneven():
     return bundle
 
 
-def test_bundle_spec(tmp_project_name):  # noqa
-    types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
-    extra_info = {"hz": 20, "author": "HiroIshida"}
-    spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)  # type: ignore [arg-type]
-    spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
-    assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
+def test_bundle_spec():
+    with tempfile.TemporaryDirectory() as td:
+        project_path = Path(td)
 
-    create_project_dir(tmp_project_name)
-
-    project_path = get_project_path(tmp_project_name)
-    spec.dump(project_path, None)
-    spec_again = BundleSpec.load(project_path, None)
-    assert spec == spec_again
-
-    remove_project(tmp_project_name)
+        types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
+        extra_info = {"hz": 20, "author": "HiroIshida"}
+        spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)  # type: ignore [arg-type]
+        spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
+        assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
+        spec.dump(project_path, None)
+        spec_again = BundleSpec.load(project_path, None)
+        assert spec == spec_again
 
 
-def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noqa
-    create_project_dir(tmp_project_name)
+def test_episode_bundle(image_av_bundle, image_bundle):  # noqa
 
-    bundle: EpisodeBundle = image_av_bundle
-    assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
-    tmp_project_path = get_project_path(tmp_project_name)
+    with tempfile.TemporaryDirectory() as td:
+        tmp_project_path = Path(td)
 
-    bundle.dump(tmp_project_path)
-    assert (tmp_project_path, None) not in _bundle_cache
-    loaded = bundle.load(tmp_project_path)
-    assert bundle == loaded
-    assert (tmp_project_path, None) in _bundle_cache
+        bundle: EpisodeBundle = image_av_bundle
+        assert set(bundle.types()) == set([AngleVector, RGBImage, TerminateFlag])
 
-    # test having multiple bundle in one project
-    postfix = "extra"
-    extra_bundle: EpisodeBundle = image_bundle
-    extra_bundle.dump(tmp_project_path, postfix)
-    extra_bundle_loaded = EpisodeBundle.load(tmp_project_path, postfix)
-    assert extra_bundle == extra_bundle_loaded
+        bundle.dump(tmp_project_path)
+        assert (tmp_project_path, None) not in _bundle_cache
+        loaded = bundle.load(tmp_project_path)
+        assert bundle == loaded
+        assert (tmp_project_path, None) in _bundle_cache
 
-    remove_project(tmp_project_name)
+        # test having multiple bundle in one project
+        postfix = "extra"
+        extra_bundle: EpisodeBundle = image_bundle
+        extra_bundle.dump(tmp_project_path, postfix)
+        extra_bundle_loaded = EpisodeBundle.load(tmp_project_path, postfix)
+        assert extra_bundle == extra_bundle_loaded
 
 
 def test_episode_bundle_dump_exist_ok(image_bundle, tmp_project_name):  # noqa
