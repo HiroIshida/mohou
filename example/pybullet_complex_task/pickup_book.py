@@ -105,6 +105,7 @@ class Environment:
     latest_command: Dict[str, float]
     elapsed_time: int = 0
     default_callback: Optional[Callable] = None
+    env_bias: Optional[Tuple[float, ...]] = None
 
     @classmethod
     def create(cls) -> "Environment":
@@ -143,7 +144,14 @@ class Environment:
     def __post_init__(self):
         self.reset_world()
 
-    def reset_world(self, x_bias: float = 0.0, y_bias: float = 0.0, yaw_bias: float = 0.0):
+    def randomize(self):
+        x_bias = np.random.randn() * 0.06
+        y_bias = np.random.randn() * 0.06
+        yaw_bias = np.random.randn() * 0.1
+        env_bias = (x_bias, y_bias, yaw_bias)
+        self.env_bias = env_bias
+
+    def reset_world(self):
         self.elapsed_time = 0
 
         # initialize latest command
@@ -163,6 +171,10 @@ class Environment:
                 object_id, linearVelocity=(0.0, 0.0, 0.0), angularVelocity=(0.0, 0.0, 0.0)
             )
 
+        if self.env_bias is None:
+            x_bias, y_bias, yaw_bias = 0.0, 0.0, 0.0
+        else:
+            x_bias, y_bias, yaw_bias = self.env_bias
         x_pos = 0.45 + x_bias
         y_pos = 0.1 + y_bias
         yaw = 0.0 + yaw_bias
@@ -322,8 +334,8 @@ class Task:
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
 
-    def reset(self, biases) -> None:
-        self.env.reset_world(*biases)
+    def reset(self) -> None:
+        self.env.reset_world()
         self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
         self.env.change_gripper_position(0.07)
@@ -335,6 +347,8 @@ class Task:
 
         propagator = create_default_propagator(project_path, Propagator)
         assert not propagator.require_static_context, "if needed please make a PR"
+
+        self.env.randomize()
         rgb_list: List[RGBImage] = []
         for i in tqdm.tqdm(range(250)):
             rgb = self.camera.render()
@@ -355,11 +369,8 @@ class Task:
 
     def create_episode_data(self) -> EpisodeData:
         while True:
-            x_bias = np.random.randn() * 0.06
-            y_bias = np.random.randn() * 0.06
-            yaw_bias = np.random.randn() * 0.1
-
-            self.reset((x_bias, y_bias, yaw_bias))
+            self.env.randomize()
+            self.reset()
             try:
                 episode = self.run_prescribed_motion()
             except IKFailError:
@@ -370,7 +381,7 @@ class Task:
                 continue
 
             # replay the obtained command and check if successful
-            self.reset((x_bias, y_bias, yaw_bias))
+            self.reset()
             self.replay(episode)
             is_replay_successful = self.is_successful()
             if is_replay_successful:
