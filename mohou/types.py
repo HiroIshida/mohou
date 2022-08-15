@@ -9,7 +9,6 @@ import pathlib
 import pickle
 import random
 import re
-import shutil
 import subprocess
 import tempfile
 from abc import ABC, abstractmethod
@@ -996,15 +995,7 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
         return bundle
 
     @classmethod
-    def load(
-        cls,
-        project_path: Path,
-        postfix: Optional[str] = None,
-        use_tar: bool = True,
-    ) -> "EpisodeBundle":
-        """load bundle
-        use_tar: default True. if True, load tar archive, otherwise load from a directory
-        """
+    def load(cls, project_path: Path, postfix: Optional[str] = None) -> "EpisodeBundle":
 
         if (project_path, postfix) not in _bundle_cache:
 
@@ -1012,21 +1003,16 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
             if postfix is not None:
                 bundle_file_without_ext += "-{}".format(postfix)
 
-            if use_tar:
-                bundle_tar = bundle_file_without_ext + ".tar"
-                bundle_tar_path = project_path / bundle_tar
+            bundle_tar = bundle_file_without_ext + ".tar"
+            bundle_tar_path = project_path / bundle_tar
 
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    tmp_dir_path = pathlib.Path(tmp_dir)
-                    # TODO: use python's tarfile library
-                    subprocess.run(
-                        "cd {} && tar -xf {}".format(tmp_dir_path, bundle_tar_path), shell=True
-                    )
-                    bundle_dir_path = tmp_dir_path / bundle_file_without_ext
-                    bundle = cls._load(bundle_dir_path, postfix)
-
-            else:
-                bundle_dir_path = project_path / bundle_file_without_ext
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_dir_path = pathlib.Path(tmp_dir)
+                # TODO: use python's tarfile library
+                subprocess.run(
+                    "cd {} && tar -xf {}".format(tmp_dir_path, bundle_tar_path), shell=True
+                )
+                bundle_dir_path = tmp_dir_path / bundle_file_without_ext
                 bundle = cls._load(bundle_dir_path, postfix)
 
             # because loading time of bundle is not negligible, we will cache the bundle with thep project_path and postfix key
@@ -1040,10 +1026,8 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
         self,
         project_path: Path,
         postfix: Optional[str] = None,
-        use_tar: bool = True,
     ) -> None:
         """dump the bundle
-        use_tar: defalut True. if True, save as tar archive, otherwise save as a directory
 
         NOTE: tar is great because it's immutable and no trouble when downloading from gdrive
         and it can be easily viewed on common file viewer.
@@ -1075,21 +1059,14 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
             with metadata_file_path.open(mode="w") as f:
                 json.dump(self.metadata, f)
 
-            if use_tar:
-                tarfile = bundle_file_without_ext + ".tar"
-                tarfile_full = project_path / tarfile
-                if tarfile_full.exists():
-                    os.remove(tarfile_full)
+            tarfile = bundle_file_without_ext + ".tar"
+            tarfile_full = project_path / tarfile
+            if tarfile_full.exists():
+                os.remove(tarfile_full)
 
-                # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
-                cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
-                subprocess.run(cmd, shell=True)
-            else:  # just move things to project directory
-                destination_path = project_path / bundle_file_without_ext
-                if destination_path.exists():
-                    shutil.rmtree(destination_path)
-                # https://bugs.python.org/issue34069
-                shutil.move(str(bundle_dir_path), str(destination_path))
+            # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
+            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
+            subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)
         self.spec.dump(project_path, postfix)

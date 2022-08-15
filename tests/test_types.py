@@ -397,10 +397,6 @@ def test_episode_bundle(image_av_bundle, image_bundle, tmp_project_name):  # noq
     assert bundle == loaded
     assert (tmp_project_path, None) in _bundle_cache
 
-    bundle.dump(tmp_project_path, postfix="without_tar", use_tar=False)
-    loaded2 = EpisodeBundle.load(tmp_project_path, postfix="without_tar", use_tar=False)
-    assert bundle == loaded2
-
     # test having multiple bundle in one project
     postfix = "extra"
     extra_bundle: EpisodeBundle = image_bundle
