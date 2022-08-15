@@ -546,6 +546,7 @@ if __name__ == "__main__":
                     file_path = Path(td) / (str(uuid.uuid4()) + ".pkl")
                     with file_path.open(mode="wb") as f:
                         pickle.dump(episode, f)
+                print("process idx: {} => finished".format(process_idx))
 
             n_cpu = psutil.cpu_count(logical=False)
             print("{} physical cpus are detected".format(n_cpu))
@@ -554,15 +555,18 @@ if __name__ == "__main__":
             pool.map(data_generation_per_process, zip(range(n_cpu), n_process_list_assign))
 
             episode_list: List[EpisodeData] = []
-            for pickl_file_path in Path(td).iterdir():
+            print("loading created episode...")
+            for pickl_file_path in tqdm.tqdm(Path(td).iterdir()):
                 with pickl_file_path.open(mode="rb") as ff:
                     episode_list.append(pickle.load(ff))
 
+        print("dump the bundle")
         bundle = EpisodeBundle.from_data_list(episode_list)
         bundle.dump(project_path)
         bundle.plot_vector_histories(AngleVector, project_path)
 
         # dump debug gif
+        print("dump debug gif")
         img_seq = bundle[0].get_sequence_by_type(RGBImage)
         file_path = project_path / "sample.gif"
         clip = ImageSequenceClip([img for img in img_seq], fps=50)
