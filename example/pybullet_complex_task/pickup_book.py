@@ -313,8 +313,11 @@ class Task:
     env: Environment
     robot: PandaModel
 
-    def __init__(self, camera: Camera):
-        pb.connect(pb.DIRECT)
+    def __init__(self, camera: Camera, headless: bool = True):
+        if headless:
+            pb.connect(pb.DIRECT)
+        else:
+            pb.connect(pb.GUI)
         self.camera = camera
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
@@ -463,6 +466,7 @@ class Task:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
+    parser.add_argument("--headless", action="store_true", help="headless mode")
     parser.add_argument("-pn", type=str, default="panda_pickup_book", help="project name")
     parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=105, help="epoch num")
@@ -474,6 +478,7 @@ if __name__ == "__main__":
     n_epoch: int = args.n
     n_pixel: int = args.m
     feedback_mode: bool = args.feedback
+    headless_mode: bool = args.headless
     project_name: str = args.pn
     n_untouch: int = args.untouch
     seed: int = args.seed
@@ -504,14 +509,18 @@ if __name__ == "__main__":
         with tempfile.TemporaryDirectory() as td:
 
             def data_generation_per_process(arg):
-                cpu_idx, n_data_gen = arg
-                disable_tqdm = cpu_idx != 0
-                np.random.seed(cpu_idx)
+                process_idx, n_data_gen = arg
+                disable_tqdm = process_idx != 0
+                if not headless_mode:
+                    headless_per_process = process_idx != 0
+                else:
+                    headless_per_process = True
+                np.random.seed(process_idx)
 
                 # create task
                 camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
                 camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
-                task = Task(camera)
+                task = Task(camera, headless=headless_per_process)
 
                 for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
                     episode = task.create_episode_data()
