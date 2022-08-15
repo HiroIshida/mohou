@@ -364,8 +364,16 @@ class Task:
                 episode = self.run_prescribed_motion()
             except IKFailError:
                 continue
+
             is_rollout_successful = self.is_successful()
-            if is_rollout_successful:
+            if not is_rollout_successful:
+                continue
+
+            # replay the obtained command and check if successful
+            self.reset((x_bias, y_bias, yaw_bias))
+            self.replay(episode)
+            is_replay_successful = self.is_successful()
+            if is_replay_successful:
                 return episode
 
     def is_successful(self) -> bool:
