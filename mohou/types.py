@@ -1026,6 +1026,7 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
         self,
         project_path: Path,
         postfix: Optional[str] = None,
+        exist_ok: bool = False,
     ) -> None:
         """dump the bundle
 
@@ -1062,7 +1063,12 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
             tarfile = bundle_file_without_ext + ".tar"
             tarfile_full = project_path / tarfile
             if tarfile_full.exists():
-                os.remove(tarfile_full)
+                if exist_ok:
+                    os.remove(tarfile_full)
+                else:
+                    raise FileExistsError(
+                        "Bundle file already exists. remove the file or use exist_ok=True."
+                    )
 
             # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
             cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
