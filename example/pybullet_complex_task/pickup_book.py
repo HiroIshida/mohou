@@ -97,6 +97,18 @@ class Camera:
         return rgb
 
 
+def create_front_camera(n_pixel: int) -> Camera:
+    camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
+    camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+    return camera
+
+
+def create_top_camera(n_pixel: int) -> Camera:
+    camera = Camera(Coordinates((0.7, 0.4, 1.5)), n_pixel)
+    camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
+    return camera
+
+
 @dataclass
 class Environment:
     handles: Dict[str, int]
@@ -486,6 +498,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feedback", action="store_true", help="feedback mode")
     parser.add_argument("--headless", action="store_true", help="headless mode")
+    parser.add_argument("-camera", type=str, default="front", help="camera_name")
     parser.add_argument("-pn", type=str, default="panda_pickup_book", help="project name")
     parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=105, help="epoch num")
@@ -498,6 +511,7 @@ if __name__ == "__main__":
     n_pixel: int = args.m
     feedback_mode: bool = args.feedback
     headless_mode: bool = args.headless
+    camera_name: str = args.camera
     project_name: str = args.pn
     n_untouch: int = args.untouch
     seed: int = args.seed
@@ -513,9 +527,16 @@ if __name__ == "__main__":
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
 
+    n_pixel in [28, 112, 224]
+    assert camera_name in ["front", "lefttop"]
+    if camera_name == "front":
+        camera = create_front_camera(n_pixel)
+    elif camera_name == "lefttop":
+        camera = create_top_camera(n_pixel)
+    else:
+        assert False
+
     if feedback_mode:
-        camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
-        camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
         task = Task(camera)
         rgb_list = task.feedback_run(project_path)
 
@@ -537,8 +558,6 @@ if __name__ == "__main__":
                 np.random.seed(process_idx)
 
                 # create task
-                camera = Camera(Coordinates((1.9, 0, 0.7)), n_pixel)
-                camera.look_at(np.array([0.5, 0, 0.3]), horizontal=True)
                 task = Task(camera, headless=headless_per_process)
 
                 for _ in tqdm.tqdm(range(n_data_gen), disable=disable_tqdm):
