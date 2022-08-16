@@ -1005,6 +1005,8 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
 
             bundle_tar = bundle_file_without_ext + ".tar"
             bundle_tar_path = project_path / bundle_tar
+            if not bundle_tar_path.exists():
+                raise FileNotFoundError("budle {} is not found".format(bundle_tar_path))
 
             with tempfile.TemporaryDirectory() as tmp_dir:
                 tmp_dir_path = pathlib.Path(tmp_dir)
