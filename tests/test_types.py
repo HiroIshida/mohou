@@ -401,6 +401,11 @@ def test_episode_bundle(image_av_bundle, image_bundle):  # noqa
         extra_bundle_loaded = EpisodeBundle.load(tmp_project_path, postfix)
         assert extra_bundle == extra_bundle_loaded
 
+    with tempfile.TemporaryDirectory() as td:
+        # test try to load non-existing budle
+        with pytest.raises(FileNotFoundError):
+            EpisodeBundle.load(project_path=Path(td))
+
 
 def test_episode_bundle_dump_exist_ok(image_bundle):  # noqa
     with tempfile.TemporaryDirectory() as td:
