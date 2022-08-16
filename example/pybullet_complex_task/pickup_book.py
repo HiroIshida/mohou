@@ -154,16 +154,19 @@ class Environment:
         return cls(handles, joint_table, link_table, {})
 
     def __post_init__(self):
-        self.reset_world()
+        self.reset_world(randomize=False)
 
-    def randomize(self):
+    def _randomize(self):
         x_bias = np.random.randn() * 0.06
         y_bias = np.random.randn() * 0.06
         yaw_bias = np.random.randn() * 0.1
         env_bias = (x_bias, y_bias, yaw_bias)
         self.env_bias = env_bias
 
-    def reset_world(self):
+    def reset_world(self, randomize: bool = False):
+        if randomize:
+            self._randomize()
+
         self.elapsed_time = 0
 
         # initialize latest command
@@ -346,8 +349,8 @@ class Task:
         self.env = Environment.create()
         self.robot = PandaModel.from_urdf(str(get_panda_urdf_path()))
 
-    def reset(self) -> None:
-        self.env.reset_world()
+    def reset(self, randomize_world: bool = False) -> None:
+        self.env.reset_world(randomize=randomize_world)
         self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
         self.env.change_gripper_position(0.07)
@@ -360,7 +363,7 @@ class Task:
         propagator = create_default_propagator(project_path, Propagator)
         assert not propagator.require_static_context, "if needed please make a PR"
 
-        self.env.randomize()
+        self.reset(randomize_world=True)
         rgb_list: List[RGBImage] = []
         for i in tqdm.tqdm(range(250)):
             rgb = self.camera.render()
@@ -381,8 +384,7 @@ class Task:
 
     def create_episode_data(self) -> EpisodeData:
         while True:
-            self.env.randomize()
-            self.reset()
+            self.reset(randomize_world=True)
             try:
                 episode = self.run_prescribed_motion()
             except IKFailError:
@@ -393,7 +395,7 @@ class Task:
                 continue
 
             # replay the obtained command and check if successful
-            self.reset()
+            self.reset(randomize_world=False)
             self.replay(episode)
             is_replay_successful = self.is_successful()
             if is_replay_successful:
@@ -527,7 +529,7 @@ if __name__ == "__main__":
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
 
-    n_pixel in [28, 112, 224]
+    assert n_pixel in [28, 112, 224]
     assert camera_name in ["front", "lefttop"]
     if camera_name == "front":
         camera = create_front_camera(n_pixel)
