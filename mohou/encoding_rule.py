@@ -230,6 +230,22 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         self.covariance_balancer.delete(elem_type)
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
+        for required_elem_type in self.keys():
+            # If CompositeImage is required but not exists in elem_dict
+            # the following code will create e.g. RGBImage + DepthImage => RGBDImage
+            # and add the element to elem_dict
+            if issubclass(required_elem_type, CompositeImageBase):
+                if not required_elem_type in elem_dict:
+                    elems = [elem_dict[key] for key in required_elem_type.image_types]
+                    composite_elem = required_elem_type(elems)
+                    elem_dict[required_elem_type] = composite_elem
+
+        # check types
+        is_edict_contains_required_key = set(self.keys()).issubset(elem_dict.keys())
+        assert is_edict_contains_required_key, "required keys: {}, input keys: {}".format(
+            self.keys(), elem_dict.keys()
+        )
+
         vector_list = []
         for elem_type, encoder in self.items():
             vector = encoder.forward(elem_dict[elem_type])

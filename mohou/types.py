@@ -734,8 +734,11 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         if issubclass(elem_type, PrimitiveElementBase):
             return self.sequence_dict[elem_type]  # type: ignore
         elif issubclass(elem_type, CompositeImageBase):
-            seqs = [self.sequence_dict[t] for t in elem_type.image_types]
-            return create_composite_image_sequence(elem_type, seqs)  # type: ignore
+            if elem_type in self.sequence_dict:
+                return self.sequence_dict[elem_type]
+            else:
+                seqs = [self.sequence_dict[t] for t in elem_type.image_types]
+                return create_composite_image_sequence(elem_type, seqs)  # type: ignore
         else:
             assert False, "element with type {} not found".format(elem_type)
 
