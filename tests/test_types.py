@@ -286,27 +286,35 @@ def test_episode_data_assertion_when_invalid_terminate_flags():
 
     # case 1: flag seq starts from True (meaning already "terminated" at the beginning of the sequence)
     flag_seq = ElementSequence([TerminateFlag.from_bool(True) for _ in range(n_seq_len)])
-    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    EpisodeData.from_seq_list(
+        [image_seq, av_seq, flag_seq], check_terminate_flags=False
+    )  # no check
     with pytest.raises(AssertionError):
         EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
 
     # case 2: flag seq ends with False (meaning the episode is not ended though it is the last index)
     flag_seq = ElementSequence([TerminateFlag.from_bool(False) for _ in range(n_seq_len)])
-    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    EpisodeData.from_seq_list(
+        [image_seq, av_seq, flag_seq], check_terminate_flags=False
+    )  # no check
     with pytest.raises(AssertionError):
         EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
 
     # case 3: flag seq has more than one change point
     bools = [False, False, True, True, True, True, True, False, False, False]
     flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in bools])
-    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    EpisodeData.from_seq_list(
+        [image_seq, av_seq, flag_seq], check_terminate_flags=False
+    )  # no check
     with pytest.raises(AssertionError):
         EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
 
     # case 4: no problem
     bools = [False] * 9 + [True]
     flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in bools])
-    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    EpisodeData.from_seq_list(
+        [image_seq, av_seq, flag_seq], check_terminate_flags=False
+    )  # no check
     EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
 
 
