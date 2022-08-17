@@ -1,5 +1,5 @@
 import numpy as np
-from test_encoding_rule import create_encoding_rule  # noqa
+from test_encoding_rule import create_encoding_rule_for_image_av_bundle  # noqa
 from test_types import image_av_bundle_uneven  # noqa
 from torch.utils.data import DataLoader
 
@@ -118,7 +118,7 @@ def test_padding_sequnece_alginer_creation():
 
 def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
     bundle: EpisodeBundle = image_av_bundle_uneven
-    rule = create_encoding_rule(bundle, balance=False)
+    rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)
 
     n_aug = 7
     config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.1)
@@ -136,7 +136,7 @@ def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
 
 def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa
     bundle: EpisodeBundle = image_av_bundle_uneven
-    default_rule = create_encoding_rule(bundle, balance=False)
+    default_rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)
     f1 = default_rule[RGBImage]
     f2 = default_rule[AngleVector]
     control_encode_rule = EncodingRule.from_encoders([f2])

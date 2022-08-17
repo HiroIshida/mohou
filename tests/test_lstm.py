@@ -1,12 +1,12 @@
 import torch
-from test_encoding_rule import create_encoding_rule
+from test_encoding_rule import create_encoding_rule_for_image_av_bundle
 from test_types import image_av_bundle  # noqa
 
 from mohou.model import LSTM, PBLSTM, LSTMConfig, PBLSTMConfig
 
 
 def test_lstm(image_av_bundle):  # noqa
-    rule = create_encoding_rule(image_av_bundle)
+    rule = create_encoding_rule_for_image_av_bundle(image_av_bundle)
 
     n_sample = 10
     n_seq_len = 100
@@ -42,7 +42,7 @@ def test_lstm(image_av_bundle):  # noqa
 
 def test_pblstm(image_av_bundle):  # noqa
 
-    rule = create_encoding_rule(image_av_bundle)
+    rule = create_encoding_rule_for_image_av_bundle(image_av_bundle)
 
     n_sample = 10
     n_seq_len = 100
