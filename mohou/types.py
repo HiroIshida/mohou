@@ -735,7 +735,7 @@ class EpisodeData(HasTypeShapeTable, Hashable):
             return self.sequence_dict[elem_type]  # type: ignore
         elif issubclass(elem_type, CompositeImageBase):
             if elem_type in self.sequence_dict:
-                return self.sequence_dict[elem_type]
+                return self.sequence_dict[elem_type]  # type: ignore
             else:
                 seqs = [self.sequence_dict[t] for t in elem_type.image_types]
                 return create_composite_image_sequence(elem_type, seqs)  # type: ignore
