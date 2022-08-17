@@ -5,14 +5,17 @@ from typing import Tuple
 import numpy as np
 import pytest
 import torch
-from test_types import image_av_bundle  # noqa
+from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import CovarianceBalancer, EncodingRule
 from mohou.types import (
     AngleVector,
+    DepthImage,
+    ElementDict,
     EpisodeBundle,
     ImageBase,
+    RGBDImage,
     RGBImage,
     TerminateFlag,
     VectorBase,
@@ -86,7 +89,9 @@ def test_covariance_balancer_marknull(sample_covariance_balancer):
         np.testing.assert_almost_equal(balanced[3:], inp[3:])
 
 
-def create_encoding_rule(bundle: EpisodeBundle, balance: bool = True) -> EncodingRule:
+def create_encoding_rule_for_image_av_bundle(
+    bundle: EpisodeBundle, balance: bool = True
+) -> EncodingRule:
     dim_image_encoded = 5
     dim_av = bundle.get_element_shape(AngleVector)[0]
     image_type = [t for t in bundle.types() if issubclass(t, ImageBase)].pop()
@@ -106,9 +111,29 @@ def create_encoding_rule(bundle: EpisodeBundle, balance: bool = True) -> Encodin
     return rule
 
 
+def test_encoding_rule_apply_to_edict(rgbd_image_bundle):  # noqa
+    pass
+
+    f1 = ImageEncoder(
+        RGBDImage,
+        lambda img: torch.zeros(5),
+        lambda vec: torch.zeros((4, 30, 30)),
+        (30, 30, 4),
+        5,
+    )
+    rule = EncodingRule.from_encoders([f1])
+
+    rgbd = RGBDImage.dummy_from_shape((30, 30))
+    rule.apply(ElementDict([rgbd]))
+
+    rgb = RGBImage.dummy_from_shape((30, 30))
+    depth = DepthImage.dummy_from_shape((30, 30))
+    rule.apply(ElementDict([rgb, depth]))
+
+
 def test_encoding_rule(image_av_bundle):  # noqa
     bundle = image_av_bundle
-    rule = create_encoding_rule(bundle)
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
     vector_seq_list = rule.apply_to_episode_bundle(bundle)
     vector_seq = vector_seq_list[0]
     assert vector_seq.shape == (len(bundle[0]), rule.dimension)
@@ -116,7 +141,7 @@ def test_encoding_rule(image_av_bundle):  # noqa
 
 def test_encoding_rule_type_bound_table(image_av_bundle):  # noqa
     bundle: EpisodeBundle = image_av_bundle
-    rule = create_encoding_rule(bundle)
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
 
     last_end_idx = 0
     for elem_type, bound in rule.type_bound_table.items():
@@ -128,7 +153,7 @@ def test_encoding_rule_type_bound_table(image_av_bundle):  # noqa
 
 def test_encoding_rule_delete(image_av_bundle):  # noqa
     bundle: EpisodeBundle = image_av_bundle
-    rule = create_encoding_rule(bundle)
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
     rule_dimension_pre = rule.dimension
 
     delete_key = AngleVector
@@ -150,7 +175,7 @@ def test_encode_rule_delete_and_balancer_marknull(image_av_bundle):  # noqa
     # The following test simulate how these two methods are used in train/test the chimera
     # model
     bundle: EpisodeBundle = image_av_bundle
-    rule_for_train = create_encoding_rule(bundle)
+    rule_for_train = create_encoding_rule_for_image_av_bundle(bundle)
     rule_for_test = copy.deepcopy(rule_for_train)
 
     rule_for_train.delete(RGBImage)
@@ -172,7 +197,7 @@ def test_encoding_rule_order(image_av_bundle):  # noqa
         pass
 
     bundle = image_av_bundle
-    rule = create_encoding_rule(bundle)
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
 
     # Check dict insertion oreder is preserved
     # NOTE: from 3.7, order is preserved as lang. spec.
@@ -189,7 +214,7 @@ def test_encoding_rule_order(image_av_bundle):  # noqa
 
 def test_encoding_rule_assertion(image_av_bundle):  # noqa
     bundle = image_av_bundle
-    rule = create_encoding_rule(bundle)
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
     # add wrong dimension encoder
     rule[AngleVector] = VectorIdenticalEncoder(AngleVector, 1000)
 

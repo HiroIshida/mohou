@@ -397,6 +397,18 @@ def image_bundle():
 
 
 @pytest.fixture(scope="session")
+def rgbd_image_bundle():
+    def create_edata(n_length):
+        image_seq = ElementSequence([RGBDImage.dummy_from_shape((30, 30)) for _ in range(n_length)])
+        data = EpisodeData.from_seq_list([image_seq])
+        return data
+
+    lst = [create_edata(10) for _ in range(20)]
+    bundle = EpisodeBundle.from_episodes(lst, meta_data=MetaData({"hoge": 1.0}))
+    return bundle
+
+
+@pytest.fixture(scope="session")
 def image_av_bundle():
     def create_edata(n_length):
         image_seq = ElementSequence([RGBImage.dummy_from_shape((28, 28)) for _ in range(n_length)])

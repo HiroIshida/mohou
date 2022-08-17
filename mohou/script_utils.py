@@ -36,14 +36,7 @@ from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.types import (
-    AngleVector,
-    ElementDict,
-    EpisodeBundle,
-    GripperState,
-    ImageBase,
-    TerminateFlag,
-)
+from mohou.types import EpisodeBundle, EpisodeData, ImageBase, TerminateFlag, VectorBase
 from mohou.utils import canvas_to_ndarray
 
 logger = logging.getLogger(__name__)
@@ -253,102 +246,106 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
     save_dir_path.mkdir(exist_ok=True)
     prop_name = propagator.__class__.__name__
 
+    if propagator.require_static_context:
+        raise NotImplementedError("not implemented yet")
+
     image_encoder = load_default_image_encoder(project_path)
+    image_type = image_encoder.elem_type
 
-    for idx, edata in enumerate(bundle):
-        episode_data = bundle[idx]
-
-        image_type = None
-        for key, encoder in propagator.encoding_rule.items():
-            if issubclass(key, ImageBase):
-                image_type = key
-        assert image_type is not None
-
-        n_feed = 20
-        feed_avs = episode_data.get_sequence_by_type(AngleVector)[:n_feed]
-        feed_images = episode_data.get_sequence_by_type(image_type)[:n_feed]
-
-        # set context if necessary
-        if propagator.require_static_context:
-            context = image_encoder.forward(feed_images[0])
-            propagator.set_static_context(context)
-
-        use_gripper = GripperState in propagator.encoding_rule
-
-        if use_gripper:
-            fed_grippers = episode_data.get_sequence_by_type(GripperState)[:n_feed]
+    for idx, episode_data in enumerate(bundle):
 
         print("start lstm propagation")
+        n_feed = 20
+        feed_partial_episode = episode_data[:n_feed]
         for i in range(n_feed):
-            elem_dict = ElementDict([feed_avs[i], feed_images[i]])
-            if use_gripper:
-                elem_dict[GripperState] = fed_grippers[i]
-            propagator.feed(elem_dict)
+            feed_edict = feed_partial_episode[i]
+            propagator.feed(feed_edict)
+        pred_edict_list = propagator.predict(n_prop)
+        pred_partial_episode = EpisodeData.from_edict_list(
+            pred_edict_list, check_terminate_flag=False
+        )
         print("finish lstm propagation")
 
-        elem_dict_list = propagator.predict(n_prop)
-        pred_images = [elem_dict[image_type] for elem_dict in elem_dict_list]
-        pred_flags = [elem_dict[TerminateFlag].numpy().item() for elem_dict in elem_dict_list]
-        pred_avs = [elem_dict[AngleVector].numpy() for elem_dict in elem_dict_list]
-        if use_gripper:
-            pred_gss = [elem_dict[GripperState].numpy() for elem_dict in elem_dict_list]
+        # Plot history of Vector types
+        elem_types = propagator.encoding_rule.keys()
+        vector_elem_types = [et for et in elem_types if issubclass(et, VectorBase)]
 
-        n_av_dim = bundle.spec.type_shape_table[AngleVector][0]
-        n_gs_dim = bundle.spec.type_shape_table[GripperState][0] if use_gripper else 0
-        fig, axs = plt.subplots(n_av_dim + n_gs_dim, 1)
+        vector_dims: List[int] = []
+        for et in vector_elem_types:
+            shape = bundle.type_shape_table[et]
+            assert len(shape) == 1  # because it's a vector
+            vector_dims.append(shape[0])
 
-        # plot angle vectors
-        av_seq_gt = episode_data.get_sequence_by_type(AngleVector)
-        np_av_seq_gt = np.array([av.numpy() for av in av_seq_gt])
-        np_av_seq_pred = np.concatenate((np_av_seq_gt[:n_feed], np.array(pred_avs)), axis=0)
+        total_vector_dim = sum(vector_dims)
+        fig, axs = plt.subplots(total_vector_dim, 1)
+        fig.tight_layout(pad=3.0)
+        idx_axis = -1
 
-        i_dim = 0
-        for i_av_dim in range(n_av_dim):
-            axs[i_dim].plot(np_av_seq_gt[:, i_av_dim], color="blue", lw=1)
-            axs[i_dim].plot(np_av_seq_pred[:, i_av_dim], color="red", lw=1)
+        for dim, elem_type in zip(vector_dims, vector_elem_types):
 
-            # determine axes min max
-            conc = np.hstack((np_av_seq_gt[:, i_av_dim], np_av_seq_pred[:, i_av_dim]))
-            y_min = np.min(conc)
-            y_max = np.max(conc)
-            diff = y_max - y_min
-            axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
-            axs[i_dim].set_title("AngleVector dim {}".format(i_av_dim), fontsize=5, pad=0.0)
-            i_dim += 1
+            # create ground truth data
+            seq_gt = episode_data.get_sequence_by_type(elem_type)
+            np_seq_gt = np.array([e.numpy() for e in seq_gt])
 
-        if use_gripper:
-            gs_seq_gt = episode_data.get_sequence_by_type(GripperState)
-            np_gs_seq_gt = np.array([gs.numpy() for gs in gs_seq_gt])
-            np_gs_seq_pred = np.concatenate((np_gs_seq_gt[:n_feed], np.array(pred_gss)), axis=0)
-            for i_gs_dim in range(n_gs_dim):
-                axs[i_dim].plot(np_gs_seq_gt[:, i_gs_dim], color="blue", lw=1)
-                axs[i_dim].plot(np_gs_seq_pred[:, i_gs_dim], color="red", lw=1)
+            # create feed + pred data
+            seq_feed = feed_partial_episode.get_sequence_by_type(elem_type)
+            seq_pred = pred_partial_episode.get_sequence_by_type(elem_type)
+            np_seq_feedpred = np.array(
+                [e.numpy() for e in seq_feed] + [e.numpy() for e in seq_pred]
+            )
 
-                # determine axes min max
-                conc = np.hstack((np_gs_seq_gt[:, i_gs_dim], np_gs_seq_pred[:, i_gs_dim]))
-                y_min = np.min(conc)
-                y_max = np.max(conc)
-                diff = y_max - y_min
-                axs[i_dim].set_ylim([y_min - diff * 0.1, y_max + diff * 0.1])
-                axs[i_dim].set_title("GripperState dim {}".format(i_gs_dim), fontsize=5, pad=0.0)
-                i_dim += 1
+            for i in range(dim):
+                idx_axis += 1
+                ax = axs[idx_axis]
+                ax.set_xticklabels([])
+                ax.yaxis.set_tick_params(labelsize=5)
+
+                ax.text(
+                    0.1,
+                    0.85,
+                    "{} dimension {}".format(elem_type.__name__, i),
+                    fontsize=5,
+                    transform=ax.transAxes,
+                    horizontalalignment="center",
+                    verticalalignment="center",
+                    bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
+                )
+
+                np_seq_gt_slice = np_seq_gt[:, i]
+                np_seq_feedpred_slice = np_seq_feedpred[:, i]
+
+                ax.plot(np_seq_gt_slice, color="blue", lw=1, label="ground truth")
+                ax.plot(np_seq_feedpred_slice, color="red", lw=1, label="feed + pred")
+
+                val_min = min(np.min(np_seq_gt_slice), np.min(np_seq_feedpred_slice))
+                val_max = max(np.max(np_seq_gt_slice), np.max(np_seq_feedpred_slice))
+                margin = max(0.1, 0.1 * (val_max - val_min))
+                ax.set_ylim(val_min - 0.1 * margin, val_max + 0.1 * margin)
+
+        ax_last = axs[-1]
+        ax_last.legend(fontsize=5)
 
         for ax in axs:
             ax.grid()
 
-        image_path = save_dir_path / "seq-{}-{}{}.png".format(prop_name, AngleVector.__name__, idx)
+        image_path = save_dir_path / "seq-vectors-{}{}.png".format(prop_name, idx)
         fig.savefig(str(image_path), format="png", dpi=300)
         print("saved to {}".format(image_path))
 
         # save gif image
         print("adding text to images...")
+        feed_images = feed_partial_episode.get_sequence_by_type(image_type)
         fed_images_with_text = [
             add_text_to_image(image, "fed (original) image)", "blue") for image in feed_images
         ]
         clamp = lambda x: max(min(x, 1.0), 0.0)  # noqa
+        pred_images = pred_partial_episode.get_sequence_by_type(image_type)
+        pred_flags = pred_partial_episode.get_sequence_by_type(TerminateFlag)
         pred_images_with_text = [
             add_text_to_image(
-                image, "predicted image (prob-terminated={:.2f})".format(clamp(flag)), "green"
+                image,
+                "predicted image (prob-terminated={:.2f})".format(clamp(flag.numpy().item())),
+                "green",
             )
             for image, flag in zip(pred_images, pred_flags)
         ]

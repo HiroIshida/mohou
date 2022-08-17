@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 import torch
-from test_encoding_rule import create_encoding_rule
+from test_encoding_rule import create_encoding_rule_for_image_av_bundle
 from test_types import image_av_bundle_uneven  # noqa
 
 from mohou.model import AutoEncoderConfig, LSTMConfig
@@ -14,7 +14,7 @@ from mohou.types import AngleVector, EpisodeBundle, RGBImage
 @pytest.fixture(scope="session")
 def chimera_dataset(image_av_bundle_uneven):  # noqa
     bundle = image_av_bundle_uneven
-    rule = create_encoding_rule(bundle, balance=False)
+    rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)
     dataset = ChimeraDataset.from_bundle(bundle, rule)
     return dataset
 
@@ -35,7 +35,7 @@ def test_chimera_dataset(image_av_bundle_uneven, chimera_dataset):  # noqa
 
 def test_chimera_model(image_av_bundle_uneven, chimera_dataset):  # noqa
     bundle: EpisodeBundle = image_av_bundle_uneven
-    rule = create_encoding_rule(bundle, balance=False)
+    rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)
 
     # create config using rule info
     lstm_config = LSTMConfig(rule.dimension)
