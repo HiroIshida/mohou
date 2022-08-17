@@ -327,7 +327,6 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
 
         for ax in axs:
             ax.grid()
-        plt.subplot_tool()
 
         image_path = save_dir_path / "seq-vectors-{}{}.png".format(prop_name, idx)
         fig.savefig(str(image_path), format="png", dpi=300)
