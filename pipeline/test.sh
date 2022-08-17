@@ -53,9 +53,12 @@ function test_batch {
         if [ $test_warm_train = true ]; then
             python3 -m mohou.script.train_lstm -pn $project_name -valid-ratio 0.5 -n 2 --warm $context_flag
         fi
-        python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
         python3 -m mohou.script.visualize_train_history -pn $project_name
-        python3 $example_path/kuka_reaching.py -pn $project_name --feedback -m $n_pixel
+
+        if [ $use_context = false ]; then
+            python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
+            python3 $example_path/kuka_reaching.py -pn $project_name --feedback -m $n_pixel
+        fi
     fi
 
     rm -rf ~/.mohou/$project_name
@@ -72,10 +75,10 @@ function test_with_fullpath {
     python3 $example_path/kuka_reaching.py -pp $project_path --feedback
 }
 
-test_batch RGB true true false # test warm train
-test_batch RGB false false true # test using context
-test_batch RGB false false false true # test chimera
-test_batch RGB false false false
-test_batch Depth false false false
-test_batch RGBD false false false
+test_batch RGB true true false false false # test warm train
+test_batch RGB false false true false false # test using context
+test_batch RGB false false false true false # test chimera
+test_batch RGB false false false false false
+test_batch Depth false false false false false
+test_batch RGBD false false false false false
 test_with_fullpath
