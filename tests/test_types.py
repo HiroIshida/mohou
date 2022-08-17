@@ -261,6 +261,55 @@ def test_episode_data():
         assert episode == episode_again
 
 
+def test_episode_data_assertion_when_sequence_length_invalid():
+
+    # case 1: sequnece length are different
+    n_seq_len1 = 10
+    n_seq_len2 = 8
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((3, 3)) for _ in range(n_seq_len1)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(3)) for _ in range(n_seq_len2)])
+    with pytest.raises(AssertionError):
+        EpisodeData.from_seq_list([image_seq, av_seq])
+
+    # case 2: sequence length is smaller than 2
+    n_seq_len = 1
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((3, 3)) for _ in range(n_seq_len)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(3)) for _ in range(n_seq_len)])
+    with pytest.raises(AssertionError):
+        EpisodeData.from_seq_list([image_seq, av_seq])
+
+
+def test_episode_data_assertion_when_invalid_terminate_flags():
+    n_seq_len = 10
+    image_seq = ElementSequence([RGBImage.dummy_from_shape((3, 3)) for _ in range(n_seq_len)])
+    av_seq = ElementSequence([AngleVector(np.random.randn(3)) for _ in range(n_seq_len)])
+
+    # case 1: flag seq starts from True (meaning already "terminated" at the beginning of the sequence)
+    flag_seq = ElementSequence([TerminateFlag.from_bool(True) for _ in range(n_seq_len)])
+    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    with pytest.raises(AssertionError):
+        EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
+
+    # case 2: flag seq ends with False (meaning the episode is not ended though it is the last index)
+    flag_seq = ElementSequence([TerminateFlag.from_bool(False) for _ in range(n_seq_len)])
+    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    with pytest.raises(AssertionError):
+        EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
+
+    # case 3: flag seq has more than one change point
+    bools = [False, False, True, True, True, True, True, False, False, False]
+    flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in bools])
+    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    with pytest.raises(AssertionError):
+        EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
+
+    # case 4: no problem
+    bools = [False] * 9 + [True]
+    flag_seq = ElementSequence([TerminateFlag.from_bool(b) for b in bools])
+    # EpisodeData.from_seq_list([image_seq, av_seq, flag_seq], check_terminate_flag=False)  # no check
+    EpisodeData.from_seq_list([image_seq, av_seq, flag_seq])  # do check
+
+
 def test_episode_data_element_dict_converesion():
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
     av_seq = ElementSequence([AngleVector(np.random.randn(10)) for _ in range(10)])
