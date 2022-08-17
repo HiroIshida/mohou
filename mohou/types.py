@@ -604,12 +604,14 @@ class EpisodeData(HasTypeShapeTable, Hashable):
     metadata: MetaData
     time_stamp_seq: Optional[TimeStampSequence] = None
 
-    def __post_init__(self):
-        self._validate_data()
-
-    def _validate_data(self) -> None:
+    @classmethod
+    def validate_sequence_dict(
+        cls,
+        sequence_dict: Dict[Type[ElementBase], ElementSequence[ElementBase]],
+        check_terminate_flag: bool = True,
+    ) -> None:
         # call this after update
-        lengths = [len(seq) for seq in self.sequence_dict.values()]
+        lengths = [len(seq) for seq in sequence_dict.values()]
         all_same_length = len(set(lengths)) == 1
         assert all_same_length
 
@@ -617,22 +619,21 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         is_sequence = lengths[0] > 1
         assert is_sequence
 
-        # assume at least TerminateFlag is included
-        assert TerminateFlag in self.sequence_dict
-        flag_seq = self.get_sequence_by_type(TerminateFlag)
-        self.check_terminate_seq(flag_seq)
+        if check_terminate_flag:
+            assert TerminateFlag in sequence_dict
+            flag_seq: ElementSequence[TerminateFlag] = sequence_dict[TerminateFlag]  # type: ignore
+            cls.validate_terminate_flags(flag_seq)
 
     @staticmethod
-    def check_terminate_seq(ef_seq: ElementSequence[TerminateFlag]):
-        # first index must be CONTINUE
-        assert ef_seq[0].numpy().item() == CONTINUE_FLAG_VALUE
-        # last index must be END
-        assert ef_seq[-1].numpy().item() == TERMINATE_FLAG_VALUE
+    def validate_terminate_flags(flag_seq: ElementSequence[TerminateFlag]) -> None:
+        initial_flag, last_flag = flag_seq[0], flag_seq[-1]
+        assert initial_flag.numpy().item() == CONTINUE_FLAG_VALUE
+        assert last_flag.numpy().item() == TERMINATE_FLAG_VALUE
 
-        # sequence must be like ffffffftttttt not ffffttffftttt
+        # terminate flag must change from 0 to 1
         change_count = 0
-        for i in range(len(ef_seq) - 1):
-            if ef_seq[i + 1].numpy().item() != ef_seq[i].numpy().item():
+        for i in range(len(flag_seq) - 1):
+            if flag_seq[i + 1].numpy().item() != flag_seq[i].numpy().item():
                 change_count += 1
         assert change_count == 1
 
@@ -659,7 +660,16 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         sequence_list: List[ElementSequence],
         timestamp_seq: Optional[TimeStampSequence] = None,
         metadata: Optional[MetaData] = None,
+        check_terminate_flags: bool = True,
     ) -> "EpisodeData":
+        r"""Create episode from list of ElementSequence
+        Args:
+            sequence_list: list of ElementSequence to construct the episode
+            timestamp_seq: optional timestamp information
+            metadata: optional metadata
+            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted.                 (see: validate_terminate_flags function)
+        """
+
         if metadata is None:
             metadata = MetaData({})
 
@@ -681,6 +691,10 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         assert all_different_type, "all sequences must have different type"
 
         sequence_dict = {seq.elem_type: seq for seq in sequence_list}
+
+        # final data validation
+        cls.validate_sequence_dict(sequence_dict, check_terminate_flag=check_terminate_flags)
+
         return cls(sequence_dict, metadata, timestamp_seq)  # type: ignore
 
     @classmethod
@@ -689,7 +703,15 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         edict_list: List[ElementDict],
         timestamp_seq: Optional[TimeStampSequence] = None,
         metadata: Optional[MetaData] = None,
+        check_terminate_flag: bool = True,
     ) -> "EpisodeData":
+        r"""Create episode from list of ElementDict
+        Args:
+            edict_list: list of ElementDict to construct the episode
+            timestamp_seq: optional timestamp information
+            metadata: optional metadata
+            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted.                 (see: validate_terminate_flags function)
+        """
 
         # all edict must have the same keys
         key_set_ref = set(edict_list[0].keys())
@@ -703,7 +725,9 @@ class EpisodeData(HasTypeShapeTable, Hashable):
                 elem_list.append(edict[key])
             elem_seq = ElementSequence(elem_list)
             elem_seq_list.append(elem_seq)
-        return cls.from_seq_list(elem_seq_list, timestamp_seq, metadata)
+        return cls.from_seq_list(
+            elem_seq_list, timestamp_seq, metadata, check_terminate_flags=check_terminate_flag
+        )
 
     def get_sequence_by_type(self, elem_type: Type[ElementT]) -> ElementSequence[ElementT]:
 
@@ -722,7 +746,7 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         assert issubclass(elem_type, PrimitiveElementBase)
         assert seq.elem_type == elem_type
         self.sequence_dict[elem_type] = seq  # type: ignore
-        self._validate_data()
+        self.validate_sequence_dict(self.sequence_dict)
 
     @overload
     def __getitem__(self, index: int) -> ElementDict:
