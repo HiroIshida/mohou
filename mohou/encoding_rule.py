@@ -191,6 +191,11 @@ class CovarianceBalancer:
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
+
+            determinant = np.linalg.det(cov)
+            assert determinant > 10 ** (-4 * dim), "determinant of cov {} is invalid".format(
+                determinant
+            )
             means.append(mean)
             covs.append(cov)
         return means, covs
