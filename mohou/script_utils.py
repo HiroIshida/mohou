@@ -3,10 +3,11 @@ import random
 import time
 from logging import Logger
 from pathlib import Path
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
+import tqdm
 
 from mohou.model.autoencoder import VariationalAutoEncoder
 
@@ -36,7 +37,14 @@ from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
-from mohou.types import EpisodeBundle, EpisodeData, ImageBase, TerminateFlag, VectorBase
+from mohou.types import (
+    ElementDict,
+    EpisodeBundle,
+    EpisodeData,
+    ImageBase,
+    TerminateFlag,
+    VectorBase,
+)
 from mohou.utils import canvas_to_ndarray
 
 logger = logging.getLogger(__name__)
@@ -233,11 +241,99 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     ax = plt.subplot(1, 1, 1)
     ax.axis("off")
     ax.imshow(image.to_rgb()._data)
-    bbox = dict(boxstyle="round", facecolor="white", alpha=0.7)
+    bbox = dict(boxstyle="round", facecolor="white", alpha=0.4)
     ax.text(7, 1, text, fontsize=15, color=color, verticalalignment="top", bbox=bbox)
     fig.canvas.draw()
     fig.canvas.flush_events()
     return canvas_to_ndarray(fig)
+
+
+class VectorSequencePlotter:
+    fig: Any
+    axs: List
+    axis_index_table: Dict[Tuple[Type[VectorBase], int], int]
+    inverse_axis_index_table: List[Tuple[Type[VectorBase], int]]
+    min_val_per_axis: List[float]
+    max_val_per_axis: List[float]
+    is_finalized: bool = False
+
+    def __init__(self, project_path: Path, plot_elem_types: List[Type[VectorBase]]) -> None:
+        bundle = EpisodeBundle.load(project_path)
+
+        axis_index_table: Dict[Tuple[Type[VectorBase], int], int] = {}
+        inverse_axis_index_table: List[Tuple[Type[VectorBase], int]] = []
+        axis_count = 0
+        for elem_type in plot_elem_types:
+            shape = bundle.type_shape_table[elem_type]
+            assert len(shape) == 1  # because it's a vector
+            for i in range(shape[0]):
+                axis_index_table[(elem_type, i)] = axis_count
+                inverse_axis_index_table.append((elem_type, i))
+                axis_count += 1
+
+        fig, axs = plt.subplots(axis_count, 1)
+        if axis_count == 1:
+            axs = [axs]
+
+        for ax in axs:
+            ax.set_xticklabels([])
+            ax.yaxis.set_tick_params(labelsize=5)
+
+        fig.tight_layout(pad=3.0)
+
+        self.fig = fig
+        self.axs = axs
+        self.axis_index_table = axis_index_table
+        self.inverse_axis_index_table = inverse_axis_index_table
+        self.min_val_per_axis = [np.inf for _ in range(axis_count)]
+        self.max_val_per_axis = [-np.inf for _ in range(axis_count)]
+
+    def add_plot(
+        self,
+        x_seq: Optional[np.ndarray],
+        y_seq: np.ndarray,
+        elem_type: Type[VectorBase],
+        idx: int,
+        **kwargs
+    ):
+        assert y_seq.ndim == 1
+        assert not self.is_finalized
+        axis_index = self.axis_index_table[(elem_type, idx)]
+        if x_seq is not None:
+            assert x_seq.ndim == 1
+            self.axs[axis_index].plot(x_seq, y_seq, **kwargs)
+        else:
+            self.axs[axis_index].plot(y_seq, **kwargs)
+        self.min_val_per_axis[axis_index] = min(self.min_val_per_axis[axis_index], np.min(y_seq))
+        self.max_val_per_axis[axis_index] = max(self.max_val_per_axis[axis_index], np.max(y_seq))
+
+    def finalize(self):
+        ax_last = self.axs[-1]
+        ax_last.legend(fontsize=5)
+
+        for axis_index, ax in enumerate(self.axs):
+            val_min = self.min_val_per_axis[axis_index]
+            val_max = self.max_val_per_axis[axis_index]
+            margin = max(0.1, 0.1 * (val_max - val_min))
+            ax.set_ylim(val_min - margin, val_max + margin)
+            ax.grid()
+
+            elem_type, vector_index = self.inverse_axis_index_table[axis_index]
+            ax.text(
+                0.5,
+                0.5,
+                "{} dimension {}".format(elem_type.__name__, vector_index),
+                fontsize=5,
+                transform=ax.transAxes,
+                horizontalalignment="center",
+                verticalalignment="center",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
+            )
+        self.is_finalized = True
+
+    def save_fig(self, image_path: Path):
+        assert self.is_finalized
+        self.fig.savefig(str(image_path), format="png", dpi=300)
 
 
 def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
@@ -270,18 +366,9 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
         elem_types = propagator.encoding_rule.keys()
         vector_elem_types = [et for et in elem_types if issubclass(et, VectorBase)]
 
-        vector_dims: List[int] = []
-        for et in vector_elem_types:
-            shape = bundle.type_shape_table[et]
-            assert len(shape) == 1  # because it's a vector
-            vector_dims.append(shape[0])
+        vecseq_plotter = VectorSequencePlotter(project_path, vector_elem_types)
 
-        total_vector_dim = sum(vector_dims)
-        fig, axs = plt.subplots(total_vector_dim, 1)
-        fig.tight_layout(pad=3.0)
-        idx_axis = -1
-
-        for dim, elem_type in zip(vector_dims, vector_elem_types):
+        for elem_type in vector_elem_types:
 
             # create ground truth data
             seq_gt = episode_data.get_sequence_by_type(elem_type)
@@ -294,42 +381,26 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
                 [e.numpy() for e in seq_feed] + [e.numpy() for e in seq_pred]
             )
 
-            for i in range(dim):
-                idx_axis += 1
-                ax = axs[idx_axis]
-                ax.set_xticklabels([])
-                ax.yaxis.set_tick_params(labelsize=5)
-
-                ax.text(
-                    0.1,
-                    0.85,
-                    "{} dimension {}".format(elem_type.__name__, i),
-                    fontsize=5,
-                    transform=ax.transAxes,
-                    horizontalalignment="center",
-                    verticalalignment="center",
-                    bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
-                )
-
+            n_dim = seq_feed.elem_shape[0]
+            for i in range(n_dim):
                 np_seq_gt_slice = np_seq_gt[:, i]
                 np_seq_feedpred_slice = np_seq_feedpred[:, i]
-
-                ax.plot(np_seq_gt_slice, color="blue", lw=1, label="ground truth")
-                ax.plot(np_seq_feedpred_slice, color="red", lw=1, label="feed + pred")
-
-                val_min = min(np.min(np_seq_gt_slice), np.min(np_seq_feedpred_slice))
-                val_max = max(np.max(np_seq_gt_slice), np.max(np_seq_feedpred_slice))
-                margin = max(0.1, 0.1 * (val_max - val_min))
-                ax.set_ylim(val_min - 0.1 * margin, val_max + 0.1 * margin)
-
-        ax_last = axs[-1]
-        ax_last.legend(fontsize=5)
-
-        for ax in axs:
-            ax.grid()
+                vecseq_plotter.add_plot(
+                    None, np_seq_gt_slice, elem_type, i, color="blue", lw=1, label="ground truth"
+                )
+                vecseq_plotter.add_plot(
+                    None,
+                    np_seq_feedpred_slice,
+                    elem_type,
+                    i,
+                    color="red",
+                    lw=1,
+                    label="feed + pred",
+                )
 
         image_path = save_dir_path / "seq-vectors-{}{}.png".format(prop_name, idx)
-        fig.savefig(str(image_path), format="png", dpi=300)
+        vecseq_plotter.finalize()
+        vecseq_plotter.save_fig(image_path)
         print("saved to {}".format(image_path))
 
         # save gif image
@@ -356,3 +427,50 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
         assert ImageSequenceClip is not None, "check if your moviepy is properly installed"
         clip = ImageSequenceClip(images_with_text, fps=20)
         clip.write_gif(str(image_path), fps=20)
+
+
+def plot_execution_result(
+    project_path: Path, propagator: PropagatorBase, edict_seq: List[ElementDict], n_prop: int = 10
+):
+    timestr = "_" + time.strftime("%Y%m%d%H%M%S")
+    propagator.clear_fed_data()
+
+    elem_types = propagator.encoding_rule.keys()
+    vector_elem_types = [et for et in elem_types if issubclass(et, VectorBase)]
+    vecseq_plotter = VectorSequencePlotter(project_path, vector_elem_types)
+
+    # plot actual data
+    episode = EpisodeData.from_edict_list(edict_seq, check_terminate_flag=False)
+    for elem_type in vector_elem_types:
+        seq = episode.get_sequence_by_type(elem_type)
+        np_seq = np.array([e.numpy() for e in seq])
+        n_dim = np_seq.shape[1]
+        for i in range(n_dim):
+            y_seq = np_seq[:, i]
+            vecseq_plotter.add_plot(None, y_seq, elem_type, i, color="blue", lw=1.0)
+
+    # plot prediction
+    for time_index, edict in enumerate(tqdm.tqdm(edict_seq)):
+        x_seq = np.array([time_index + 1 + j for j in range(n_prop)])
+
+        propagator.feed(edict)
+        edict_list_predicted = propagator.predict(n_prop)
+        episode_predicted = EpisodeData.from_edict_list(
+            edict_list_predicted, check_terminate_flag=False
+        )
+
+        for elem_type in vector_elem_types:
+            seq = episode_predicted.get_sequence_by_type(elem_type)
+            np_seq = np.array([e.numpy() for e in seq])
+            n_dim = np_seq.shape[1]
+
+            for i in range(n_dim):
+                y_seq = np_seq[:, i]
+                vecseq_plotter.add_plot(x_seq, y_seq, elem_type, i, color="red", lw=0.2)
+
+    save_dir_path = project_path / "execution_result"
+    save_dir_path.mkdir(exist_ok=True)
+    prop_name = propagator.__class__.__name__
+    image_path = save_dir_path / "result-{}-{}.png".format(prop_name, timestr)
+    vecseq_plotter.finalize()
+    vecseq_plotter.save_fig(image_path)

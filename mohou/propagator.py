@@ -41,6 +41,10 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         if not require_static_context:  # auto set
             self.static_context = np.empty((0,))
 
+    def clear_fed_data(self) -> None:
+        self.fed_state_list = []
+        self.is_initialized = False
+
     @property
     def require_static_context(self) -> bool:
         return self.lstm_model.config.n_static_context > 0
