@@ -38,12 +38,12 @@ from mohou.model.lstm import LSTMBase, LSTMConfigBase
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
+    ElementBase,
     ElementDict,
     EpisodeBundle,
     EpisodeData,
     ImageBase,
     TerminateFlag,
-    VectorBase,
 )
 from mohou.utils import canvas_to_ndarray
 
@@ -251,27 +251,24 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
 class VectorSequencePlotter:
     fig: Any
     axs: List
-    axis_index_table: Dict[Tuple[Type[VectorBase], int], int]
-    inverse_axis_index_table: List[Tuple[Type[VectorBase], int]]
+    axis_index_table: Dict[Tuple[Type[ElementBase], int], int]
+    inverse_axis_index_table: List[Tuple[Type[ElementBase], int]]
     min_val_per_axis: List[float]
     max_val_per_axis: List[float]
     is_finalized: bool = False
 
-    def __init__(self, project_path: Path, plot_elem_types: List[Type[VectorBase]]) -> None:
-        bundle = EpisodeBundle.load(project_path)
+    def __init__(self, encoding_rule: EncodingRule) -> None:
 
-        axis_index_table: Dict[Tuple[Type[VectorBase], int], int] = {}
-        inverse_axis_index_table: List[Tuple[Type[VectorBase], int]] = []
+        axis_index_table: Dict[Tuple[Type[ElementBase], int], int] = {}
+        inverse_axis_index_table: List[Tuple[Type[ElementBase], int]] = []
         axis_count = 0
-        for elem_type in plot_elem_types:
-            shape = bundle.type_shape_table[elem_type]
-            assert len(shape) == 1  # because it's a vector
-            for i in range(shape[0]):
+        for elem_type, encoder in encoding_rule.items():
+            for i in range(encoder.output_size):
                 axis_index_table[(elem_type, i)] = axis_count
                 inverse_axis_index_table.append((elem_type, i))
                 axis_count += 1
 
-        fig, axs = plt.subplots(axis_count, 1)
+        fig, axs = plt.subplots(axis_count, figsize=(5, 0.5 * axis_count))
         if axis_count == 1:
             axs = [axs]
 
@@ -292,7 +289,7 @@ class VectorSequencePlotter:
         self,
         x_seq: Optional[np.ndarray],
         y_seq: np.ndarray,
-        elem_type: Type[VectorBase],
+        elem_type: Type[ElementBase],
         idx: int,
         **kwargs
     ):
@@ -333,7 +330,7 @@ class VectorSequencePlotter:
 
     def save_fig(self, image_path: Path):
         assert self.is_finalized
-        self.fig.savefig(str(image_path), format="png", dpi=300)
+        self.fig.savefig(str(image_path), format="png", dpi=300, bbox_inches="tight")
 
 
 def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
@@ -352,50 +349,38 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
 
         print("start lstm propagation")
         n_feed = 20
-        feed_partial_episode = episode_data[:n_feed]
-        for i in range(n_feed):
-            feed_edict = feed_partial_episode[i]
-            propagator.feed(feed_edict)
+
+        edict_feed_pred = []
+        for edict in episode_data[:n_feed]:
+            propagator.feed(edict)
+            edict_feed_pred.append(edict)
+
         pred_edict_list = propagator.predict(n_prop)
-        pred_partial_episode = EpisodeData.from_edict_list(
-            pred_edict_list, check_terminate_flag=False
-        )
+        edict_feed_pred.extend(pred_edict_list)
+
+        episode_feedpred = EpisodeData.from_edict_list(edict_feed_pred, check_terminate_flag=False)
         print("finish lstm propagation")
 
-        # Plot history of Vector types
-        elem_types = propagator.encoding_rule.keys()
-        vector_elem_types = [et for et in elem_types if issubclass(et, VectorBase)]
+        encoding_rule = propagator.encoding_rule
+        arr_gtruth = encoding_rule.apply_to_episode_data(episode_data)
+        arr_feedpred = encoding_rule.apply_to_episode_data(episode_feedpred)
 
-        vecseq_plotter = VectorSequencePlotter(project_path, vector_elem_types)
+        vecseq_plotter = VectorSequencePlotter(encoding_rule)
 
-        for elem_type in vector_elem_types:
+        for elem_type, bound in encoding_rule.type_bound_table.items():
+            assert bound.step is None
+            arr_partial_gt = arr_gtruth[:, bound.start : bound.stop]
+            arr_partial_fp = arr_feedpred[:, bound.start : bound.stop]
 
-            # create ground truth data
-            seq_gt = episode_data.get_sequence_by_type(elem_type)
-            np_seq_gt = np.array([e.numpy() for e in seq_gt])
-
-            # create feed + pred data
-            seq_feed = feed_partial_episode.get_sequence_by_type(elem_type)
-            seq_pred = pred_partial_episode.get_sequence_by_type(elem_type)
-            np_seq_feedpred = np.array(
-                [e.numpy() for e in seq_feed] + [e.numpy() for e in seq_pred]
-            )
-
-            n_dim = seq_feed.elem_shape[0]
+            n_dim = bound.stop - bound.start
             for i in range(n_dim):
-                np_seq_gt_slice = np_seq_gt[:, i]
-                np_seq_feedpred_slice = np_seq_feedpred[:, i]
+                y_seq_gt = arr_partial_gt[:, i]
                 vecseq_plotter.add_plot(
-                    None, np_seq_gt_slice, elem_type, i, color="blue", lw=1, label="ground truth"
+                    None, y_seq_gt, elem_type, i, color="blue", lw=1, label="ground truth"
                 )
+                y_seq_fp = arr_partial_fp[:, i]
                 vecseq_plotter.add_plot(
-                    None,
-                    np_seq_feedpred_slice,
-                    elem_type,
-                    i,
-                    color="red",
-                    lw=1,
-                    label="feed + pred",
+                    None, y_seq_fp, elem_type, i, color="red", lw=1, label="feed + pred"
                 )
 
         image_path = save_dir_path / "seq-vectors-{}{}.png".format(prop_name, idx)
@@ -405,13 +390,16 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
 
         # save gif image
         print("adding text to images...")
-        feed_images = feed_partial_episode.get_sequence_by_type(image_type)
+        images = episode_feedpred.get_sequence_by_type(image_type)
+        flags = episode_feedpred.get_sequence_by_type(TerminateFlag)
+        feed_images = images[:n_feed]
+        pred_images = images[n_feed:]
+        pred_flags = flags[n_feed:]
+
         fed_images_with_text = [
             add_text_to_image(image, "fed (original) image)", "blue") for image in feed_images
         ]
         clamp = lambda x: max(min(x, 1.0), 0.0)  # noqa
-        pred_images = pred_partial_episode.get_sequence_by_type(image_type)
-        pred_flags = pred_partial_episode.get_sequence_by_type(TerminateFlag)
         pred_images_with_text = [
             add_text_to_image(
                 image,
@@ -435,18 +423,18 @@ def plot_execution_result(
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
     propagator.clear_fed_data()
 
-    elem_types = propagator.encoding_rule.keys()
-    vector_elem_types = [et for et in elem_types if issubclass(et, VectorBase)]
-    vecseq_plotter = VectorSequencePlotter(project_path, vector_elem_types)
-
     # plot actual data
     episode = EpisodeData.from_edict_list(edict_seq, check_terminate_flag=False)
-    for elem_type in vector_elem_types:
-        seq = episode.get_sequence_by_type(elem_type)
-        np_seq = np.array([e.numpy() for e in seq])
-        n_dim = np_seq.shape[1]
+    encoding_rule = propagator.encoding_rule
+    vecseq_plotter = VectorSequencePlotter(encoding_rule)
+    arr = encoding_rule.apply_to_episode_data(episode)
+
+    for elem_type, bound in encoding_rule.type_bound_table.items():
+        assert bound.step is None
+        arr_partial = arr[:, bound.start : bound.stop]
+        n_dim = bound.stop - bound.start
         for i in range(n_dim):
-            y_seq = np_seq[:, i]
+            y_seq = arr_partial[:, i]
             vecseq_plotter.add_plot(None, y_seq, elem_type, i, color="blue", lw=1.0)
 
     # plot prediction
@@ -458,14 +446,14 @@ def plot_execution_result(
         episode_predicted = EpisodeData.from_edict_list(
             edict_list_predicted, check_terminate_flag=False
         )
+        arr = encoding_rule.apply_to_episode_data(episode_predicted)
 
-        for elem_type in vector_elem_types:
-            seq = episode_predicted.get_sequence_by_type(elem_type)
-            np_seq = np.array([e.numpy() for e in seq])
-            n_dim = np_seq.shape[1]
-
+        for elem_type, bound in encoding_rule.type_bound_table.items():
+            assert bound.step is None
+            arr_partial = arr[:, bound.start : bound.stop]
+            n_dim = bound.stop - bound.start
             for i in range(n_dim):
-                y_seq = np_seq[:, i]
+                y_seq = arr_partial[:, i]
                 vecseq_plotter.add_plot(
                     x_seq, y_seq, elem_type, i, color="red", lw=0.1, marker=".", markersize="0.2"
                 )
