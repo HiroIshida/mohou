@@ -351,9 +351,11 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
         n_feed = 20
 
         edict_feed_pred = []
-        for edict in episode_data[:n_feed]:
-            propagator.feed(edict)
-            edict_feed_pred.append(edict)
+        for i in range(n_feed):
+            edict = episode_data[i]
+            edict_required = edict.get_subdict(propagator.encoding_rule.keys())
+            propagator.feed(edict_required)
+            edict_feed_pred.append(edict_required)
 
         pred_edict_list = propagator.predict(n_prop)
         edict_feed_pred.extend(pred_edict_list)

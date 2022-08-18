@@ -18,6 +18,7 @@ from typing import (
     ClassVar,
     Dict,
     Generic,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -456,10 +457,12 @@ class ElementDict(Dict[Type[ElementBase], ElementBase]):
             self[elem.__class__] = elem
         assert_equal_with_message(len(set(self.keys())), len(elems), "num of element")
 
+    def get_subdict(self, keys: Iterable[Type[ElementBase]]) -> "ElementDict":
+        return ElementDict([self.__getitem__(key) for key in keys])
+
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
             return super().__getitem__(key)  # type: ignore
-
         elif issubclass(key, CompositeImageBase):
             if key in self:
                 return super().__getitem__(key)  # type: ignore
@@ -667,7 +670,7 @@ class EpisodeData(HasTypeShapeTable, Hashable):
             sequence_list: list of ElementSequence to construct the episode
             timestamp_seq: optional timestamp information
             metadata: optional metadata
-            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted.                 (see: validate_terminate_flags function)
+            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted. (see: validate_terminate_flags function)
         """
 
         if metadata is None:
@@ -710,13 +713,13 @@ class EpisodeData(HasTypeShapeTable, Hashable):
             edict_list: list of ElementDict to construct the episode
             timestamp_seq: optional timestamp information
             metadata: optional metadata
-            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted.                 (see: validate_terminate_flags function)
+            check_terminate_flag: if True, validation of TerminateFlag sequence will be  conducted. (see: validate_terminate_flags function)
         """
 
         # all edict must have the same keys
         key_set_ref = set(edict_list[0].keys())
         for edict in edict_list:
-            assert set(edict.keys()) == key_set_ref
+            assert_equal_with_message(set(edict.keys()), key_set_ref, "key set")
 
         elem_seq_list = []
         for key in key_set_ref:
