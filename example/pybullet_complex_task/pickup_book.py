@@ -351,7 +351,7 @@ class Task:
 
     def reset(self, randomize_world: bool = False) -> None:
         self.env.reset_world(randomize=randomize_world)
-        self.robot.set_angle_vector([0.0, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
+        self.robot.set_angle_vector([0.7, 0.7, 0.0, -0.5, 0.0, 1.3, -0.8])
         self.env.set_angle_vetor(self.robot)
         self.env.change_gripper_position(0.07)
 
