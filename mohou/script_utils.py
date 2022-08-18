@@ -466,7 +466,9 @@ def plot_execution_result(
 
             for i in range(n_dim):
                 y_seq = np_seq[:, i]
-                vecseq_plotter.add_plot(x_seq, y_seq, elem_type, i, color="red", lw=0.2)
+                vecseq_plotter.add_plot(
+                    x_seq, y_seq, elem_type, i, color="red", lw=0.1, marker=".", markersize="0.2"
+                )
 
     save_dir_path = project_path / "execution_result"
     save_dir_path.mkdir(exist_ok=True)
