@@ -171,22 +171,26 @@ def test_extract_contour_by_laplacian(sample_image_path):
 
 
 def test_element_dict():
+    # __getitem__ and __setitem__
     rgb = RGBImage.dummy_from_shape((10, 10))
     depth = DepthImage.dummy_from_shape((10, 10))
     dic = ElementDict([rgb, depth])
-
+    assert set(dic.keys()) == {RGBImage, DepthImage}
     assert isinstance(dic[RGBImage], RGBImage)
     assert isinstance(dic[RGBDImage], RGBDImage)
 
     rgbd = RGBDImage.dummy_from_shape((10, 10))
     dic = ElementDict([rgbd])
+    assert set(dic.keys()) == {RGBImage, DepthImage}
     assert isinstance(dic[RGBDImage], RGBDImage)
 
+    # get_subdict
     rgb = RGBImage.dummy_from_shape((10, 10))
     av = AngleVector(np.random.randn(10))
     dic = ElementDict([depth, rgb, av])
     assert set(dic.get_subdict([RGBImage]).keys()) == {RGBImage}
     assert set(dic.get_subdict([DepthImage]).keys()) == {DepthImage}
+    assert set(dic.get_subdict([RGBDImage]).keys()) == {RGBImage, DepthImage}
 
 
 def test_element_sequence():

@@ -451,14 +451,26 @@ class RGBDImage(CompositeImageBase):
         assert False
 
 
-class ElementDict(Dict[Type[ElementBase], ElementBase]):
+class ElementDict(Dict[Type[PrimitiveElementBase], PrimitiveElementBase]):
     def __init__(self, elems: Sequence[ElementBase]):
         for elem in elems:
-            self[elem.__class__] = elem
-        assert_equal_with_message(len(set(self.keys())), len(elems), "num of element")
+            self.__setitem__(elem.__class__, elem)
 
     def get_subdict(self, keys: Iterable[Type[ElementBase]]) -> "ElementDict":
         return ElementDict([self.__getitem__(key) for key in keys])
+
+    def __setitem__(self, elem_type: Type[ElementBase], elem: ElementBase):
+        assert type(elem) == elem_type
+
+        if isinstance(elem, CompositeImageBase):
+            assert issubclass(elem_type, CompositeImageBase)
+            for sub_elem_type, sub_elem in zip(elem.image_types, elem.images):
+                super().__setitem__(sub_elem_type, sub_elem)
+        elif isinstance(elem, PrimitiveElementBase):
+            assert issubclass(elem_type, PrimitiveElementBase)
+            super().__setitem__(elem_type, elem)
+        else:
+            assert False
 
     def __getitem__(self, key: Type[ElementT]) -> ElementT:
         if issubclass(key, PrimitiveElementBase):
