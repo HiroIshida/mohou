@@ -211,8 +211,24 @@ class CovarianceBalancer:
         for cov in covs:
             eig_values, _ = np.linalg.eig(cov)
             max_eig = max(eig_values)
-            assert max_eig > 0.0
-            primary_stds.append(np.sqrt(max_eig))
+            max_std = np.sqrt(max_eig)
+
+            # Note that np.cov(pts.T) outputs some non 0 value even if the input points
+            # are all at a single point (degenerated). So, max_eig > 0.0 cannot check
+            # the data degeneration. Thus...
+            if max_eig < 1e-10:
+                # The value 0.1 is determined somewhat ad-hoc manner.
+                # Such case happens primary for GripperState, which typically varies from
+                # 0.0 to 0.1.
+                max_eig_adhoc = 0.1
+                logger.warning(
+                    "because max_eig {} is too small, we force set the value to {}".format(
+                        max_eig, max_eig_adhoc
+                    )
+                )
+                max_eig = max_eig_adhoc
+
+            primary_stds.append(max_std)
         scaled_primary_stds = [std / max(primary_stds) for std in primary_stds]
         return scaled_primary_stds
 
