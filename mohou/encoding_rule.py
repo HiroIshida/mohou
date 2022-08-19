@@ -93,6 +93,11 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
             eig_values, _ = np.linalg.eig(cov)
             max_std = np.sqrt(max(eig_values))
 
+            # Note that np.cov(pts.T) outputs some non 0 value even if the input points
+            # are all at a single point (degenerated). So, max_eig > 0.0 cannot check
+            # the data degeneration. Thus...
+            assert max_std > 1e-7
+
             means.append(mean)
             max_stds.append(max_std)
 

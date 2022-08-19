@@ -26,6 +26,33 @@ from mohou.types import (
 )
 
 
+def test_covariance_based_balancer():
+    dim1 = 2
+    dim2 = 3
+    bias = 10
+    a = np.random.randn(100000, dim1) + np.ones(2) * bias
+    b = np.random.randn(100000, dim2)
+    b[:, 0] *= 3
+    b[:, 1] *= 2
+    b[:, 2] *= 0.5
+    c = np.concatenate([a, b], axis=1)
+    balancer = CovarianceBasedScaleBalancer.from_feature_seqs(c, [dim1, dim2])
+    inp = np.random.randn(5)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced, decimal=2)
+
+    np.testing.assert_almost_equal(balancer.scaled_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+
+def test_covariance_based_balancer_with_static_values():
+    a = np.random.randn(1000, 3)
+    a[:, 1] *= 0.0
+    a[:, 2] *= 0.0
+    with pytest.raises(AssertionError):
+        CovarianceBasedScaleBalancer.from_feature_seqs(a, [2, 1])
+
+
 class Vector1(VectorBase):
     pass
 
@@ -48,14 +75,6 @@ def sample_covariance_balancer():
     c = np.concatenate([a, b], axis=1)
     balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
     return balancer
-
-
-def test_covariance_balancer_with_static_values():
-    a = np.random.randn(1000, 3)
-    a[:, 1] *= 0.0
-    a[:, 2] *= 0.0
-    with pytest.raises(AssertionError):
-        CovarianceBalancer.from_feature_seqs(a, {Vector1: 2, Vector2: 1})
 
 
 def test_covariance_balancer(sample_covariance_balancer):
