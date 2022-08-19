@@ -334,14 +334,14 @@ class CovarianceBalancer:
 
 
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
-    covariance_balancer: CovarianceBalancer
+    scale_balancer: ScaleBalancerBase
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
         for elem_type, encoder in self.items():
             vector = encoder.forward(elem_dict[elem_type])
             vector_list.append(vector)
-        return self.covariance_balancer.apply(np.hstack(vector_list))
+        return self.scale_balancer.apply(np.hstack(vector_list))
 
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
         def split_vector(vector: np.ndarray, size_list: List[int]):
@@ -353,7 +353,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
                 head = tail
             return vector_list
 
-        vector = self.covariance_balancer.inverse_apply(vector_processed)
+        vector = self.scale_balancer.inverse_apply(vector_processed)
         size_list = [encoder.output_size for elem_type, encoder in self.items()]
         vector_list = split_vector(vector, size_list)
 
@@ -369,7 +369,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             return np.stack(vectors)
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
-        vector_seq_processed = np.array([self.covariance_balancer.apply(e) for e in vector_seq])
+        vector_seq_processed = np.array([self.scale_balancer.apply(e) for e in vector_seq])
         assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
@@ -424,13 +424,14 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         for encoder in encoder_list:
             rule[encoder.elem_type] = encoder
 
-        type_dim_table = {t: rule[t].output_size for t in rule.keys()}
-        rule.covariance_balancer = CovarianceBalancer.null(type_dim_table)
+        dims = [encoder.output_size for encoder in rule.values()]
+        rule.scale_balancer = IdenticalScaleBalancer()  # tmp
 
         if bundle is not None:
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_episode_bundle(bundle)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
-            normalizer = CovarianceBalancer.from_feature_seqs(vector_seq_concated, type_dim_table)
-            rule.covariance_balancer = normalizer
+            rule.scale_balancer = CovarianceBasedScaleBalancer.from_feature_seqs(
+                vector_seq_concated, dims
+            )
         return rule
