@@ -2,7 +2,8 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Type
+from functools import cached_property
+from typing import Dict, Generator, List, Optional, Tuple, Type
 
 import numpy as np
 
@@ -23,6 +24,108 @@ from mohou.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class PostProcessor(ABC):
+    @abstractmethod
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        pass
+
+
+class IdenticalPostProcessor(PostProcessor):
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
+
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
+
+
+@dataclass(frozen=True)
+class ElemCovMatchPostProcessor(PostProcessor):
+    dims: List[int]
+    means: List[np.ndarray]
+    covs: List[np.ndarray]
+
+    def __post_init__(self):
+        for i, dim in enumerate(self.dims):
+            assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
+            assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
+
+    @staticmethod
+    def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
+        head = 0
+        for dim in dims:
+            yield slice(head, head + dim)
+            head += dim
+
+    @cached_property
+    def characteristic_stds(self) -> np.ndarray:
+        def get_max_std(cov) -> float:
+            eig_values, _ = np.linalg.eig(cov)
+            max_eig_cov = max(eig_values)
+            return np.sqrt(max_eig_cov)
+
+        char_stds = np.array(list(map(get_max_std, self.covs)))
+        logger.info("char stds: {}".format(char_stds))
+        return char_stds
+
+    @cached_property
+    def scaled_characteristic_stds(self) -> np.ndarray:
+        c_stds = self.characteristic_stds
+        return c_stds / np.max(c_stds)
+
+    @staticmethod
+    def is_binary_sequence(partial_feature_seq: np.ndarray):
+        return len(set(partial_feature_seq.flatten().tolist())) == 2
+
+    @classmethod
+    def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+        assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
+        means = []
+        covs = []
+        for rang in cls.get_ranges(dims):
+            feature_seq_partial = feature_seq[:, rang]
+            dim = feature_seq_partial.shape[1]
+            if cls.is_binary_sequence(feature_seq_partial):
+                # because it's strange to compute covariance for binary sequence
+                assert dim == 1, "this restriction maybe removed"
+                minn = np.min(feature_seq_partial)
+                maxx = np.max(feature_seq_partial)
+                cov = np.diag(np.ones(dim))
+                mean = np.array([0.5 * (minn + maxx)])
+            else:
+                mean = np.mean(feature_seq_partial, axis=0)
+                cov = np.cov(feature_seq_partial.T)
+                if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
+                    cov = np.expand_dims(cov, axis=0)
+                    cov = np.array([[cov.item()]])
+            means.append(mean)
+            covs.append(cov)
+        return cls(dims, means, covs)
+
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+        vec_out = copy.deepcopy(vec)
+        char_stds = self.scaled_characteristic_stds
+        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
+            vec_out[rangee] = vec_out_new
+        return vec_out
+
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+        vec_out = copy.deepcopy(vec)
+        char_stds = self.scaled_characteristic_stds
+        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+            vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
+            vec_out[rangee] = vec_out_new
+        return vec_out
 
 
 class LocalBalancer(ABC):

@@ -8,7 +8,11 @@ import torch
 from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import CovarianceBalancer, EncodingRule
+from mohou.encoding_rule import (
+    CovarianceBalancer,
+    ElemCovMatchPostProcessor,
+    EncodingRule,
+)
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -95,6 +99,24 @@ def test_covariance_balancer_marknull(sample_covariance_balancer):
     # and vice-versa
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(balanced[3:], inp[3:])
+
+
+def test_elem_cov_match_regression_test_temporary():
+    dim1 = 2
+    dim2 = 3
+    bias = 10
+    a = np.random.randn(100000, dim1) + np.ones(2) * bias
+    b = np.random.randn(100000, dim2)
+    b[:, 0] *= 3
+    b[:, 1] *= 2
+    b[:, 2] *= 0.5
+    c = np.concatenate([a, b], axis=1)
+    balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
+    balancer2 = ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
+
+    for _ in range(20):
+        a = np.random.randn(5)
+        np.testing.assert_almost_equal(balancer.apply(a), balancer2.apply(a))
 
 
 def create_encoding_rule_for_image_av_bundle(
