@@ -46,7 +46,7 @@ def sample_covariance_balancer():
     return balancer
 
 
-def covariance_balancer_with_static_values():
+def test_covariance_balancer_with_static_values():
     a = np.random.randn(1000, 3)
     a[:, 1] *= 0.0
     a[:, 2] *= 0.0
