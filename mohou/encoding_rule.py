@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import cached_property
+from functools import lru_cache
 from typing import Dict, List, Optional, Tuple, Type
 
 import numpy as np
@@ -64,8 +64,8 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
             head += dim
         return bound_list
 
-    @cached_property
-    def scaled_characteristic_stds(self) -> np.ndarray:
+    @lru_cache(maxsize=None)
+    def get_scaled_characteristic_stds(self) -> np.ndarray:
         def get_max_std(cov) -> float:
             eig_values, _ = np.linalg.eig(cov)
             max_eig_cov = max(eig_values)
@@ -107,7 +107,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        char_stds = self.scaled_characteristic_stds
+        char_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
@@ -117,7 +117,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        char_stds = self.scaled_characteristic_stds
+        char_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new
