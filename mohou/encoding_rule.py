@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Dict, Generator, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type
 
 import numpy as np
 
@@ -26,7 +26,7 @@ from mohou.utils import (
 logger = logging.getLogger(__name__)
 
 
-class PostProcessor(ABC):
+class ScaleBalancerBase(ABC):
     @abstractmethod
     def apply(self, vec: np.ndarray) -> np.ndarray:
         pass
@@ -36,7 +36,7 @@ class PostProcessor(ABC):
         pass
 
 
-class IdenticalPostProcessor(PostProcessor):
+class IdenticalScaleBalancer(ScaleBalancerBase):
     def apply(self, vec: np.ndarray) -> np.ndarray:
         return vec
 
@@ -45,7 +45,7 @@ class IdenticalPostProcessor(PostProcessor):
 
 
 @dataclass(frozen=True)
-class ElemCovMatchPostProcessor(PostProcessor):
+class CovarianceBasedScaleBalancer(ScaleBalancerBase):
     dims: List[int]
     means: List[np.ndarray]
     covs: List[np.ndarray]
@@ -56,27 +56,23 @@ class ElemCovMatchPostProcessor(PostProcessor):
             assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
 
     @staticmethod
-    def get_ranges(dims: List[int]) -> Generator[slice, None, None]:
+    def get_bound_list(dims: List[int]) -> List[slice]:
+        bound_list = []
         head = 0
         for dim in dims:
-            yield slice(head, head + dim)
+            bound_list.append(slice(head, head + dim))
             head += dim
+        return bound_list
 
     @cached_property
-    def characteristic_stds(self) -> np.ndarray:
+    def scaled_characteristic_stds(self) -> np.ndarray:
         def get_max_std(cov) -> float:
             eig_values, _ = np.linalg.eig(cov)
             max_eig_cov = max(eig_values)
             return np.sqrt(max_eig_cov)
 
         char_stds = np.array(list(map(get_max_std, self.covs)))
-        logger.info("char stds: {}".format(char_stds))
-        return char_stds
-
-    @cached_property
-    def scaled_characteristic_stds(self) -> np.ndarray:
-        c_stds = self.characteristic_stds
-        return c_stds / np.max(c_stds)
+        return char_stds / np.max(char_stds)
 
     @staticmethod
     def is_binary_sequence(partial_feature_seq: np.ndarray):
@@ -87,7 +83,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         means = []
         covs = []
-        for rang in cls.get_ranges(dims):
+        for rang in cls.get_bound_list(dims):
             feature_seq_partial = feature_seq[:, rang]
             dim = feature_seq_partial.shape[1]
             if cls.is_binary_sequence(feature_seq_partial):
@@ -112,7 +108,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
-        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
@@ -122,7 +118,7 @@ class ElemCovMatchPostProcessor(PostProcessor):
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
         char_stds = self.scaled_characteristic_stds
-        for idx_elem, rangee in enumerate(self.get_ranges(self.dims)):
+        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new
         return vec_out

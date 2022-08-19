@@ -10,7 +10,7 @@ from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import (
     CovarianceBalancer,
-    ElemCovMatchPostProcessor,
+    CovarianceBasedScaleBalancer,
     EncodingRule,
 )
 from mohou.types import (
@@ -112,7 +112,7 @@ def test_elem_cov_match_regression_test_temporary():
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
     balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
-    balancer2 = ElemCovMatchPostProcessor.from_feature_seqs(c, [dim1, dim2])
+    balancer2 = CovarianceBasedScaleBalancer.from_feature_seqs(c, [dim1, dim2])
 
     for _ in range(20):
         a = np.random.randn(5)
