@@ -2,7 +2,6 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Dict, List, Optional, Tuple, Type
 
 import numpy as np
@@ -48,12 +47,13 @@ class IdenticalScaleBalancer(ScaleBalancerBase):
 class CovarianceBasedScaleBalancer(ScaleBalancerBase):
     dims: List[int]
     means: List[np.ndarray]
-    covs: List[np.ndarray]
+    scaled_stds: List[float]
 
     def __post_init__(self):
         for i, dim in enumerate(self.dims):
+            assert_equal_with_message(len(self.means), len(self.dims), "len")
+            assert_equal_with_message(len(self.scaled_stds), len(self.dims), "len")
             assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
-            assert_equal_with_message(self.covs[i].shape, (dim, dim), "cov shape of {}".format(i))
 
     @staticmethod
     def get_bound_list(dims: List[int]) -> List[slice]:
@@ -64,16 +64,6 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
             head += dim
         return bound_list
 
-    @lru_cache(maxsize=None)
-    def get_scaled_characteristic_stds(self) -> np.ndarray:
-        def get_max_std(cov) -> float:
-            eig_values, _ = np.linalg.eig(cov)
-            max_eig_cov = max(eig_values)
-            return np.sqrt(max_eig_cov)
-
-        char_stds = np.array(list(map(get_max_std, self.covs)))
-        return char_stds / np.max(char_stds)
-
     @staticmethod
     def is_binary_sequence(partial_feature_seq: np.ndarray):
         return len(set(partial_feature_seq.flatten().tolist())) == 2
@@ -82,7 +72,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
     def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
         assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
         means = []
-        covs = []
+        max_stds = []
         for rang in cls.get_bound_list(dims):
             feature_seq_partial = feature_seq[:, rang]
             dim = feature_seq_partial.shape[1]
@@ -99,17 +89,22 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
+
+            eig_values, _ = np.linalg.eig(cov)
+            max_std = np.sqrt(max(eig_values))
+
             means.append(mean)
-            covs.append(cov)
-        return cls(dims, means, covs)
+            max_stds.append(max_std)
+
+        scaled_stds = np.array(max_stds) / max(max_stds)
+        return cls(dims, means, scaled_stds)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        char_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / char_stds[idx_elem]  # type: ignore
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
 
@@ -117,9 +112,8 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         assert_equal_with_message(vec.ndim, 1, "vector dim")
         assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        char_stds = self.get_scaled_characteristic_stds()
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] * char_stds[idx_elem]) + self.means[idx_elem]
+            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
             vec_out[rangee] = vec_out_new
         return vec_out
 
