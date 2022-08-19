@@ -160,7 +160,7 @@ def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa
         n_len_ground_truth = sum([len(seq) - 1 for seq in controls_seq]) * (n_aug + 1)
         assert len(dataset) == n_len_ground_truth
 
-        # test the first content (because cov = 0.0 ..)
+        # test the first content of the dataset (Note that there is no randomization)
         inp_ctrl, inp_obs, out_obs = dataset[0]
 
         if diff_as_control:
@@ -170,11 +170,11 @@ def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa
         np.testing.assert_almost_equal(inp_obs, observations_seq[0][0])
         np.testing.assert_almost_equal(out_obs, observations_seq[0][1])
 
-        # test the last content (because cov = 0.0 ...)
+        # test the last content of the dataset (Note that there is no randomization)
         inp_ctrl, inp_obs, out_obs = dataset[-1]
         if diff_as_control:
             np.testing.assert_almost_equal(inp_ctrl, controls_seq[-1][1] - controls_seq[-1][0])
         else:
             np.testing.assert_almost_equal(inp_ctrl, controls_seq[-1][0])
-        np.testing.assert_almost_equal(inp_obs, observations_seq[-1][-1])
-        np.testing.assert_almost_equal(out_obs, observations_seq[-1][-2])
+        np.testing.assert_almost_equal(inp_obs, observations_seq[-1][-2])
+        np.testing.assert_almost_equal(out_obs, observations_seq[-1][-1])

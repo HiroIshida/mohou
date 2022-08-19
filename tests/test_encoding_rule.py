@@ -46,6 +46,13 @@ def sample_covariance_balancer():
     return balancer
 
 
+def test_covariance_balancer_with_static_values():
+    a = np.random.randn(1000, 3)
+    a[:, 1] *= 0.0
+    a[:, 2] *= 0.0
+    CovarianceBalancer.from_feature_seqs(a, {Vector1: 2, Vector2: 1})
+
+
 def test_covariance_balancer(sample_covariance_balancer):
     balancer: CovarianceBalancer = sample_covariance_balancer
 
@@ -97,9 +104,14 @@ def create_encoding_rule_for_image_av_bundle(
     image_type = [t for t in bundle.types() if issubclass(t, ImageBase)].pop()
     dims_image: Tuple[int, int, int] = bundle.get_element_shape(image_type)  # type: ignore
 
+    def forward_impl(img_tensor: torch.Tensor):
+        # whatever function as long as it's deterministic injective function
+        vec = img_tensor[0, 0, 0, :dim_image_encoded].float()
+        return vec
+
     f1 = ImageEncoder(
         image_type,
-        lambda img: torch.zeros(dim_image_encoded),
+        forward_impl,
         lambda vec: torch.zeros(tuple(reversed(dims_image))),
         dims_image,
         dim_image_encoded,
@@ -112,11 +124,16 @@ def create_encoding_rule_for_image_av_bundle(
 
 
 def test_encoding_rule_apply_to_edict(rgbd_image_bundle):  # noqa
-    pass
+    dim_image_encoded = 5
+
+    def forward_impl(img_tensor: torch.Tensor):
+        # whatever function as long as it's deterministic injective function
+        vec = img_tensor[0, 0, 0, :dim_image_encoded].float()
+        return vec
 
     f1 = ImageEncoder(
         RGBDImage,
-        lambda img: torch.zeros(5),
+        forward_impl,
         lambda vec: torch.zeros((4, 30, 30)),
         (30, 30, 4),
         5,
