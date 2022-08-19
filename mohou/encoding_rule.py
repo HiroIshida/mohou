@@ -2,7 +2,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 
@@ -15,235 +15,118 @@ from mohou.types import (
     EpisodeData,
     PrimitiveElementBase,
 )
-from mohou.utils import (
-    DataclassLightMixin,
-    abstract_attribute,
-    assert_equal_with_message,
-    get_bound_list,
-)
+from mohou.utils import assert_equal_with_message, get_bound_list
 
 logger = logging.getLogger(__name__)
 
 
-class LocalBalancer(ABC):
-    bound: slice = abstract_attribute()
-
-    @property
-    def dim(self) -> int:
-        return self.bound.stop - self.bound.start
-
+class ScaleBalancerBase(ABC):
     @abstractmethod
-    def apply(self, vec: np.ndarray) -> None:
+    def apply(self, vec: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def inverse_apply(self, vec: np.ndarray) -> None:
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
         pass
 
 
-class NullLocalBalancer(LocalBalancer, DataclassLightMixin):
-    bound: slice
+class IdenticalScaleBalancer(ScaleBalancerBase):
+    def apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
 
-    def apply(self, vec: np.ndarray) -> None:
-        pass
-
-    def inverse_apply(self, vec: np.ndarray) -> None:
-        pass
+    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        return vec
 
 
-class ActiveLocalBalancer(LocalBalancer, DataclassLightMixin):
-    bound: slice
-    mean: np.ndarray
-    cov: np.ndarray
-    scaled_primary_std: float
-
-    def apply(self, vec: np.ndarray) -> None:
-        vec[self.bound] = (vec[self.bound] - self.mean) / self.scaled_primary_std
-
-    def inverse_apply(self, vec: np.ndarray) -> None:
-        vec[self.bound] = (vec[self.bound] * self.scaled_primary_std) + self.mean
-
-
-@dataclass
-class CovarianceBalancer:
-    type_balancer_table: Dict[Type[ElementBase], LocalBalancer]
+@dataclass(frozen=True)
+class CovarianceBasedScaleBalancer(ScaleBalancerBase):
+    dims: List[int]
+    means: List[np.ndarray]
+    scaled_stds: List[float]
 
     def __post_init__(self):
-        self.check_bounds()
-
-    def check_bounds(self) -> None:
-        dims = [balancer.dim for balancer in self.type_balancer_table.values()]
-        bounds = [balancer.bound for balancer in self.type_balancer_table.values()]
-        assert bounds[0].start == 0
-        for i in range(len(bounds) - 1):
-            assert bounds[i].stop == bounds[i + 1].start
-        assert bounds[-1].stop == sum(dims)
-
-    def update(self):
-        dims = [balancer.dim for balancer in self.type_balancer_table.values()]
-
-        # update bounds
-        bounds_new = get_bound_list(dims)
-        for i, balancer in enumerate(self.type_balancer_table.values()):
-            balancer.bound = bounds_new[i]
-        self.check_bounds()
-
-        # update scaled_primary_std
-        active_balancers = [
-            b for b in self.type_balancer_table.values() if isinstance(b, ActiveLocalBalancer)
-        ]
-        covs = [b.cov for b in active_balancers]
-        sp_stds = self._compute_scaled_primary_stds(covs)
-        for sp_std, balancer in zip(sp_stds, active_balancers):
-            balancer.scaled_primary_std = sp_std
-
-    def delete(self, elem_type: Type[ElementBase]) -> None:
-        self.type_balancer_table.pop(elem_type)
-        self.update()
-
-    def mark_null(self, elem_type: Type[ElementBase]) -> None:
-        balancer = self.type_balancer_table[elem_type]
-        new_balancer = NullLocalBalancer(balancer.bound)
-        self.type_balancer_table[elem_type] = new_balancer
-        self.update()
+        for i, dim in enumerate(self.dims):
+            assert_equal_with_message(len(self.means), len(self.dims), "len")
+            assert_equal_with_message(len(self.scaled_stds), len(self.dims), "len")
+            assert_equal_with_message(self.means[i].shape, (dim,), "mean shape of {}".format(i))
 
     @staticmethod
-    def get_null_only_table(
-        type_dim_table: Dict[Type[ElementBase], int]
-    ) -> Dict[Type[ElementBase], LocalBalancer]:
-        type_balancer_table: Dict[Type[ElementBase], LocalBalancer] = {}
-        bounds = get_bound_list(list(type_dim_table.values()))
-        for key, bound in zip(type_dim_table.keys(), bounds):
-            type_balancer_table[key] = NullLocalBalancer(bound)
-        return type_balancer_table
-
-    @classmethod
-    def null(cls, type_dim_table: Dict[Type[ElementBase], int]) -> "CovarianceBalancer":
-        """create balancer which does nothing (pass through)"""
-        return cls(cls.get_null_only_table(type_dim_table))
-
-    @classmethod
-    def from_feature_seqs(
-        cls,
-        feature_seq: np.ndarray,
-        type_dim_table: Dict[Type[ElementBase], int],
-        type_active_table: Optional[Dict[Type[ElementBase], bool]] = None,
-    ) -> "CovarianceBalancer":
-        # NOTE: please note that we take advantage of dict's OrderedDict characteritic
-        # in this implementation
-
-        if type_active_table is None:
-            type_active_table = {}
-            for key in type_dim_table.keys():
-                type_active_table[key] = True
-
-        # initialize type_balancer_table will all NullLocalBalancer
-        # initialization here to preserve table key order
-        type_balancer_table = cls.get_null_only_table(type_dim_table)
-        bounds = get_bound_list(list(type_dim_table.values()))
-
-        # get active bounds
-        active_bounds = []
-        for i, key in enumerate(type_dim_table.keys()):
-            is_active = type_active_table[key]
-            if is_active:
-                active_bounds.append(bounds[i])
-
-        # create ActiveLocalBalancer for all active tye
-        means, covs = cls._compute_means_and_covs(feature_seq, active_bounds)
-        scaled_primary_stds = cls._compute_scaled_primary_stds(covs)
-        for key in type_balancer_table.keys():
-            is_active = type_active_table[key]
-            if is_active:
-                bound = active_bounds.pop(0)
-                mean = means.pop(0)
-                cov = covs.pop(0)
-                std = scaled_primary_stds.pop(0)
-                lb = ActiveLocalBalancer(bound, mean, cov, std)
-                type_balancer_table[key] = lb
-        assert len(means) == len(covs) == len(scaled_primary_stds) == len(active_bounds) == 0
-
-        return cls(type_balancer_table)
+    def get_bound_list(dims: List[int]) -> List[slice]:
+        bound_list = []
+        head = 0
+        for dim in dims:
+            bound_list.append(slice(head, head + dim))
+            head += dim
+        return bound_list
 
     @staticmethod
-    def _compute_means_and_covs(
-        feature_seq: np.ndarray, active_bounds: List[slice]
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        def is_binary_sequence(seq) -> bool:
-            return len(set(seq.flatten().tolist())) == 2
+    def is_binary_sequence(partial_feature_seq: np.ndarray):
+        return len(set(partial_feature_seq.flatten().tolist())) == 2
 
-        means: List[np.ndarray] = []
-        covs: List[np.ndarray] = []
-        for bound in active_bounds:
-            parital_seq = feature_seq[:, bound]
-            dim = parital_seq.shape[1]
-
-            if is_binary_sequence(parital_seq):
-                assert (
-                    dim == 1
-                ), "currently we assume binary seq is only 1dim"  # TODO(HiroIshida): remove
-                min_val, max_val = np.min(parital_seq), np.max(parital_seq)
+    @classmethod
+    def from_feature_seqs(cls, feature_seq: np.ndarray, dims: List[int]):
+        assert_equal_with_message(feature_seq.ndim, 2, "feature_seq.ndim")
+        means = []
+        max_stds = []
+        for rang in cls.get_bound_list(dims):
+            feature_seq_partial = feature_seq[:, rang]
+            dim = feature_seq_partial.shape[1]
+            if cls.is_binary_sequence(feature_seq_partial):
+                # because it's strange to compute covariance for binary sequence
+                assert dim == 1, "this restriction maybe removed"
+                minn = np.min(feature_seq_partial)
+                maxx = np.max(feature_seq_partial)
                 cov = np.diag(np.ones(dim))
-                mean = np.array([0.5 * (min_val + max_val)])
+                mean = np.array([0.5 * (minn + maxx)])
             else:
-                mean = np.mean(parital_seq, axis=0)
-                cov = np.cov(parital_seq.T)
+                mean = np.mean(feature_seq_partial, axis=0)
+                cov = np.cov(feature_seq_partial.T)
                 if cov.ndim == 0:  # unfortunately, np.cov return 0 dim array instead of 1x1
                     cov = np.expand_dims(cov, axis=0)
                     cov = np.array([[cov.item()]])
 
-            determinant = np.linalg.det(cov)
-            if determinant < 10 ** (-4 * dim):
-                # TODO: It is maybe better to assert by this condition. But, for testing purpose,
-                # this check is too strict sometimes...
-                message = "warn: cov {} has too small determinant {}. Probably some of the element is almost static.".format(
-                    cov, determinant
-                )
-                logger.warning(message)
-
-            means.append(mean)
-            covs.append(cov)
-        return means, covs
-
-    @staticmethod
-    def _compute_scaled_primary_stds(covs: List[np.ndarray]) -> List[float]:
-        primary_stds = []
-        for cov in covs:
             eig_values, _ = np.linalg.eig(cov)
-            max_eig = max(eig_values)
-            max_std = np.sqrt(max_eig)
+            max_std = np.sqrt(max(eig_values))
 
             # Note that np.cov(pts.T) outputs some non 0 value even if the input points
             # are all at a single point (degenerated). So, max_eig > 0.0 cannot check
             # the data degeneration. Thus...
-            assert max_eig > 1e-10
+            assert max_std > 1e-7
 
-            primary_stds.append(max_std)
-        scaled_primary_stds = [std / max(primary_stds) for std in primary_stds]
-        return scaled_primary_stds
+            means.append(mean)
+            max_stds.append(max_std)
+
+        scaled_stds = np.array(max_stds) / max(max_stds)
+        return cls(dims, means, scaled_stds)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        for lb in self.type_balancer_table.values():
-            lb.apply(vec_out)
+        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
+            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
+            vec_out[rangee] = vec_out_new
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+        assert_equal_with_message(vec.ndim, 1, "vector dim")
+        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
         vec_out = copy.deepcopy(vec)
-        for lb in self.type_balancer_table.values():
-            lb.inverse_apply(vec_out)
+        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
+            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
+            vec_out[rangee] = vec_out_new
         return vec_out
 
 
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
-    covariance_balancer: CovarianceBalancer
+    scale_balancer: ScaleBalancerBase
 
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
         for elem_type, encoder in self.items():
             vector = encoder.forward(elem_dict[elem_type])
             vector_list.append(vector)
-        return self.covariance_balancer.apply(np.hstack(vector_list))
+        return self.scale_balancer.apply(np.hstack(vector_list))
 
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
         def split_vector(vector: np.ndarray, size_list: List[int]):
@@ -255,7 +138,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
                 head = tail
             return vector_list
 
-        vector = self.covariance_balancer.inverse_apply(vector_processed)
+        vector = self.scale_balancer.inverse_apply(vector_processed)
         size_list = [encoder.output_size for elem_type, encoder in self.items()]
         vector_list = split_vector(vector, size_list)
 
@@ -271,7 +154,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
             return np.stack(vectors)
 
         vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
-        vector_seq_processed = np.array([self.covariance_balancer.apply(e) for e in vector_seq])
+        vector_seq_processed = np.array([self.scale_balancer.apply(e) for e in vector_seq])
         assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
         return vector_seq_processed
 
@@ -326,13 +209,14 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         for encoder in encoder_list:
             rule[encoder.elem_type] = encoder
 
-        type_dim_table = {t: rule[t].output_size for t in rule.keys()}
-        rule.covariance_balancer = CovarianceBalancer.null(type_dim_table)
+        dims = [encoder.output_size for encoder in rule.values()]
+        rule.scale_balancer = IdenticalScaleBalancer()  # tmp
 
         if bundle is not None:
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_episode_bundle(bundle)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
-            normalizer = CovarianceBalancer.from_feature_seqs(vector_seq_concated, type_dim_table)
-            rule.covariance_balancer = normalizer
+            rule.scale_balancer = CovarianceBasedScaleBalancer.from_feature_seqs(
+                vector_seq_concated, dims
+            )
         return rule

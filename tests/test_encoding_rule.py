@@ -1,4 +1,3 @@
-import copy
 from itertools import permutations
 from typing import Tuple
 
@@ -8,7 +7,7 @@ import torch
 from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import CovarianceBalancer, EncodingRule
+from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -22,17 +21,7 @@ from mohou.types import (
 )
 
 
-class Vector1(VectorBase):
-    pass
-
-
-class Vector2(VectorBase):
-    pass
-
-
-@pytest.fixture(scope="session")
-def sample_covariance_balancer():
-
+def test_covariance_based_balancer():
     dim1 = 2
     dim2 = 3
     bias = 10
@@ -42,59 +31,21 @@ def sample_covariance_balancer():
     b[:, 1] *= 2
     b[:, 2] *= 0.5
     c = np.concatenate([a, b], axis=1)
-    balancer = CovarianceBalancer.from_feature_seqs(c, {Vector1: dim1, Vector2: dim2})
-    return balancer
-
-
-def test_covariance_balancer_with_static_values():
-    a = np.random.randn(1000, 3)
-    a[:, 1] *= 0.0
-    a[:, 2] *= 0.0
-    with pytest.raises(AssertionError):
-        CovarianceBalancer.from_feature_seqs(a, {Vector1: 2, Vector2: 1})
-
-
-def test_covariance_balancer(sample_covariance_balancer):
-    balancer: CovarianceBalancer = sample_covariance_balancer
-
+    balancer = CovarianceBasedScaleBalancer.from_feature_seqs(c, [dim1, dim2])
     inp = np.random.randn(5)
     balanced = balancer.apply(inp)
     debalanced = balancer.inverse_apply(balanced)
     np.testing.assert_almost_equal(inp, debalanced, decimal=2)
-    sp_stds = [val.scaled_primary_std for val in balancer.type_balancer_table.values()]  # type: ignore
-    np.testing.assert_almost_equal(sp_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+    np.testing.assert_almost_equal(balancer.scaled_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
 
 
-def test_covariance_balancer_delete(sample_covariance_balancer):
-    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
-
-    std_vec1_original = balancer.type_balancer_table[Vector1].scaled_primary_std  # type: ignore
-    balancer.delete(Vector2)
-    std_vec1_after = balancer.type_balancer_table[Vector1].scaled_primary_std  # type: ignore
-    assert std_vec1_original < std_vec1_after
-
-    inp = np.random.randn(2)
-    balanced = balancer.apply(inp)
-    debalanced = balancer.inverse_apply(balanced)
-    np.testing.assert_almost_equal(inp, debalanced)
-
-
-def test_covariance_balancer_marknull(sample_covariance_balancer):
-    balancer: CovarianceBalancer = copy.deepcopy(sample_covariance_balancer)
-    balancer.mark_null(Vector1)
-
-    # test input output match
-    inp = np.random.randn(5)
-    balanced = balancer.apply(inp)
-    debalanced = balancer.inverse_apply(balanced)
-    np.testing.assert_almost_equal(inp, debalanced)
-
-    # test null part will not change
-    np.testing.assert_almost_equal(balanced[:2], inp[:2])
-
-    # and vice-versa
+def test_covariance_based_balancer_with_static_values():
+    a = np.random.randn(1000, 3)
+    a[:, 1] *= 0.0
+    a[:, 2] *= 0.0
     with pytest.raises(AssertionError):
-        np.testing.assert_almost_equal(balanced[3:], inp[3:])
+        CovarianceBasedScaleBalancer.from_feature_seqs(a, [2, 1])
 
 
 def create_encoding_rule_for_image_av_bundle(
