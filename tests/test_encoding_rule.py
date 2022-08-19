@@ -1,4 +1,6 @@
+import tempfile
 from itertools import permutations
+from pathlib import Path
 from typing import Tuple
 
 import numpy as np
@@ -25,7 +27,7 @@ def test_covariance_based_balancer():
     dim1 = 2
     dim2 = 3
     bias = 10
-    a = np.random.randn(100000, dim1) + np.ones(2) * bias
+    a = np.random.randn(100000, dim1) + np.ones(dim1) * bias
     b = np.random.randn(100000, dim2)
     b[:, 0] *= 3
     b[:, 1] *= 2
@@ -38,6 +40,20 @@ def test_covariance_based_balancer():
     np.testing.assert_almost_equal(inp, debalanced, decimal=2)
 
     np.testing.assert_almost_equal(balancer.scaled_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+
+def test_covariance_based_balancer_dump_and_load():
+    dim1 = 2
+    dim2 = 3
+    a = np.random.randn(100000, dim1) + np.ones(dim1)
+    b = np.random.randn(100000, dim2) * 10
+    c = np.concatenate([a, b], axis=1)
+    balancer = CovarianceBasedScaleBalancer.from_feature_seqs(c, [dim1, dim2])
+    with tempfile.TemporaryDirectory() as dname:
+        project_path = Path(dname)
+        balancer.dump(project_path)
+        loaded = CovarianceBasedScaleBalancer.load(project_path)
+    assert balancer == loaded
 
 
 def test_covariance_based_balancer_with_static_values():
