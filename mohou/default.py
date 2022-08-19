@@ -1,10 +1,11 @@
+import logging
 from pathlib import Path
 from typing import List, Optional, Type
 
 import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import EncodingRule
+from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.model import AutoEncoderBase
 from mohou.propagator import PropagatorBaseT
 from mohou.trainer import TrainCache
@@ -15,6 +16,8 @@ from mohou.types import (
     TerminateFlag,
     get_all_concrete_leaftypes,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DefaultNotFoundError(Exception):
@@ -75,7 +78,13 @@ def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
     encoders.append(tf_identical_func)
 
-    encoding_rule = EncodingRule.from_encoders(encoders, bundle)
+    p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)
+    if p.exists():  # use cached balacner
+        logger.warning("warn: loading cached CovarianceBasedScaleBalancer")
+        balancer = CovarianceBasedScaleBalancer.load(project_path)
+        encoding_rule = EncodingRule.from_encoders(encoders, bundle=None, scale_balancer=balancer)
+    else:
+        encoding_rule = EncodingRule.from_encoders(encoders, bundle=bundle, scale_balancer=None)
     return encoding_rule
 
 

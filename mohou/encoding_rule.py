@@ -251,16 +251,35 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
 
     @classmethod
     def from_encoders(
-        cls, encoder_list: List[EncoderBase], bundle: Optional[EpisodeBundle] = None
+        cls,
+        encoder_list: List[EncoderBase],
+        bundle: Optional[EpisodeBundle] = None,
+        scale_balancer: Optional[ScaleBalancerBase] = None,
     ) -> "EncodingRule":
+        """Create EncodingRule from encoder_list
+        Args:
+            encoder_list: list of encoder. Order of the list is important and preserved.
+            bundle: If set, ScaleBalancer will created using bundle
+            scale_balancer: use this scale balancer if set.
+
+        bundle != None and scale_balancer != None is never accepted
+        """
+        # NOTE: currently we can load cached balancer. But loading cached entire encoder is,
+        # of course the future direction. However, the difficulty mainly lies in the serializing
+        # ImageEncoder which contains lambda functions.
+
         rule: EncodingRule = cls()
         for encoder in encoder_list:
             rule[encoder.elem_type] = encoder
 
         dims = [encoder.output_size for encoder in rule.values()]
-        rule.scale_balancer = IdenticalScaleBalancer()  # tmp
+
+        if scale_balancer is not None:
+            assert not bundle
+            rule.scale_balancer = scale_balancer
 
         if bundle is not None:
+            assert not scale_balancer
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_episode_bundle(bundle)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
