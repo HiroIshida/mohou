@@ -1,7 +1,9 @@
 import copy
+import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Type
 
 import numpy as np
@@ -43,6 +45,52 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
     dims: List[int]
     means: List[np.ndarray]
     scaled_stds: List[float]
+
+    def __eq__(self, other: object) -> bool:
+        keys = self.__dataclass_fields__.keys()  # type: ignore # mypy's bag
+        assert set(keys) == {"dims", "means", "scaled_stds"}
+
+        if not isinstance(other, CovarianceBasedScaleBalancer):
+            return NotImplemented
+        assert type(self) == type(other)
+
+        if self.dims != other.dims:
+            return False
+        if not np.allclose(np.hstack(self.means), np.hstack(other.means), atol=1e-6):
+            return False
+        if self.scaled_stds != other.scaled_stds:
+            return False
+
+        return True
+
+    @classmethod
+    def get_json_file_path(cls, project_path: Path, create_dir: bool = False) -> Path:
+        logger.warning("this is experimental feature")
+        save_dir_path = project_path / "experimental"
+        if create_dir:
+            save_dir_path.mkdir(exist_ok=True)
+        json_file_path = save_dir_path / "CovarianceBasedScaleBalancer.json"
+        return json_file_path
+
+    def dump(self, project_path: Path):
+        json_file_path = self.get_json_file_path(project_path, create_dir=True)
+        dic = {
+            "dims": self.dims,
+            "means": [mean.tolist() for mean in self.means],
+            "scaled_stds": self.scaled_stds,
+        }
+        with json_file_path.open(mode="w") as f:
+            json.dump(dic, f)
+
+    @classmethod
+    def load(cls, project_path: Path) -> "CovarianceBasedScaleBalancer":
+        json_file_path = cls.get_json_file_path(project_path)
+        assert json_file_path.exists()
+        with json_file_path.open(mode="r") as f:
+            kwargs = json.load(f)
+        means = kwargs["means"]
+        kwargs["means"] = [np.array(mean) for mean in means]
+        return cls(**kwargs)
 
     def __post_init__(self):
         for i, dim in enumerate(self.dims):
@@ -96,7 +144,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
             means.append(mean)
             max_stds.append(max_std)
 
-        scaled_stds = np.array(max_stds) / max(max_stds)
+        scaled_stds = list(np.array(max_stds) / max(max_stds))
         return cls(dims, means, scaled_stds)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
