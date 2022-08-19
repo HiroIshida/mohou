@@ -271,8 +271,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         rule: EncodingRule = cls()
         for encoder in encoder_list:
             rule[encoder.elem_type] = encoder
-
-        dims = [encoder.output_size for encoder in rule.values()]
+        rule.scale_balancer = IdenticalScaleBalancer()  # tmp
 
         if scale_balancer is not None:
             assert not bundle
@@ -280,6 +279,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
 
         if bundle is not None:
             assert not scale_balancer
+            dims = [encoder.output_size for encoder in rule.values()]
             # compute normalizer and set to encoder
             vector_seqs = rule.apply_to_episode_bundle(bundle)
             vector_seq_concated = np.concatenate(vector_seqs, axis=0)
