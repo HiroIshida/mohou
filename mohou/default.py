@@ -5,14 +5,13 @@ import numpy as np
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
-from mohou.model import AutoEncoderBase, Chimera
-from mohou.propagator import Propagator, PropagatorBaseT
+from mohou.model import AutoEncoderBase
+from mohou.propagator import PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
     EpisodeBundle,
     GripperState,
-    ImageBase,
     TerminateFlag,
     get_all_concrete_leaftypes,
 )
@@ -80,22 +79,6 @@ def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     return encoding_rule
 
 
-def create_chimera_encoding_rule(project_path: Path) -> EncodingRule:
-    # experimental
-    encoding_rule = create_default_encoding_rule(project_path)
-    image_type = [k for k in encoding_rule.keys() if issubclass(k, ImageBase)].pop()
-    chimera = TrainCache.load(project_path, Chimera).best_model
-    image_encoder_new = chimera.get_encoder()
-    assert encoding_rule[image_type].input_shape == image_encoder_new.input_shape
-    assert encoding_rule[image_type].output_size == image_encoder_new.output_size
-
-    # TODO: probably we should create a method grouning the following two
-    encoding_rule[image_type] = image_encoder_new
-    encoding_rule.covariance_balancer.mark_null(image_type)
-
-    return encoding_rule
-
-
 def create_default_propagator(
     project_path: Path, prop_type: Type[PropagatorBaseT]
 ) -> PropagatorBaseT:
@@ -107,13 +90,6 @@ def create_default_propagator(
 
     encoding_rule = create_default_encoding_rule(project_path)
     propagator = prop_type(tcach_lstm.best_model, encoding_rule)
-    return propagator
-
-
-def create_chimera_propagator(project_path: Path) -> Propagator:
-    encoding_rule = create_chimera_encoding_rule(project_path)
-    chimera = TrainCache.load(project_path, Chimera).best_model
-    propagator = Propagator(chimera.lstm, encoding_rule)
     return propagator
 
 

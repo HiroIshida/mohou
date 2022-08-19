@@ -33,7 +33,6 @@ from mohou.model import (
     LSTMConfig,
     PBLSTMConfig,
 )
-from mohou.model.chimera import Chimera, ChimeraConfig, ChimeraDataset
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
@@ -139,25 +138,6 @@ def train_lstm(
         model = model_type(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore
         train(project_path, tcache, dataset, config=train_config)
-
-
-def train_chimera(
-    project_path: Path,
-    encoding_rule: EncodingRule,
-    lstm_config: LSTMConfig,
-    train_config: TrainConfig,
-    bundle: Optional[EpisodeBundle] = None,
-):  # TODO(HiroIshida): minimal args
-
-    if bundle is None:
-        bundle = EpisodeBundle.load(project_path)
-
-    dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
-    ae = TrainCache.load(project_path, AutoEncoder).best_model
-    conf = ChimeraConfig(lstm_config, ae_config=ae)
-    model = Chimera(conf)  # type: ignore[var-annotated]
-    tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
-    train(project_path, tcache, dataset, train_config)
 
 
 def visualize_train_histories(project_path: Path):
