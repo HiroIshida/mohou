@@ -24,7 +24,7 @@ install_requires = [
 
 setup(
     name="mohou",
-    version="0.3.13",
+    version="0.3.14",
     description="Visuomotor imitation learning framework",
     author="Hirokazu Ishida",
     author_email="h-ishida@jsk.imi.i.u-tokyo.ac.jp",
