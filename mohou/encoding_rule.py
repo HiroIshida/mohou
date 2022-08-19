@@ -193,11 +193,13 @@ class CovarianceBalancer:
                     cov = np.array([[cov.item()]])
 
             determinant = np.linalg.det(cov)
-            assert determinant > 0.0, "cov {} has invalid determinant {}".format(cov, determinant)
             if determinant < 10 ** (-4 * dim):
                 # TODO: It is maybe better to assert by this condition. But, for testing purpose,
                 # this check is too strict sometimes...
-                logger.warning("cov {} has too small determinant {}".format(cov, determinant))
+                message = "warn: cov {} has too small determinant {}. Probably some of the element is almost static.".format(
+                    cov, determinant
+                )
+                logger.warning(message)
 
             means.append(mean)
             covs.append(cov)
@@ -209,6 +211,7 @@ class CovarianceBalancer:
         for cov in covs:
             eig_values, _ = np.linalg.eig(cov)
             max_eig = max(eig_values)
+            assert max_eig > 0.0
             primary_stds.append(np.sqrt(max_eig))
         scaled_primary_stds = [std / max(primary_stds) for std in primary_stds]
         return scaled_primary_stds
