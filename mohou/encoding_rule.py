@@ -238,14 +238,6 @@ class CovarianceBalancer:
 class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
     covariance_balancer: CovarianceBalancer
 
-    def pop(self, *args):
-        # As we have delete function, it is bit confusing
-        raise NotImplementedError  # delete this method if Dict
-
-    def delete(self, elem_type: Type[ElementBase]):
-        super().pop(elem_type)
-        self.covariance_balancer.delete(elem_type)
-
     def apply(self, elem_dict: ElementDict) -> np.ndarray:
         vector_list = []
         for elem_type, encoder in self.items():
