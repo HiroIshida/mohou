@@ -50,7 +50,8 @@ def test_covariance_balancer_with_static_values():
     a = np.random.randn(1000, 3)
     a[:, 1] *= 0.0
     a[:, 2] *= 0.0
-    CovarianceBalancer.from_feature_seqs(a, {Vector1: 2, Vector2: 1})
+    with pytest.raises(AssertionError):
+        CovarianceBalancer.from_feature_seqs(a, {Vector1: 2, Vector2: 1})
 
 
 def test_covariance_balancer(sample_covariance_balancer):
