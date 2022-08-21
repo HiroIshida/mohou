@@ -4,7 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, TypeVar
 
 import numpy as np
 
@@ -22,7 +22,24 @@ from mohou.utils import assert_equal_with_message, get_bound_list
 logger = logging.getLogger(__name__)
 
 
+ScaleBalancerT = TypeVar("ScaleBalancerT", bound="ScaleBalancerBase")
+
+
 class ScaleBalancerBase(ABC):
+    @classmethod
+    def get_json_file_path(cls, project_path: Path, create_dir: bool = False) -> Path:
+        """get the json file path that will be used for dumping and loading
+        Note that dumping / loading the scale balancer is still an experimental feature.
+        """
+
+        logger.warning("this is experimental feature")
+        save_dir_path = project_path / "experimental"
+        if create_dir:
+            save_dir_path.mkdir(exist_ok=True)
+        file_name = cls.__name__ + ".json"
+        json_file_path = save_dir_path / file_name
+        return json_file_path
+
     @abstractmethod
     def apply(self, vec: np.ndarray) -> np.ndarray:
         pass
@@ -31,13 +48,43 @@ class ScaleBalancerBase(ABC):
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
         pass
 
+    @abstractmethod
+    def dump(self, project_path: Path) -> None:
+        pass
 
+    @classmethod
+    @abstractmethod
+    def load(cls: Type[ScaleBalancerT], project_path: Path) -> ScaleBalancerT:
+        pass
+
+
+@dataclass(frozen=True)
 class IdenticalScaleBalancer(ScaleBalancerBase):
     def apply(self, vec: np.ndarray) -> np.ndarray:
         return vec
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
         return vec
+
+    def dump(self, project_path: Path) -> None:
+        json_file_path = self.get_json_file_path(project_path, create_dir=True)
+        with json_file_path.open(mode="w") as f:
+            json.dump({}, f)
+
+    @classmethod
+    def load(cls, project_path: Path) -> "IdenticalScaleBalancer":
+        json_file_path = cls.get_json_file_path(project_path)
+        assert json_file_path.exists()
+        with json_file_path.open(mode="r") as f:
+            kwargs = json.load(f)
+        # because actually this class does not have any members
+        assert len(kwargs) == 0
+        return cls()
+
+    def __eq__(self, other: object) -> bool:
+        keys = self.__dataclass_fields__.keys()  # type: ignore # mypy's bag
+        assert set(keys) == set()
+        return isinstance(other, IdenticalScaleBalancer)
 
 
 @dataclass(frozen=True)
@@ -62,15 +109,6 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
             return False
 
         return True
-
-    @classmethod
-    def get_json_file_path(cls, project_path: Path, create_dir: bool = False) -> Path:
-        logger.warning("this is experimental feature")
-        save_dir_path = project_path / "experimental"
-        if create_dir:
-            save_dir_path.mkdir(exist_ok=True)
-        json_file_path = save_dir_path / "CovarianceBasedScaleBalancer.json"
-        return json_file_path
 
     def dump(self, project_path: Path):
         json_file_path = self.get_json_file_path(project_path, create_dir=True)
