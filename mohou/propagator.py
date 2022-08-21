@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
@@ -11,12 +12,29 @@ from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
 
 
+@dataclass
+class TerminateChecker:
+    n_check_flag: int = 3
+    terminate_threshold: float = 0.95
+
+    def __call__(self, flags_predicted: List[TerminateFlag]) -> bool:
+        # checking only latest terminate flags is not sufficient because
+        # sometimes terminate flag value experiences sudden surge to 1 and
+        # immediently goes back 0.
+        if len(flags_predicted) < self.n_check_flag:
+            return False
+
+        flag_arr = np.array([flag.numpy().item() for flag in flags_predicted])
+        return np.all(flag_arr > self.terminate_threshold).item()
+
+
 class PropagatorBase(ABC, Generic[LSTMBaseT]):
     lstm_model: LSTMBaseT
     encoding_rule: EncodingRule
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
+    predicted_terminated_flags: List[TerminateFlag]
     static_context: Optional[np.ndarray] = None
     prop_hidden: bool = False
     _hidden: Optional[torch.Tensor] = None  # hidden state of lstm
@@ -35,11 +53,16 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         self.prop_hidden = prop_hidden
 
         self.is_initialized = False
+        self.predicted_terminated_flags = []
 
         require_static_context = lstm.config.n_static_context > 0
 
         if not require_static_context:  # auto set
             self.static_context = np.empty((0,))
+
+    def is_terminated(self) -> bool:
+        checker = TerminateChecker()
+        return checker(self.predicted_terminated_flags)
 
     def clear_fed_data(self) -> None:
         self.fed_state_list = []
@@ -70,11 +93,16 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         self.fed_state_list.append(state_with_flag)
 
     def predict(self, n_prop: int) -> List[ElementDict]:
+        # prediction
         pred_state_list = self._predict(n_prop)
         elem_dict_list = []
         for pred_state in pred_state_list:
             elem_dict = self.encoding_rule.inverse_apply(pred_state)
             elem_dict_list.append(elem_dict)
+
+        # update predicted_terminated_flags
+        self.predicted_terminated_flags.append(elem_dict_list[0][TerminateFlag])
+
         return elem_dict_list
 
     def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
