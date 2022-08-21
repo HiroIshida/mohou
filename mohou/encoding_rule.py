@@ -31,8 +31,6 @@ class ScaleBalancerBase(ABC):
         """get the json file path that will be used for dumping and loading
         Note that dumping / loading the scale balancer is still an experimental feature.
         """
-
-        logger.warning("this is experimental feature")
         save_dir_path = project_path / "experimental"
         if create_dir:
             save_dir_path.mkdir(exist_ok=True)
@@ -73,6 +71,7 @@ class IdenticalScaleBalancer(ScaleBalancerBase):
 
     @classmethod
     def load(cls, project_path: Path) -> "IdenticalScaleBalancer":
+        logger.warning("NOTE: This feature may be dropped without any notification")
         json_file_path = cls.get_json_file_path(project_path)
         assert json_file_path.exists()
         with json_file_path.open(mode="r") as f:
@@ -122,6 +121,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
 
     @classmethod
     def load(cls, project_path: Path) -> "CovarianceBasedScaleBalancer":
+        logger.warning("NOTE: This feature may be dropped without any notification")
         json_file_path = cls.get_json_file_path(project_path)
         assert json_file_path.exists()
         with json_file_path.open(mode="r") as f:
