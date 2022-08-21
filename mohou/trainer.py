@@ -223,7 +223,14 @@ class TrainCache(Generic[ModelT]):
         ps = cls.filter_result_paths(project_path, model_type, **kwargs)
         tcache_list = [cls.load_from_base_path(p) for p in ps]
         if len(tcache_list) == 0:
-            raise FileNotFoundError
+            if model_type is None:
+                model_name = "<not-specified>"
+            else:
+                model_name = model_type.__name__
+            message = "[query] model_name => {}, kwargs => {}, project_path => {}".format(
+                model_name, kwargs, project_path
+            )
+            raise FileNotFoundError(message)
 
         return tcache_list
 
