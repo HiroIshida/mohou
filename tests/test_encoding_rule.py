@@ -9,7 +9,11 @@ import torch
 from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
+from mohou.encoding_rule import (
+    CovarianceBasedScaleBalancer,
+    EncodingRule,
+    IdenticalScaleBalancer,
+)
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -21,6 +25,24 @@ from mohou.types import (
     TerminateFlag,
     VectorBase,
 )
+
+
+def test_identical_balancer():
+    balancer = IdenticalScaleBalancer()
+
+    for _ in range(10):
+        vec = np.random.randn(5)
+        vec_applied = balancer.apply(vec)
+        np.testing.assert_equal(vec, vec_applied)
+
+        vec_again = balancer.inverse_apply(vec_applied)
+        np.testing.assert_equal(vec_again, vec)
+
+    with tempfile.TemporaryDirectory() as dname:
+        project_path = Path(dname)
+        balancer.dump(project_path)
+        loaded = IdenticalScaleBalancer.load(project_path)
+    assert balancer == loaded
 
 
 def test_covariance_based_balancer():
