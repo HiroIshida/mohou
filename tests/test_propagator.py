@@ -9,3 +9,4 @@ def test_terminate_checker():
     assert not is_termianted([TerminateFlag.from_bool(b) for b in [True, True]])
     assert not is_termianted([TerminateFlag.from_bool(b) for b in [False, False, False]])
     assert is_termianted([TerminateFlag.from_bool(b) for b in [True, True, True]])
+    assert is_termianted([TerminateFlag.from_bool(b) for b in [False, True, True, True]])

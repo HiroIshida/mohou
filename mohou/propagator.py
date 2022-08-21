@@ -25,7 +25,7 @@ class TerminateChecker:
             return False
 
         flag_arr = np.array([flag.numpy().item() for flag in flags_predicted])
-        return np.all(flag_arr > self.terminate_threshold).item()
+        return np.all(flag_arr[-self.n_check_flag :] > self.terminate_threshold).item()
 
 
 class PropagatorBase(ABC, Generic[LSTMBaseT]):
