@@ -36,8 +36,10 @@ def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
             TrainCache.load(project_path, t_cand)
             t = t_cand
             detect_count += 1
-        except Exception:
+        except FileNotFoundError:
             pass
+        except Exception as e:
+            raise e
 
     if detect_count == 0:
         raise DefaultNotFoundError("no autoencoder found")
