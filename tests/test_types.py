@@ -450,7 +450,7 @@ def test_bundle_spec():
         project_path = Path(td)
 
         types = {RGBImage: (100, 100, 3), AngleVector: (7,)}
-        extra_info = {"hz": 20, "author": "HiroIshida"}
+        extra_info = MetaData({"hz": 20, "author": "HiroIshida"})
         spec = BundleSpec(10, 5, 10, types, meta_data=extra_info)  # type: ignore [arg-type]
         spec_reconstructed = BundleSpec.from_dict(spec.to_dict())
         assert pickle.dumps(spec) == pickle.dumps(spec_reconstructed)
