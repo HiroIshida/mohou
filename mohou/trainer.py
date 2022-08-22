@@ -112,15 +112,6 @@ class TrainCache(Generic[ModelT]):
                     return is_config_consistent(path)
 
         base_path = cls.train_result_base_path(project_path)
-        if not base_path.exists():
-            base_path = project_path / "train_result"
-
-            yellow = "\x1b[33;20m"
-            warn_msg = yellow
-            warn_msg += "please rename path/to/project/train_result to path/to/project/models."
-            warn_msg += "\n Otherwise, your model could not be loaded in the future release\33[0m"
-            warnings.warn(warn_msg, DeprecationWarning)
-
         ps = filter(filter_predicate, base_path.iterdir())
         return list(ps)
 
