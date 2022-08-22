@@ -197,7 +197,7 @@ class TrainCache(Generic[ModelT]):
         assert m is not None
         file_uuid = m[3]
 
-        best_model: ModelT = torch.load(model_path)
+        best_model: ModelT = torch.load(model_path, map_location=torch.device("cpu"))
         best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
