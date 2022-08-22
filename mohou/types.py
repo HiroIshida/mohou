@@ -895,6 +895,9 @@ class BundleSpec(HasTypeShapeTable):
     def to_dict(self) -> Dict:
         d = asdict(self)
         d["type_shape_table"] = {k.__name__: list(v) for k, v in d["type_shape_table"].items()}
+
+        meta_data_dict = {k: v for (k, v) in self.meta_data.items()}
+        d["meta_data"] = meta_data_dict
         return d
 
     @classmethod
@@ -902,6 +905,7 @@ class BundleSpec(HasTypeShapeTable):
         d["type_shape_table"] = {
             get_element_type(k): tuple(v) for k, v in d["type_shape_table"].items()
         }
+        d["meta_data"] = MetaData(d["meta_data"])
         return cls(**d)
 
     @classmethod
