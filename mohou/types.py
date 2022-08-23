@@ -1109,17 +1109,19 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
                 json.dump(self.metadata, f)
 
             tarfile = bundle_file_without_ext + ".tar"
-            tarfile_full = project_path / tarfile
-            if tarfile_full.exists():
+            tarfile_path = project_path / tarfile
+            if tarfile_path.exists():
                 if exist_ok:
-                    os.remove(tarfile_full)
+                    os.remove(tarfile_path)
                 else:
                     raise FileExistsError(
-                        "Bundle file already exists. remove the file or use exist_ok=True."
+                        "Bundle file {} already exists. remove this file or set exist_ok=True.".format(
+                            tarfile_path
+                        )
                     )
 
             # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
-            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_full)
+            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_path)
             subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)
