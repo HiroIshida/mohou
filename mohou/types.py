@@ -38,7 +38,7 @@ import PIL.Image
 import torch
 import torchvision
 import yaml
-from moviepy.editor import ImageSequenceClip, VideoFileClip
+from moviepy.editor import ImageSequenceClip
 
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.image_randomizer import (
@@ -536,8 +536,11 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
 
         if compress and self.elem_type == RGBImage:
             mp4_file_path = episode_dir_path / "sequence-{}.mp4".format(RGBImage.__name__)
-            clip = ImageSequenceClip([e.numpy() for e in self.elem_list], fps=20)  # type: ignore
-            clip.write_videofile(str(mp4_file_path), audio=False)
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+            writer = cv2.VideoWriter(str(mp4_file_path), fourcc, 20, tuple(self.elem_shape[:2]))  # type: ignore
+            for elem in self.elem_list:
+                writer.write(elem.numpy())  # type: ignore
+            writer.release()
         else:
             file_path = episode_dir_path / "sequence-{}.npy".format(self.elem_type.__name__)
             assert issubclass(self.elem_type, PrimitiveElementBase)
@@ -552,9 +555,16 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
         if elem_type == RGBImage:
             mp4_file_path = episode_dir_path / "sequence-{}.mp4".format(RGBImage.__name__)
             if mp4_file_path.exists():
-                clip = VideoFileClip(str(mp4_file_path))
-                rgb_list = [RGBImage(fr) for fr in clip.iter_frames()]
-                return ElementSequence[RGBImage](rgb_list)  # type: ignore [return-value]
+                cap = cv2.VideoCapture(str(mp4_file_path))  # type: ignore
+                rgb_seq = []
+                while True:
+                    ret, frame = cap.read()
+                    if ret:
+                        rgb_image = RGBImage(frame)
+                        rgb_seq.append(rgb_image)
+                    else:
+                        break
+                return ElementSequence[RGBImage](rgb_seq)  # type: ignore [return-value]
             # else, just load from npy file
 
         file_path = episode_dir_path / "sequence-{}.npy".format(elem_type.__name__)
