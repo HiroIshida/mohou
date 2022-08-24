@@ -38,6 +38,7 @@ import PIL.Image
 import torch
 import torchvision
 import yaml
+from moviepy.editor import ImageSequenceClip, VideoFileClip
 
 from mohou.constant import CONTINUE_FLAG_VALUE, TERMINATE_FLAG_VALUE
 from mohou.image_randomizer import (
@@ -531,16 +532,31 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     def append(self, *args, **kwargs):  # type: ignore
         raise NotImplementedError("deleted method")
 
-    def dump(self, episode_dir_path: pathlib.Path) -> None:
-        file_path = episode_dir_path / "sequence-{}.npy".format(self.elem_type.__name__)
-        assert issubclass(self.elem_type, PrimitiveElementBase)
-        seq = np.array([e.numpy() for e in self.elem_list])  # type: ignore
-        np.save(file_path, seq)
+    def dump(self, episode_dir_path: pathlib.Path, compress: bool = False) -> None:
+
+        if compress and self.elem_type == RGBImage:
+            mp4_file_path = episode_dir_path / "sequence-{}.mp4".format(RGBImage.__name__)
+            clip = ImageSequenceClip([e.numpy() for e in self.elem_list], fps=20)  # type: ignore
+            clip.write_videofile(str(mp4_file_path), audio=False)
+        else:
+            file_path = episode_dir_path / "sequence-{}.npy".format(self.elem_type.__name__)
+            assert issubclass(self.elem_type, PrimitiveElementBase)
+            seq = np.array([e.numpy() for e in self.elem_list])  # type: ignore
+            np.save(file_path, seq)
 
     @classmethod
     def load(
         cls, episode_dir_path: pathlib.Path, elem_type: Type[ElementT]
     ) -> "ElementSequence[ElementT]":
+
+        if elem_type == RGBImage:
+            mp4_file_path = episode_dir_path / "sequence-{}.mp4".format(RGBImage.__name__)
+            if mp4_file_path.exists():
+                clip = VideoFileClip(str(mp4_file_path))
+                elem_list = [RGBImage(fr) for fr in clip.iter_frames()]
+                return ElementSequence(elem_list)
+            # else, just load from npy file
+
         file_path = episode_dir_path / "sequence-{}.npy".format(elem_type.__name__)
         seq = np.load(file_path)
         elem_list = [elem_type(arr) for arr in seq]
@@ -550,7 +566,7 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     def load_all(cls, episode_dir_path: pathlib.Path) -> "Dict[Type[ElementBase], ElementSequence]":
         d = {}
         for p in episode_dir_path.iterdir():
-            result = re.match(r"sequence-(\w+).npy", p.name)
+            result = re.match(r"sequence-(\w+).(\w+)", p.name)
             if result is not None:
                 elem_type = get_element_type(result.group(1))
                 d[elem_type] = cls.load(episode_dir_path, elem_type)  # type: ignore
@@ -854,17 +870,16 @@ class EpisodeData(HasTypeShapeTable, Hashable):
             assert False, "Currently only RGB or RBGD is supported"
 
         seq = self.get_sequence_by_type(t)
-        from moviepy.editor import ImageSequenceClip
 
         clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
         clip.write_gif(str(file_path), fps=fps)
 
-    def dump(self, episode_dir_path: pathlib.Path) -> None:
+    def dump(self, episode_dir_path: pathlib.Path, compress: bool = False) -> None:
         episode_dir_path = episode_dir_path.expanduser()
         episode_dir_path.mkdir(exist_ok=True)
 
         for elem_type, seq in self.sequence_dict.items():
-            seq.dump(episode_dir_path)
+            seq.dump(episode_dir_path, compress=compress)
 
         if self.time_stamp_seq is not None:
             self.time_stamp_seq.dump(episode_dir_path)
@@ -1075,6 +1090,7 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
         project_path: Path,
         postfix: Optional[str] = None,
         exist_ok: bool = False,
+        compress: bool = False,
     ) -> None:
         """dump the bundle
 
@@ -1098,11 +1114,11 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
 
             for i, episode in enumerate(self._episode_list):
                 episode_dir_path = bundle_dir_path / "episode{}".format(i)
-                episode.dump(episode_dir_path)
+                episode.dump(episode_dir_path, compress=compress)
 
             for i, episode in enumerate(self._untouch_episode_list):
                 episode_dir_path = bundle_dir_path / "untouch_episode{}".format(i)
-                episode.dump(episode_dir_path)
+                episode.dump(episode_dir_path, compress=compress)
 
             metadata_file_path = bundle_dir_path / "metadata.json"
             with metadata_file_path.open(mode="w") as f:
