@@ -221,6 +221,19 @@ def test_element_sequence():
         assert elem_seq == elem_seq_again
 
 
+def test_elem_sequence_rgbimage_compressed_dump():
+    rgb_list = [RGBImage.dummy_from_shape((100, 100)) for _ in range(20)]
+    rgb_seq = ElementSequence(rgb_list)
+    with tempfile.TemporaryDirectory() as dname:
+        dpath = pathlib.Path(dname)
+        rgb_seq.dump(dpath, compress=True)
+        rgb_seq_again = ElementSequence.load(dpath, RGBImage)
+        assert len(rgb_seq) == len(rgb_seq_again)
+        assert len(rgb_seq.elem_shape) == len(rgb_seq_again.elem_shape)
+
+        assert rgb_seq != rgb_seq_again  # because compressed
+
+
 def test_episode_data():
     # creation
     image_seq = ElementSequence([RGBImage.dummy_from_shape((100, 100)) for _ in range(10)])
