@@ -844,7 +844,7 @@ class EpisodeData(HasTypeShapeTable, Hashable):
                 list(seq_dict.values()), timestamp_seq=time_seq, metadata=self.metadata
             )
 
-    def save_debug_gif(self, filename: str, fps: int = 20):
+    def save_debug_gif(self, file_path: Union[Path, str], fps: int = 20):
         t: Type[ImageBase]
         if RGBDImage in self.types():
             t = RGBDImage
@@ -857,7 +857,7 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         from moviepy.editor import ImageSequenceClip
 
         clip = ImageSequenceClip([e.to_rgb().numpy() for e in seq], fps=fps)
-        clip.write_gif(filename, fps=fps)
+        clip.write_gif(str(file_path), fps=fps)
 
     def dump(self, episode_dir_path: pathlib.Path) -> None:
         episode_dir_path = episode_dir_path.expanduser()
