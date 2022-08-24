@@ -41,5 +41,8 @@ jobs:
               if: ${{ matrix.python-version == 3.8}}
               run: mypy .
 
-            - name: Run pipeline
-              run: ./pipeline/test.sh
+            - name: Run integration test
+              run: ./pipeline/test/integration_test.sh
+
+            - name: Run regression test
+              run: ./pipeline/test/regression_test.py
