@@ -14,7 +14,6 @@ jobs:
         strategy:
           matrix:
             python-version: [3.6, 3.8]
-            os: [ubutu-18.04, ubuntu-20.04]
         steps:
             - name: Checkout Code
               uses: actions/checkout@v2
