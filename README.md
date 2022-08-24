@@ -134,7 +134,7 @@ The following figure show the type hierarchy. In the `mohou` framework, only the
 When you make a new PR, one need to check that the tests passed and formatting is correct.
 
 ### testing
-The test for `mohou` software is 3 steps: 1) static type check by mypy, 2) unit test by pytest and 3) integration test.
+The test for `mohou` software is 3 steps: 1) static type check by mypy, 2) unit test by pytest, 3) integration test and 4) regression test.
 To running these test, you need install `mypy` and `pytest` by
 ```
 pip3 install pytest mypy  # or use --user option 
@@ -143,7 +143,8 @@ Then, do the following
 ```bash
 mypy .
 pytest -v -s
-bash ./pipeline/test.sh
+./pipeline/test/integration_test.sh
+./pipeline/test/regression_test.py
 ```
 ### formatting
 `mohou` code follows [black](https://github.com/psf/black) standard style. Additionally, we use isort and flake8 to check if the code is following pep standard. Basically, what you have to do for formatting is running 
