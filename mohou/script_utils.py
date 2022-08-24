@@ -126,7 +126,7 @@ def train_lstm(
     dataset = AutoRegressiveDataset.from_bundle(
         bundle,
         encoding_rule,
-        augconfig=dataset_config,
+        dataset_config=dataset_config,
         static_context_list=context_list,
     )
 

@@ -136,6 +136,7 @@ class PaddingSequenceAligner:
 @dataclass
 class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
     n_dummy_after_termination: int = 20
+    window_size: Optional[int] = None  # if None, all dataset will be just used.
 
 
 @dataclass
@@ -170,14 +171,14 @@ class AutoRegressiveDataset(Dataset):
         cls,
         bundle: EpisodeBundle,
         encoding_rule: EncodingRule,
-        augconfig: Optional[AutoRegressiveDatasetConfig] = None,
+        dataset_config: Optional[AutoRegressiveDatasetConfig] = None,
         static_context_list: Optional[List[np.ndarray]] = None,
     ) -> "AutoRegressiveDataset":
 
         last_key_of_rule = list(encoding_rule.keys())[-1]
         assert last_key_of_rule == TerminateFlag
-        if augconfig is None:
-            augconfig = AutoRegressiveDatasetConfig()
+        if dataset_config is None:
+            dataset_config = AutoRegressiveDatasetConfig()
 
         state_seq_list = encoding_rule.apply_to_episode_bundle(bundle)
 
@@ -189,7 +190,7 @@ class AutoRegressiveDataset(Dataset):
         )
 
         # augmentation
-        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, augconfig)
+        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config)
 
         episode_indices_list_auged = []
         state_seq_list_auged = []
@@ -199,21 +200,49 @@ class AutoRegressiveDataset(Dataset):
             state_seq_list_auged.extend(seq_auged)
 
         static_context_list_auged = flatten_lists(
-            [[copy.deepcopy(c) for _ in range(augconfig.n_aug + 1)] for c in static_context_list]
+            [
+                [copy.deepcopy(c) for _ in range(dataset_config.n_aug + 1)]
+                for c in static_context_list
+            ]
         )  # +1 for original data
 
-        # make all sequence to the same length due to torch batch computation requirement
-        aligner = PaddingSequenceAligner.from_seqs(
-            state_seq_list_auged, augconfig.n_dummy_after_termination
-        )
-        state_seq_list_auged_adjusted = [aligner.apply(seq) for seq in state_seq_list_auged]
+        if dataset_config.window_size is None:
+            # make all sequence to the same length due to torch batch computation requirement
+            aligner = PaddingSequenceAligner.from_seqs(
+                state_seq_list_auged, dataset_config.n_dummy_after_termination
+            )
+            state_seq_list_auged_adjusted = [aligner.apply(seq) for seq in state_seq_list_auged]
 
-        return cls(
-            state_seq_list_auged_adjusted,
-            episode_indices_list_auged,
-            static_context_list_auged,
-            encoding_rule,
-        )
+            return cls(
+                state_seq_list_auged_adjusted,
+                episode_indices_list_auged,
+                static_context_list_auged,
+                encoding_rule,
+            )
+        else:
+            # split sequence by window size
+            window_state_seq_list = []
+            window_episode_indices_list = []
+            window_static_context_list = []
+
+            window_size = dataset_config.window_size
+
+            for seq_idx in range(len(state_seq_list_auged)):
+                state_seq = state_seq_list_auged[seq_idx]
+                episode_idx = episode_indices_list_auged[seq_idx]
+                context = static_context_list_auged[seq_idx]
+
+                n_window = len(state_seq) - window_size + 1
+                for window_idx in range(n_window):
+                    window_state_seq_list.append(state_seq[window_idx : window_idx + window_size])
+                    window_episode_indices_list.append(episode_idx)
+                    window_static_context_list.append(context)
+            return cls(
+                window_state_seq_list,
+                window_episode_indices_list,
+                window_static_context_list,
+                encoding_rule,
+            )
 
 
 @dataclass
