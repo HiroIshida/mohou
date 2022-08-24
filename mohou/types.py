@@ -553,8 +553,8 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
             mp4_file_path = episode_dir_path / "sequence-{}.mp4".format(RGBImage.__name__)
             if mp4_file_path.exists():
                 clip = VideoFileClip(str(mp4_file_path))
-                elem_list = [RGBImage(fr) for fr in clip.iter_frames()]
-                return ElementSequence(elem_list)
+                rgb_list = [RGBImage(fr) for fr in clip.iter_frames()]
+                return ElementSequence[RGBImage](rgb_list)  # type: ignore [return-value]
             # else, just load from npy file
 
         file_path = episode_dir_path / "sequence-{}.npy".format(elem_type.__name__)
