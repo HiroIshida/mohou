@@ -134,6 +134,37 @@ def test_auto_regressive_dataset(image_av_bundle_uneven):  # noqa
     assert dataset.episode_index_list == episode_index_list_ref
 
 
+def test_auto_regressive_dataset_with_window(image_av_bundle_uneven):  # noqa
+    bundle: EpisodeBundle = image_av_bundle_uneven
+    rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)
+
+    n_aug = 7
+    window_size = 5
+    config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=0.0, window_size=window_size)
+    dataset = AutoRegressiveDataset.from_bundle(bundle, rule, config)
+
+    # test dataset size
+    n_data_total = 0
+    for episode in bundle:
+        n_data_total += (len(episode) - window_size + 1) * (n_aug + 1)
+    assert len(dataset) == n_data_total
+
+    # test data content. check only first and last element
+    arr_list = rule.apply_to_episode_bundle(bundle)
+
+    idx, seq, _ = dataset[0]
+    assert idx == 0
+    np.testing.assert_almost_equal(seq.detach().numpy(), arr_list[0][:window_size])
+
+    idx, seq, _ = dataset[1]
+    assert idx == 0
+    np.testing.assert_almost_equal(seq.detach().numpy(), arr_list[0][1 : window_size + 1])
+
+    idx, seq, _ = dataset[-1]
+    assert idx == len(bundle) - 1
+    np.testing.assert_almost_equal(seq.detach().numpy(), arr_list[-1][-window_size:])
+
+
 def test_markov_control_system_dataset(image_av_bundle_uneven):  # noqa
     bundle: EpisodeBundle = image_av_bundle_uneven
     default_rule = create_encoding_rule_for_image_av_bundle(bundle, balance=False)

@@ -20,6 +20,11 @@ if __name__ == "__main__":
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
     parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
+    parser.add_argument(
+        "-window",
+        type=int,
+        help="window size of episode cutting. If None, episode will not be cut.",
+    )
     parser.add_argument("-layer", type=int, default=4, help="number of layers of lstm")
     parser.add_argument("-cov-scale", type=float, default=0.1, help="covariance scale in aug")
     parser.add_argument(
@@ -38,6 +43,7 @@ if __name__ == "__main__":
     n_aug: int = args.aug
     n_hidden: int = args.hidden
     n_layer: int = args.layer
+    window_size: Optional[int] = args.window
     cov_scale: float = args.cov_scale
     valid_ratio: float = args.valid_ratio
     warm_start: bool = args.warm
@@ -58,7 +64,9 @@ if __name__ == "__main__":
         type_wise_loss=args.type_wise_loss,
         type_bound_table=encoding_rule.type_bound_table,
     )
-    dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=cov_scale)
+    dataset_config = AutoRegressiveDatasetConfig(
+        n_aug=n_aug, cov_scale=cov_scale, window_size=window_size
+    )
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
 
     context_list = None
