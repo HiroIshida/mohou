@@ -35,8 +35,8 @@ def test_trained_model_replay(project_path: Path):
     prop = create_default_propagator(project_path, Propagator)
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     episode = bundle[0]
-    for edict in episode[:10]:
-        prop.feed(edict)
+    for i in range(10):
+        prop.feed(episode[i])
     prop.predict(5)
     print("model loading succeeded")
 
