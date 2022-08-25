@@ -57,7 +57,7 @@ def test_lstm_with_window(image_av_bundle):  # noqa
     )
 
     model: LSTM = LSTM(config)
-    for n_seq_len in [window_size]:
+    for n_seq_len in [5, window_size, 15]:
         sample = torch.randn((n_sample, n_seq_len, n_dim_with_flag))
         context_sample = torch.randn(n_sample, n_dim_static_context).float()
         out, _ = model.forward(sample, context_sample)

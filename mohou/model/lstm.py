@@ -20,7 +20,7 @@ class LSTMConfigBase(ModelConfigBase):
     n_hidden: int = 200
     n_layer: int = 4
     n_output_layer: int = 1
-    window_size: Optional[int] = (None,)
+    window_size: Optional[int] = None
     variational: bool = False
 
 
@@ -153,15 +153,16 @@ class LSTM(LSTMBase[LSTMConfig]):
         _, n_seqlen, _ = state_sample.shape
 
         if self.config.window_size is not None:
+            assert hidden is None, "not tested for this case"
+
+            n_seqlen = min(self.config.window_size, n_seqlen)
             message = (
                 "n_seqlen > self.config.window_size. truncate and use recent {} states".format(
-                    self.config.window_size
+                    n_seqlen
                 )
             )
             logger.warning(message)
-            print(message)
-            n_seqlen = self.config.window_size
-            state_sample = state_sample[:, -n_seqlen:, :]
+            state_sample = state_sample[:, -n_seqlen:]
 
         context_unsqueezed = context_sample.unsqueeze(dim=1)
         context_sequenced = context_unsqueezed.expand(-1, n_seqlen, -1)
