@@ -154,15 +154,14 @@ class LSTM(LSTMBase[LSTMConfig]):
 
         if self.config.window_size is not None:
             assert hidden is None, "not tested for this case"
-
-            n_seqlen = min(self.config.window_size, n_seqlen)
-            message = (
-                "n_seqlen > self.config.window_size. truncate and use recent {} states".format(
-                    n_seqlen
+            if n_seqlen > self.config.window_size:
+                n_seqlen_new = min(self.config.window_size, n_seqlen)
+                message = "warn: use only recent {} states of given {} states".format(
+                    n_seqlen_new, n_seqlen
                 )
-            )
-            logger.warning(message)
-            state_sample = state_sample[:, -n_seqlen:]
+                logger.warning(message)
+                state_sample = state_sample[:, -n_seqlen_new:]
+                n_seqlen = n_seqlen_new
 
         context_unsqueezed = context_sample.unsqueeze(dim=1)
         context_sequenced = context_unsqueezed.expand(-1, n_seqlen, -1)
