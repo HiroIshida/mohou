@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
@@ -9,6 +10,8 @@ from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.model.third_party import VariationalLSTM
 from mohou.types import ElementBase
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class LSTMConfigBase(ModelConfigBase):
@@ -17,6 +20,7 @@ class LSTMConfigBase(ModelConfigBase):
     n_hidden: int = 200
     n_layer: int = 4
     n_output_layer: int = 1
+    window_size: Optional[int] = (None,)
     variational: bool = False
 
 
@@ -147,6 +151,18 @@ class LSTM(LSTMBase[LSTMConfig]):
 
         # arrange bais_sample and create concat state_sample
         _, n_seqlen, _ = state_sample.shape
+
+        if self.config.window_size is not None:
+            message = (
+                "n_seqlen > self.config.window_size. truncate and use recent {} states".format(
+                    self.config.window_size
+                )
+            )
+            logger.warning(message)
+            print(message)
+            n_seqlen = self.config.window_size
+            state_sample = state_sample[:, -n_seqlen:, :]
+
         context_unsqueezed = context_sample.unsqueeze(dim=1)
         context_sequenced = context_unsqueezed.expand(-1, n_seqlen, -1)
         context_auged_state_sample = torch.cat((state_sample, context_sequenced), dim=2)

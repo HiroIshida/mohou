@@ -106,6 +106,8 @@ def train_lstm(
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
 ):
+    assert model_config.window_size == dataset_config.window_size
+
     # a dirty assertion TODO: do this by generic typing
     compat_table: Dict[Type[LSTMBase], Type[LSTMConfigBase]] = {
         LSTM: LSTMConfig,
