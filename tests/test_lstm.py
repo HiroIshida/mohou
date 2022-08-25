@@ -40,6 +40,30 @@ def test_lstm(image_av_bundle):  # noqa
     assert len(loss_dict_detailed.keys()) == len(rule.keys())
 
 
+def test_lstm_with_window(image_av_bundle):  # noqa
+
+    rule = create_encoding_rule_for_image_av_bundle(image_av_bundle)
+
+    n_sample = 10
+    n_dim_with_flag = rule.dimension
+    n_dim_static_context = 4
+    window_size = 10
+
+    config = LSTMConfig(
+        n_dim_with_flag,
+        n_static_context=n_dim_static_context,
+        type_bound_table=rule.type_bound_table,
+        window_size=window_size,
+    )
+
+    model: LSTM = LSTM(config)
+    for n_seq_len in [window_size]:
+        sample = torch.randn((n_sample, n_seq_len, n_dim_with_flag))
+        context_sample = torch.randn(n_sample, n_dim_static_context).float()
+        out, _ = model.forward(sample, context_sample)
+        assert tuple(out.shape) == (n_sample, min(n_seq_len, window_size), n_dim_with_flag)
+
+
 def test_pblstm(image_av_bundle):  # noqa
 
     rule = create_encoding_rule_for_image_av_bundle(image_av_bundle)
