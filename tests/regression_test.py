@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-import pickle
 import subprocess
-from hashlib import md5
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -16,9 +14,7 @@ from mohou.types import AngleVector, EpisodeBundle
 
 def test_episode_bundle_loading(project_path: Path):
     bundle = EpisodeBundle.load(project_path)
-    bundle_hash = md5(pickle.dumps(bundle)).hexdigest()
-    print(bundle_hash)
-    assert bundle_hash == "614ba6c2c1a07c9f5f96f1f1f25fbed4", "hash value of bundle does not match"
+
     # test bundle is ok (under construction)
     bundle.plot_vector_histories(AngleVector, project_path)
     # assert (project_path / "seq-AngleVector.png").exists()
