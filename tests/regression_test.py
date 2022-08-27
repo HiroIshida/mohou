@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
 import pickle
 from hashlib import md5
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import gdown
+import numpy as np
 
 from mohou.default import create_default_encoding_rule, create_default_propagator
 from mohou.model import LSTM, VariationalAutoEncoder
@@ -35,11 +35,12 @@ def test_encoding_rule(project_path: Path):
     encoding_rule = create_default_encoding_rule(project_path)
     bundle = EpisodeBundle.load(project_path)
     arr_list = encoding_rule.apply_to_episode_bundle(bundle)
-    arr_list_hash = md5(pickle.dumps(arr_list)).hexdigest()
-    print(arr_list_hash)
-    assert (
-        arr_list_hash == "8c0f71c150f2c3b5fbda03a3b0b7471a"
-    ), "hash value of encoded arr does not match"
+    sum_value = sum([np.sum(arr) for arr in arr_list])
+    print(sum_value)
+
+    # here we do not use md5sum because the encoded value may change slightly depneding
+    # on python version
+    assert abs(sum_value - (-9272.336187181541)) < 1e-4, "arr list sum does not match"
 
 
 def test_trained_model_replay(project_path: Path):
