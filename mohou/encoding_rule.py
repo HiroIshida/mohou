@@ -337,9 +337,10 @@ class CompositeEncodingRule:
     def inverse_apply(self, vector: np.ndarray) -> ElementDict:
         head = 0
         elems = []
-        for rule in rules:
+        for rule in self.rules:
             tail = head + rule.dimension
             edict = rule.inverse_apply(vector[head:tail])
             elems.extend(list(edict.values()))
+            head = tail
         edict_merged = ElementDict(elems)
         return edict_merged
