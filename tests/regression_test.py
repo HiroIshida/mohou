@@ -57,9 +57,6 @@ def test_trained_model_replay(project_path: Path):
 
 
 if __name__ == "__main__":
-    # The bunld data comes from https://drive.google.com/drive/folders/1k09pmqxyU5vnEnfaSzTkk-ZL-N8XuoH6
-    # The model data comes from pybullet_reaching_RGB demo at v0.3.10
-    # https://drive.google.com/drive/u/0/folders/1RQU76D5YpKuQ81AZfPMU1YlgIdNrliyt
 
     with TemporaryDirectory() as td:
         subprocess.run(
