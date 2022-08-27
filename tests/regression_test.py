@@ -18,11 +18,10 @@ def test_episode_bundle_loading(project_path: Path):
     bundle = EpisodeBundle.load(project_path)
     bundle_hash = md5(pickle.dumps(bundle)).hexdigest()
     print(bundle_hash)
-    assert bundle_hash == "e2fdc191d7c8ac6acc40f8cad7241222", "hash value of bundle does not match"
-
+    assert bundle_hash == "614ba6c2c1a07c9f5f96f1f1f25fbed4", "hash value of bundle does not match"
     # test bundle is ok (under construction)
     bundle.plot_vector_histories(AngleVector, project_path)
-    assert (project_path / "seq-AngleVector.png").exists()
+    # assert (project_path / "seq-AngleVector.png").exists()
 
     episode = bundle[0]
     gif_path = project_path / "hoge.gif"
@@ -37,10 +36,9 @@ def test_encoding_rule(project_path: Path):
     arr_list = encoding_rule.apply_to_episode_bundle(bundle)
     sum_value = sum([np.sum(arr) for arr in arr_list])
     print(sum_value)
-
     # here we do not use md5sum because the encoded value may change slightly depneding
     # on python version
-    assert abs(sum_value - (-9272.336187181541)) < 1e-4, "arr list sum does not match"
+    assert abs(sum_value - (-2799.7209571566077)) < 1e-4, "arr list sum does not match"
 
 
 def test_trained_model_replay(project_path: Path):
@@ -59,14 +57,15 @@ def test_trained_model_replay(project_path: Path):
 
 
 if __name__ == "__main__":
-    # The bundle data comes from pybullet_reaching_RGB demo at v0.3.10
+    # The bunld data comes from https://drive.google.com/drive/folders/1k09pmqxyU5vnEnfaSzTkk-ZL-N8XuoH6
+    # The model data comes from pybullet_reaching_RGB demo at v0.3.10
     # https://drive.google.com/drive/u/0/folders/1RQU76D5YpKuQ81AZfPMU1YlgIdNrliyt
 
     with TemporaryDirectory() as td:
         # download data
         pp = Path(td)
         pp.mkdir(exist_ok=True)
-        bundle_url = "https://drive.google.com/uc?id=1J05WWSeDEzpjx1Z5xbWDT2Dc9J0gng_h"
+        bundle_url = "https://drive.google.com/uc?id=1n514bPcFy63Vb5-W9rJ5SKdPh440289c"
         bundle_path = pp / "EpisodeBundle.tar"
         gdown.download(bundle_url, str(bundle_path), quiet=False)
 
