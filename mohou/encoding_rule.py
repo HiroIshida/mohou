@@ -234,15 +234,8 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
         return elem_dict
 
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
-        def encode_and_postprocess(elem_type, encoder) -> np.ndarray:
-            sequence = episode_data.get_sequence_by_type(elem_type)
-            vectors = [encoder.forward(e) for e in sequence]
-            return np.stack(vectors)
-
-        vector_seq = np.hstack([encode_and_postprocess(k, v) for k, v in self.items()])
-        vector_seq_processed = np.array([self.scale_balancer.apply(e) for e in vector_seq])
-        assert_equal_with_message(vector_seq_processed.ndim, 2, "vector_seq dim")
-        return vector_seq_processed
+        vec_list = [self.apply(episode_data[i]) for i in range(len(episode_data))]
+        return np.array(vec_list)
 
     def apply_to_episode_bundle(self, bundle: EpisodeBundle) -> List[np.ndarray]:
         def elem_types_to_primitive_elem_set(elem_type_list: List[Type[ElementBase]]):
