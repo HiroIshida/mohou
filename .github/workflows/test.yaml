@@ -34,14 +34,14 @@ jobs:
 
             - name: Run Pytest
               run: |
-                  pytest -v tests
+                  pytest -v tests/unittest/
 
             - name: Run mypy
               if: ${{ matrix.python-version == 3.8}}
               run: mypy .
 
             - name: Run integration test
-              run: ./pipeline/test/integration_test.sh
+              run: ./tests/integration_test.sh
 
             - name: Run regression test
-              run: ./pipeline/test/regression_test.py
+              run: ./tests/regression_test.py

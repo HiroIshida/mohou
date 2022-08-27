@@ -142,9 +142,9 @@ pip3 install pytest mypy  # or use --user option
 Then, do the following
 ```bash
 mypy .
-pytest -v -s
-./pipeline/test/integration_test.sh
-./pipeline/test/regression_test.py
+pytest -v -s tests/unittest/
+./tests/integration_test.sh
+./tests/regression_test.py
 ```
 ### formatting
 `mohou` code follows [black](https://github.com/psf/black) standard style. Additionally, we use isort and flake8 to check if the code is following pep standard. Basically, what you have to do for formatting is running 

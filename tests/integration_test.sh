@@ -2,7 +2,7 @@
 set -e
 
 base_path=$(dirname "$(realpath $0)")
-example_path=$base_path/../../example
+example_path=$base_path/../example
 
 function test_batch {
     local image_type=$1Image
