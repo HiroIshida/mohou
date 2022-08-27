@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import pickle
+import subprocess
 from hashlib import md5
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import gdown
 import numpy as np
 
 from mohou.default import create_default_encoding_rule, create_default_propagator
@@ -62,18 +62,13 @@ if __name__ == "__main__":
     # https://drive.google.com/drive/u/0/folders/1RQU76D5YpKuQ81AZfPMU1YlgIdNrliyt
 
     with TemporaryDirectory() as td:
-        # download data
-        pp = Path(td)
-        pp.mkdir(exist_ok=True)
-        bundle_url = "https://drive.google.com/uc?id=1n514bPcFy63Vb5-W9rJ5SKdPh440289c"
-        bundle_path = pp / "EpisodeBundle.tar"
-        gdown.download(bundle_url, str(bundle_path), quiet=False)
-
-        model_path = pp / "models"
-        model_url = "https://drive.google.com/drive/folders/1ns0xoggajMUjjMNyBd4_k9VDodquRFYi"
-        gdown.download_folder(model_url, output=str(model_path))
-
-        assert len(list(model_path.iterdir())) > 0, "likely that donwload failed"
+        subprocess.run(
+            "cd {} && git clone https://github.com/HiroIshida/mohou_data.git --depth 1".format(
+                Path(td)
+            ),
+            shell=True,
+        )
+        pp = Path(td) / "mohou_data" / "regression_test"
 
         # test main
         test_episode_bundle_loading(pp)
