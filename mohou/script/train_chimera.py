@@ -72,6 +72,6 @@ if __name__ == "__main__":
     lstm_dim = encoding_rule_except_image.dimension + image_encoder.output_size
 
     lstm_config = LSTMConfig(lstm_dim, n_hidden=n_hidden, n_layer=n_layer)
-    train_config = TrainConfig(n_epoch=n_epoch, batch_size=30, valid_data_ratio=valid_ratio)
+    train_config = TrainConfig(n_epoch=n_epoch, batch_size=5, valid_data_ratio=valid_ratio)
 
     train_chimera(project_path, encoding_rule_except_image, lstm_config, train_config, n_aug=n_aug)
