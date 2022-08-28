@@ -193,12 +193,20 @@ class TrainCache(Generic[ModelT]):
         valid_loss_path = base_path / "validation_loss.npz"
         train_loss_path = base_path / "train_loss.npz"
 
-        # legacy model file name (model_type)-(config_hash)-(uuid)
+        # [mohou < v0.4]
+        # (model_type)-(config_hash)-(uuid)
+        # example LSTM-924e4427-bd5653
         m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
         is_legacy_model_path_exist = m is not None
         if is_legacy_model_path_exist:
             file_uuid = m[3]
+            message = "NOTE: legacy model (probably created by mohou<0.4) ditected"
+            logger.warn(message)
         else:
+            # [mohou > v0.4.0]
+            # (model_type)-(uuid)
+            # example LSTM-bd5653
+            m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
             m = re.match(r"(\w+)-(\w+)", base_path.name)
             assert m is not None
             file_uuid = m[2]
