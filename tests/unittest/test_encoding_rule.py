@@ -221,3 +221,8 @@ def test_composite_encoding_rule(image_av_bundle: EpisodeBundle):  # noqa
     assert edict_again[AngleVector] == edict[AngleVector]
     assert edict_again[Dummy2] == edict[Dummy2]
     assert edict_again[TerminateFlag] == edict[TerminateFlag]
+
+    # check key is in order
+    keys = list(composite_rule.keys())
+    keys_ground_truth = [Dummy1] + list(image_av_rule.keys()) + [Dummy2]  # type: ignore
+    assert keys == keys_ground_truth

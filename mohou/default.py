@@ -5,10 +5,15 @@ from typing import List, Optional, Type
 
 import numpy as np
 
-from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
+from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
+from mohou.encoding_rule import (
+    CompositeEncodingRule,
+    CovarianceBasedScaleBalancer,
+    EncodingRule,
+)
 from mohou.model import AutoEncoderBase
-from mohou.propagator import PropagatorBaseT
+from mohou.model.chimera import Chimera
+from mohou.propagator import Propagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -64,14 +69,20 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 
 
 @lru_cache(maxsize=40)
-def create_default_encoding_rule(project_path: Path) -> EncodingRule:
+def create_default_encoding_rule(
+    project_path: Path,
+    include_image_encoder: bool = True,
+) -> EncodingRule:
+
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
     av_dim = bundle_spec.type_shape_table[AngleVector][0]
-    image_encoder = load_default_image_encoder(project_path)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
+    encoders: List[EncoderBase] = [av_idendical_encoder]
 
-    encoders = [image_encoder, av_idendical_encoder]
+    if include_image_encoder:
+        image_encoder = load_default_image_encoder(project_path)
+        encoders.append(image_encoder)
 
     if GripperState in bundle_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(
@@ -103,6 +114,24 @@ def create_default_propagator(
 
     encoding_rule = create_default_encoding_rule(project_path)
     propagator = prop_type(tcach_lstm.best_model, encoding_rule)
+    return propagator
+
+
+def create_default_chimera_propagator(project_path: Path):
+    # TODO: move to inside of create_default_propagator
+
+    logger.warning("warn: this feature is quite experimental. maybe deleted without notfication")
+    image_encoder = load_default_image_encoder(project_path)
+
+    tcache_chimera = TrainCache.load(project_path, Chimera)
+    chimera_model = tcache_chimera.best_model
+
+    image_encoder = chimera_model.ae.get_encoder()
+    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
+    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=False)
+
+    rule = CompositeEncodingRule([image_encoding_rule, other_encoding_Rule])
+    propagator = Propagator(chimera_model.lstm, rule)
     return propagator
 
 

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.encoding_rule import EncodingRule
+from mohou.encoding_rule import EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
@@ -30,7 +30,7 @@ class TerminateChecker:
 
 class PropagatorBase(ABC, Generic[LSTMBaseT]):
     lstm_model: LSTMBaseT
-    encoding_rule: EncodingRule
+    encoding_rule: EncodingRuleBase
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
@@ -42,7 +42,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
     def __init__(
         self,
         lstm: LSTMBaseT,
-        encoding_rule: EncodingRule,
+        encoding_rule: EncodingRuleBase,
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
     ):

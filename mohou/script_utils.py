@@ -23,7 +23,7 @@ from mohou.dataset import (
     AutoRegressiveDatasetConfig,
 )
 from mohou.default import load_default_image_encoder
-from mohou.encoding_rule import EncodingRule
+from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import (
     LSTM,
     PBLSTM,
@@ -244,7 +244,7 @@ class VectorSequencePlotter:
     max_val_per_axis: List[float]
     is_finalized: bool = False
 
-    def __init__(self, encoding_rule: EncodingRule) -> None:
+    def __init__(self, encoding_rule: EncodingRuleBase) -> None:
 
         axis_index_table: Dict[Tuple[Type[ElementBase], int], int] = {}
         inverse_axis_index_table: List[Tuple[Type[ElementBase], int]] = []
