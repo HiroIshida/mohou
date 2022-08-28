@@ -953,6 +953,9 @@ class BundleSpec(HasTypeShapeTable):
             yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
 
 
+# If classmethod + lru_cache combination is easy, we should replace this by lru_cache
+# If you are unsatisfied by this, please make a PR using lru_cache
+# there is something like this https://gist.github.com/pavelpy/69f8cdad94aaf59abcf879bda66bfd1a
 _bundle_cache: Dict[Tuple[Path, Optional[str]], "EpisodeBundle"] = {}  # used EpisodeBundle.load
 
 

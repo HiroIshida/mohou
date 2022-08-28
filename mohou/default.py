@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Type
 
@@ -24,6 +25,7 @@ class DefaultNotFoundError(Exception):
     pass
 
 
+@lru_cache(maxsize=None)
 def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     # TODO(HiroIshida) dirty...
     t: Optional[Type[AutoEncoderBase]] = None
@@ -50,6 +52,7 @@ def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     return t
 
 
+@lru_cache(maxsize=40)
 def load_default_image_encoder(project_path: Path) -> ImageEncoder:
     ae_type = auto_detect_autoencoder_type(project_path)
     try:
@@ -62,6 +65,7 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
     return tcache_autoencoder.best_model.get_encoder()
 
 
+@lru_cache(maxsize=40)
 def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
@@ -90,6 +94,7 @@ def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     return encoding_rule
 
 
+@lru_cache(maxsize=40)
 def create_default_propagator(
     project_path: Path, prop_type: Type[PropagatorBaseT]
 ) -> PropagatorBaseT:
@@ -104,6 +109,7 @@ def create_default_propagator(
     return propagator
 
 
+@lru_cache(maxsize=40)
 def create_default_image_context_list(
     project_path: Path, bundle: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
