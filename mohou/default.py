@@ -25,7 +25,6 @@ class DefaultNotFoundError(Exception):
     pass
 
 
-@lru_cache(maxsize=None)
 def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     # TODO(HiroIshida) dirty...
     t: Optional[Type[AutoEncoderBase]] = None
@@ -52,7 +51,6 @@ def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     return t
 
 
-@lru_cache(maxsize=40)
 def load_default_image_encoder(project_path: Path) -> ImageEncoder:
     ae_type = auto_detect_autoencoder_type(project_path)
     try:
@@ -94,7 +92,6 @@ def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     return encoding_rule
 
 
-@lru_cache(maxsize=40)
 def create_default_propagator(
     project_path: Path, prop_type: Type[PropagatorBaseT]
 ) -> PropagatorBaseT:
@@ -109,7 +106,6 @@ def create_default_propagator(
     return propagator
 
 
-@lru_cache(maxsize=40)
 def create_default_image_context_list(
     project_path: Path, bundle: Optional[EpisodeBundle] = None
 ) -> List[np.ndarray]:
