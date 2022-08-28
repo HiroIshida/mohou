@@ -5,7 +5,7 @@ from typing import List, Optional, Type
 
 import numpy as np
 
-from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
+from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.model import AutoEncoderBase
 from mohou.propagator import PropagatorBaseT
@@ -77,7 +77,7 @@ def create_default_encoding_rule(
     bundle_spec = bundle.spec
     av_dim = bundle_spec.type_shape_table[AngleVector][0]
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
-    encoders = [av_idendical_encoder]
+    encoders: List[EncoderBase] = [av_idendical_encoder]
 
     if not for_chimera_training:
         # NOTE: we don't need image encoder for chimera training, because
