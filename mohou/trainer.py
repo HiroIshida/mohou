@@ -192,9 +192,16 @@ class TrainCache(Generic[ModelT]):
         model_path = base_path / "model.pth"
         valid_loss_path = base_path / "validation_loss.npz"
         train_loss_path = base_path / "train_loss.npz"
+
+        # legacy model file name (model_type)-(config_hash)-(uuid)
         m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
-        assert m is not None
-        file_uuid = m[3]
+        is_legacy_model_path_exist = m is not None
+        if is_legacy_model_path_exist:
+            file_uuid = m[3]
+        else:
+            m = re.match(r"(\w+)-(\w+)", base_path.name)
+            assert m is not None
+            file_uuid = m[2]
 
         best_model: ModelT = torch.load(model_path, map_location=torch.device("cpu"))
         best_model.put_on_device(torch.device("cpu"))
