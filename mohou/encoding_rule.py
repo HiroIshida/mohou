@@ -318,3 +318,29 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase]):
                 vector_seq_concated, dims
             )
         return rule
+
+
+@dataclass
+class CompositeEncodingRule:
+    rules: List[EncodingRule]
+
+    def __post_init__(self):
+        key_set_list = [set(rule.keys()) for rule in self.rules]
+        set_entire = set.union(*key_set_list)
+        no_intersection = len(set_entire) == sum([len(rule.keys()) for rule in self.rules])
+        assert no_intersection
+
+    def apply(self, edict: ElementDict) -> np.ndarray:
+        vec = np.hstack([rule.apply(edict) for rule in self.rules])
+        return vec
+
+    def inverse_apply(self, vector: np.ndarray) -> ElementDict:
+        head = 0
+        elems = []
+        for rule in self.rules:
+            tail = head + rule.dimension
+            edict = rule.inverse_apply(vector[head:tail])
+            elems.extend(list(edict.values()))
+            head = tail
+        edict_merged = ElementDict(elems)
+        return edict_merged

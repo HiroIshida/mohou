@@ -10,6 +10,7 @@ from test_types import image_av_bundle, rgbd_image_bundle  # noqa
 
 from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import (
+    CompositeEncodingRule,
     CovarianceBasedScaleBalancer,
     EncodingRule,
     IdenticalScaleBalancer,
@@ -186,3 +187,37 @@ def test_encoding_rule_assertion(image_av_bundle):  # noqa
 
     with pytest.raises(AssertionError):
         rule.apply_to_episode_bundle(bundle)
+
+
+def test_composite_encoding_rule(image_av_bundle: EpisodeBundle):  # noqa
+    class Dummy1(VectorBase):
+        pass
+
+    f1 = VectorIdenticalEncoder(Dummy1, 7)
+    dummy_rule1 = EncodingRule.from_encoders([f1])
+
+    image_av_rule = create_encoding_rule_for_image_av_bundle(image_av_bundle, balance=True)
+
+    class Dummy2(VectorBase):
+        pass
+
+    f2 = VectorIdenticalEncoder(Dummy2, 4)
+    dummy_rule2 = EncodingRule.from_encoders([f2])
+
+    composite_rule = CompositeEncodingRule([dummy_rule1, image_av_rule, dummy_rule2])
+
+    dummy1 = Dummy1(np.random.randn(7))
+    rgb = image_av_bundle[0][0][RGBImage]
+    av = image_av_bundle[0][0][AngleVector]
+    flag = TerminateFlag.from_bool(True)
+    dummy2 = Dummy2(np.random.randn(4))
+    edict = ElementDict([dummy1, rgb, av, flag, dummy2])
+
+    vec = composite_rule.apply(edict)
+    edict_again = composite_rule.inverse_apply(vec)
+
+    # reconstructed vectors must match. (but rgb may not match beacuase autoencoder is lossy compressor)
+    assert edict_again[Dummy1] == edict[Dummy1]
+    assert edict_again[AngleVector] == edict[AngleVector]
+    assert edict_again[Dummy2] == edict[Dummy2]
+    assert edict_again[TerminateFlag] == edict[TerminateFlag]
