@@ -70,8 +70,7 @@ class TrainCache(Generic[ModelT]):
     def train_result_path(self, project_path: Path):
         base_path = self.train_result_base_path(project_path)
         class_name = self.best_model.__class__.__name__
-        config_hash = self.best_model.config.hash_value
-        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
+        result_path = base_path / "{}-{}".format(class_name, self.file_uuid)
         return result_path
 
     @classmethod

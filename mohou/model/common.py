@@ -10,7 +10,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mohou.types import Hashable
 from mohou.utils import detect_device
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,7 @@ class LossDict(Dict[str, torch.Tensor]):
 
 
 @dataclass
-class ModelConfigBase(Hashable):
+class ModelConfigBase:
     def to_dict(self) -> Dict:
         d: Dict[str, Any] = {}
         for key in self.__dataclass_fields__.keys():  # type: ignore
