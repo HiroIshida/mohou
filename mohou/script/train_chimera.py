@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     logger = create_default_logger(project_path, "chimera")  # noqa
     encoding_rule_except_image = create_default_encoding_rule(
-        project_path, for_chimera_training=True
+        project_path, include_image_encoder=False
     )
     image_encoder = load_default_image_encoder(project_path)
     lstm_dim = encoding_rule_except_image.dimension + image_encoder.output_size

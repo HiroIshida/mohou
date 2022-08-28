@@ -11,7 +11,8 @@ from mohou.encoding_rule import (
     CovarianceBasedScaleBalancer,
     EncodingRule,
 )
-from mohou.model import LSTM, AutoEncoderBase
+from mohou.model import AutoEncoderBase
+from mohou.model.chimera import Chimera
 from mohou.propagator import Propagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
@@ -121,13 +122,16 @@ def create_default_chimera_propagator(project_path: Path):
 
     logger.warning("warn: this feature is quite experimental. maybe deleted without notfication")
     image_encoder = load_default_image_encoder(project_path)
-    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
-    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=True)
 
-    # TODO: currently only supports LSTM (not PBLSTM)
-    tcach_lstm = TrainCache.load(project_path, LSTM)
+    tcache_chimera = TrainCache.load(project_path, Chimera)
+    chimera_model = tcache_chimera.best_model
+
+    image_encoder = chimera_model.ae.get_encoder()
+    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
+    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=False)
+
     rule = CompositeEncodingRule([image_encoding_rule, other_encoding_Rule])
-    propagator = Propagator(tcach_lstm.best_model, rule)
+    propagator = Propagator(chimera_model.lstm, rule)
     return propagator
 
 
