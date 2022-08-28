@@ -6,9 +6,13 @@ from typing import List, Optional, Type
 import numpy as np
 
 from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
-from mohou.model import AutoEncoderBase
-from mohou.propagator import PropagatorBaseT
+from mohou.encoding_rule import (
+    CompositeEncodingRule,
+    CovarianceBasedScaleBalancer,
+    EncodingRule,
+)
+from mohou.model import LSTM, AutoEncoderBase
+from mohou.propagator import Propagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -65,13 +69,9 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 
 @lru_cache(maxsize=40)
 def create_default_encoding_rule(
-    project_path: Path, for_chimera_training: bool = False
+    project_path: Path,
+    include_image_encoder: bool = True,
 ) -> EncodingRule:
-    r"""a utils function for creating default encoding rule
-    Args:
-        project_path: project_path where models and bundles are loaded from
-        for_chimera_training: if True, image_encoder is not loaded. (most people just don't have to care)
-    """
 
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
@@ -79,9 +79,7 @@ def create_default_encoding_rule(
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
     encoders: List[EncoderBase] = [av_idendical_encoder]
 
-    if not for_chimera_training:
-        # NOTE: we don't need image encoder for chimera training, because
-        # image encoder itself is re-traind in chimera training.
+    if include_image_encoder:
         image_encoder = load_default_image_encoder(project_path)
         encoders.append(image_encoder)
 
@@ -115,6 +113,21 @@ def create_default_propagator(
 
     encoding_rule = create_default_encoding_rule(project_path)
     propagator = prop_type(tcach_lstm.best_model, encoding_rule)
+    return propagator
+
+
+def create_default_chimera_propagator(project_path: Path):
+    # TODO: move to inside of create_default_propagator
+
+    logger.warning("warn: this feature is quite experimental. maybe deleted without notfication")
+    image_encoder = load_default_image_encoder(project_path)
+    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
+    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=True)
+
+    # TODO: currently only supports LSTM (not PBLSTM)
+    tcach_lstm = TrainCache.load(project_path, LSTM)
+    rule = CompositeEncodingRule([image_encoding_rule, other_encoding_Rule])
+    propagator = Propagator(tcach_lstm.best_model, rule)
     return propagator
 
 
