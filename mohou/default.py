@@ -64,14 +64,26 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 
 
 @lru_cache(maxsize=40)
-def create_default_encoding_rule(project_path: Path) -> EncodingRule:
+def create_default_encoding_rule(
+    project_path: Path, for_chimera_training: bool = False
+) -> EncodingRule:
+    r"""a utils function for creating default encoding rule
+    Args:
+        project_path: project_path where models and bundles are loaded from
+        for_chimera_training: if True, image_encoder is not loaded. (most people just don't have to care)
+    """
+
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
     av_dim = bundle_spec.type_shape_table[AngleVector][0]
-    image_encoder = load_default_image_encoder(project_path)
     av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
+    encoders = [av_idendical_encoder]
 
-    encoders = [image_encoder, av_idendical_encoder]
+    if not for_chimera_training:
+        # NOTE: we don't need image encoder for chimera training, because
+        # image encoder itself is re-traind in chimera training.
+        image_encoder = load_default_image_encoder(project_path)
+        encoders.append(image_encoder)
 
     if GripperState in bundle_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(

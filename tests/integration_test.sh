@@ -65,9 +65,20 @@ function test_with_fullpath {
     python3 $example_path/kuka_reaching.py -pp $project_path --feedback
 }
 
+function test_chimera {
+    # NOTE: chimera is quite experimental feature
+    # TODO: move to test_batch ?
+    project_name=_pipeline_test_chimera
+    rm -rf ~/.mohou/$project_name
+    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pn $project_name
+    python3 -m mohou.script.train_autoencoder -n 2 -pn $project_name -image RGBImage
+    python3 -m mohou.script.train_chimera -pn $project_name -n 1 
+}
+
 test_batch RGB true true false # test warm train
 test_batch RGB false false true # test using context
 test_batch RGB false false false
 test_batch Depth false false false
 test_batch RGBD false false false
 test_with_fullpath
+test_chimera
