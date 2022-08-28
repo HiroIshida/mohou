@@ -69,10 +69,6 @@ class ChimeraDataset(Dataset):
             [[copy.deepcopy(seq) for _ in range(dataset_config.n_aug + 1)] for seq in image_seqs]
         )
 
-        for image_seq in image_seqs_auged:
-            for i in range(len(image_seq)):
-                image_seq[i] = image_seq[i].randomize()
-
         # align seq list
         n_after_termination = dataset_config.n_dummy_after_termination
         assert_seq_list_list_compatible([image_seqs_auged, vector_seqs_auged])
