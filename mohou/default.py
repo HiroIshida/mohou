@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Type
 
@@ -62,6 +63,7 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
     return tcache_autoencoder.best_model.get_encoder()
 
 
+@lru_cache(maxsize=40)
 def create_default_encoding_rule(project_path: Path) -> EncodingRule:
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
