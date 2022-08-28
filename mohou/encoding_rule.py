@@ -214,6 +214,20 @@ class EncodingRuleBase(Mapping[Type[ElementBase], EncoderBase]):
     def inverse_apply(self, vector_processed: np.ndarray) -> ElementDict:
         pass
 
+    @property
+    @abstractmethod
+    def dimension_list(self) -> List[int]:
+        """get dimension list for each encoders output"""
+
+    @property
+    def type_bound_table(self) -> Dict[Type[ElementBase], slice]:
+        bounds = get_bound_list(self.dimension_list)
+
+        table = {}
+        for encoder, bound in zip(self.values(), bounds):
+            table[encoder.elem_type] = bound
+        return table
+
     def apply_to_episode_data(self, episode_data: EpisodeData) -> np.ndarray:
         vec_list = [self.apply(episode_data[i]) for i in range(len(episode_data))]
         return np.array(vec_list)
@@ -272,18 +286,12 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase], EncodingRuleBase):
         return sum(encoder.output_size for encoder in self.values())
 
     @property
-    def encode_order(self) -> List[Type[ElementBase]]:
-        return list(self.keys())
+    def dimension_list(self) -> List[int]:
+        return [encoder.output_size for encoder in self.values()]
 
     @property
-    def type_bound_table(self) -> Dict[Type[ElementBase], slice]:
-        dims = [encoder.output_size for encoder in self.values()]
-        bounds = get_bound_list(dims)
-
-        table = {}
-        for encoder, bound in zip(self.values(), bounds):
-            table[encoder.elem_type] = bound
-        return table
+    def encode_order(self) -> List[Type[ElementBase]]:
+        return list(self.keys())
 
     def __str__(self) -> str:
         string = "total dim: {}".format(self.dimension)
@@ -356,14 +364,22 @@ class CompositeEncodingRule(EncodingRuleBase):
         edict_merged = ElementDict(elems)
         return edict_merged
 
+    @property
+    def dimension_list(self) -> List[int]:
+        dims = []
+        for rule in self.rules:
+            for encoder in rule.values():
+                dims.append(encoder.output_size)
+        return dims
+
     def __getitem__(self, key: Type[ElementBase]) -> EncoderBase:
         for rule in self.rules:
             if key in rule:
                 return rule[key]
         raise KeyError
 
-    def __iter__(self) -> Iterator[EncoderBase]:
-        return chain(*[rule.__iter__() for rule in self.rules])  # type: ignore
+    def __iter__(self) -> Iterator[Type[ElementBase]]:
+        return chain(*[rule.__iter__() for rule in self.rules])
 
     def __len__(self) -> int:
         return sum([len(rule) for rule in self.rules])
