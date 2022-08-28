@@ -9,6 +9,7 @@ except Exception:
 import argparse
 
 from mohou.dataset.chimera_dataset import ChimeraDataset
+from mohou.dataset.sequence_dataset import AutoRegressiveDatasetConfig
 from mohou.default import create_default_encoding_rule, load_default_image_encoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
@@ -25,6 +26,7 @@ def train_chimera(
     encoding_rule: EncodingRule,
     lstm_config: LSTMConfig,
     train_config: TrainConfig,
+    n_aug: int = 4,
     bundle: Optional[EpisodeBundle] = None,
 ):  # TODO(HiroIshida): minimal args
     # TODO(HiroIshida): maybe better to move this function to script_utils
@@ -32,7 +34,8 @@ def train_chimera(
     if bundle is None:
         bundle = EpisodeBundle.load(project_path)
 
-    dataset = ChimeraDataset.from_bundle(bundle, encoding_rule)
+    dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug)
+    dataset = ChimeraDataset.from_bundle(bundle, encoding_rule, dataset_config=dataset_config)
     ae = TrainCache.load(project_path, AutoEncoder).best_model
     conf = ChimeraConfig(lstm_config, ae_config=ae)
     model = Chimera(conf)  # type: ignore[var-annotated]
@@ -44,9 +47,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-pn", type=str, default=setting.primary_project_name, help="project name")
     parser.add_argument("-n", type=int, default=3000, help="iteration number")
-    parser.add_argument("-aug", type=int, default=2, help="number of augmentation X")
+    parser.add_argument("-aug", type=int, default=4, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
-    parser.add_argument("-layer", type=int, default=4, help="number of layers of lstm")
+    parser.add_argument("-layer", type=int, default=2, help="number of layers of lstm")
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
@@ -71,4 +74,4 @@ if __name__ == "__main__":
     lstm_config = LSTMConfig(lstm_dim, n_hidden=n_hidden, n_layer=n_layer)
     train_config = TrainConfig(n_epoch=n_epoch, batch_size=30, valid_data_ratio=valid_ratio)
 
-    train_chimera(project_path, encoding_rule_except_image, lstm_config, train_config)
+    train_chimera(project_path, encoding_rule_except_image, lstm_config, train_config, n_aug=n_aug)
