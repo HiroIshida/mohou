@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Generic, Tuple, Type, Union
 
 import torch
-import torch.nn as nn
 
 from mohou.encoder import ImageEncoder
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
@@ -65,19 +64,20 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         image_features_at_once = self.ae.get_encoder_module()(images_at_once)
         image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
 
+        # strong assumption ... !!!!!!!!
         # TODO(HiroIshida) tmporary assume default encoding rule order (i.e. image first)
         feature_seqs = torch.concat((image_feature_seqs, vector_seqs), dim=2)
 
         # compute lstm loss
-        feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
-        if not isinstance(self.config.lstm_config, Path):
-            assert self.config.lstm_config.n_static_context == 0
         static_context = torch.empty(n_batch, 0).to(self.device)
-        feature_seq_output, _ = self.lstm.forward(feature_seq_input, static_context)
-        pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)
+        indices = torch.empty(0)  # TODO: just a dummy because indices is not used in normal LSTM
+        pred_loss = self.lstm.loss((indices, feature_seqs, static_context))
 
         # compute reconstruction loss
-        image_reconst_at_once = self.ae.get_decoder_module()(image_features_at_once)
-        reconst_loss = nn.MSELoss()(images_at_once, image_reconst_at_once)
+        reconst_loss = self.ae.loss(images_at_once)
 
-        return LossDict({"prediction": pred_loss, "reconstruction": reconst_loss})
+        loss_dict = {}
+        for loss in [pred_loss, reconst_loss]:
+            for k, v in loss.items():
+                loss_dict[k] = v
+        return LossDict(loss_dict)
