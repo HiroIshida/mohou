@@ -227,6 +227,15 @@ class TrainCache(Generic[ModelT]):
         **kwargs,
     ) -> "List[TrainCache[ModelT]]":
 
+        # warining for legacy users
+        legacy_train_result_path = project_path / "train_result"
+        if legacy_train_result_path.exists():
+            message = "legacy train_result directory found\n"
+            message += "please move the models from {} to {}".format(
+                legacy_train_result_path, cls.train_result_base_path(project_path)
+            )
+            logger.warn(legacy_train_result_path)
+
         ps = cls.filter_result_paths(project_path, model_type, **kwargs)
         tcache_list = [cls.load_from_cache_path(p) for p in ps]
         if len(tcache_list) == 0:
