@@ -89,12 +89,13 @@ def test_propagator(project_path: Path):
     episode.get_sequence_by_type(TerminateFlag)
 
     sum_value = 0.0
-    for elem_type in [AngleVector, RGBImage, TerminateFlag]:
+    for elem_type in [AngleVector, TerminateFlag]:
+        # not including RGB because its type is uint8
         seq = episode.get_sequence_by_type(elem_type)  # type: ignore
         for elem in seq:
             sum_value += np.sum(elem.numpy())
     print(sum_value)
-    assert abs(sum_value - (71112471.21112931)) < 1e-4, "sum does not match"
+    assert abs(sum_value - (0.2111293077468872)) < 1e-6, "sum does not match"
 
 
 if __name__ == "__main__":
