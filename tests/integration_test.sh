@@ -73,6 +73,7 @@ function test_chimera {
     python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pn $project_name
     python3 -m mohou.script.train_autoencoder -n 2 -pn $project_name -image RGBImage
     python3 -m mohou.script.train_chimera -pn $project_name -n 1 
+    python3 -m mohou.script.train_lstm -valid-ratio 0.5 -n 2 -pp $project_path
     python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5 --chimera
 }
 
