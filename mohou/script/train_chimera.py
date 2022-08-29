@@ -37,7 +37,7 @@ if __name__ == "__main__":
     n_hidden: int = args.hidden
     n_layer: int = args.layer
     valid_ratio: float = args.valid_ratio
-    use_pretrained_lstm: bool = args.pretraind_lstm
+    use_pretrained_lstm: bool = args.pretrained_lstm
 
     project_path = get_project_path(project_name)
 
