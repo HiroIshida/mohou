@@ -71,4 +71,4 @@ if __name__ == "__main__":
     conf = ChimeraConfig(lstm_config=lstm_config, ae_config=ae_config)
     model = Chimera(conf)  # type: ignore[var-annotated]
     tcache_chimera = TrainCache.from_model(model)  # type: ignore[var-annotated]
-    train(project_path, tcache_lstm, dataset, train_config)
+    train(project_path, tcache_chimera, dataset, train_config)
