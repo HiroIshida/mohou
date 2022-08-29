@@ -76,10 +76,10 @@ function test_chimera {
     python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5 --chimera
 }
 
-#test_batch RGB true true false # test warm train
-#test_batch RGB false false true # test using context
-#test_batch RGB false false false
-#test_batch Depth false false false
-#test_batch RGBD false false false
-#test_with_fullpath
+test_batch RGB true true false # test warm train
+test_batch RGB false false true # test using context
+test_batch RGB false false false
+test_batch Depth false false false
+test_batch RGBD false false false
+test_with_fullpath
 test_chimera
