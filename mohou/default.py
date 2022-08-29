@@ -17,8 +17,11 @@ from mohou.propagator import Propagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
+    AnotherGripperState,
+    ElementBase,
     EpisodeBundle,
     GripperState,
+    RGBImage,
     TerminateFlag,
     get_all_concrete_leaftypes,
 )
@@ -76,19 +79,29 @@ def create_default_encoding_rule(
 
     bundle = EpisodeBundle.load(project_path)
     bundle_spec = bundle.spec
-    av_dim = bundle_spec.type_shape_table[AngleVector][0]
-    av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
-    encoders: List[EncoderBase] = [av_idendical_encoder]
+
+    encoders: List[EncoderBase] = []
 
     if include_image_encoder:
         image_encoder = load_default_image_encoder(project_path)
         encoders.append(image_encoder)
+
+    if AngleVector in bundle_spec.type_shape_table:
+        av_dim = bundle_spec.type_shape_table[AngleVector][0]
+        av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
+        encoders = [av_idendical_encoder]
 
     if GripperState in bundle_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(
             GripperState, bundle_spec.type_shape_table[GripperState][0]
         )
         encoders.append(gs_identital_func)
+
+    if AnotherGripperState in bundle_spec.type_shape_table:
+        ags_identital_func = VectorIdenticalEncoder(
+            AnotherGripperState, bundle_spec.type_shape_table[AnotherGripperState][0]
+        )
+        encoders.append(ags_identital_func)
 
     tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
     encoders.append(tf_identical_func)
@@ -100,6 +113,24 @@ def create_default_encoding_rule(
         encoding_rule = EncodingRule.from_encoders(encoders, bundle=None, scale_balancer=balancer)
     else:
         encoding_rule = EncodingRule.from_encoders(encoders, bundle=bundle, scale_balancer=None)
+
+    # TODO: Move The following check to unittest? but it's diffcult becaues
+    # using this function pre-require the existence of trained AE ...
+    # so temporary, check using assertion
+
+    # check if ordered propery. Keeping this order is important to satisfy the
+    # backward-compatibility of this function.
+    order_definition: List[Type[ElementBase]] = [
+        RGBImage,
+        AngleVector,
+        GripperState,
+        AnotherGripperState,
+        TerminateFlag,
+    ]
+    indices = [order_definition.index(key) for key in encoding_rule.keys()]
+    is_ordered_propery = sorted(indices) == indices
+    assert is_ordered_propery
+
     return encoding_rule
 
 
