@@ -6,10 +6,8 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from mohou.default import create_default_encoding_rule, create_default_propagator
-from mohou.model import LSTM, VariationalAutoEncoder
 from mohou.propagator import Propagator
-from mohou.trainer import TrainCache
-from mohou.types import AngleVector, EpisodeBundle
+from mohou.types import AngleVector, EpisodeBundle, EpisodeData, RGBImage, TerminateFlag
 
 
 def test_episode_bundle_loading(project_path: Path):
@@ -37,19 +35,27 @@ def test_encoding_rule(project_path: Path):
     assert abs(sum_value - (-2799.7209571566077)) < 1e-4, "arr list sum does not match"
 
 
-def test_trained_model_replay(project_path: Path):
-    # check at least model loading success
-    TrainCache.load(project_path, LSTM)
-    TrainCache.load(project_path, VariationalAutoEncoder)
-
-    # check propagator can be constructed using LSTM and autoencoder
-    prop = create_default_propagator(project_path, Propagator)
-    bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
+def test_propagator(project_path: Path):
+    prop: Propagator = create_default_propagator(project_path, Propagator)
+    bundle = EpisodeBundle.load(project_path)
     episode = bundle[0]
-    for i in range(10):
+
+    for i in range(40):
         prop.feed(episode[i])
-    prop.predict(5)
-    print("model loading succeeded")
+    edict_seq = prop.predict(40)
+    episode = EpisodeData.from_edict_list(edict_seq, check_terminate_flag=False)
+
+    episode.get_sequence_by_type(AngleVector)
+    episode.get_sequence_by_type(RGBImage)
+    episode.get_sequence_by_type(TerminateFlag)
+
+    sum_value = 0.0
+    for elem_type in [AngleVector, RGBImage, TerminateFlag]:
+        seq = episode.get_sequence_by_type(elem_type)  # type: ignore
+        for elem in seq:
+            sum_value += np.sum(elem.numpy())
+    print(sum_value)
+    assert abs(sum_value - (1427638191.4711995)) < 1e-5, "sum does not match"
 
 
 if __name__ == "__main__":
@@ -66,4 +72,4 @@ if __name__ == "__main__":
         # test main
         test_episode_bundle_loading(pp)
         test_encoding_rule(pp)
-        test_trained_model_replay(pp)
+        test_propagator(pp)
