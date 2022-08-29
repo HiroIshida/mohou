@@ -84,6 +84,11 @@ class TrainCache(Generic[ModelT]):
         """filter train cache path. see filter_predicate for the logic."""
 
         def is_config_consistent(path: Path) -> bool:
+
+            config_query_specified = len(kwargs) > 0
+            if not config_query_specified:
+                return False
+
             config_path = path / "config.json"
             with config_path.open(mode="r") as f:
                 config = json.load(f)
