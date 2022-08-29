@@ -4,9 +4,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import torch
 
 from mohou.default import create_default_encoding_rule, create_default_propagator
+from mohou.model import LSTM, VariationalAutoEncoder
 from mohou.propagator import Propagator
+from mohou.trainer import TrainCache
 from mohou.types import AngleVector, EpisodeBundle, EpisodeData, RGBImage, TerminateFlag
 
 
@@ -33,6 +36,41 @@ def test_encoding_rule(project_path: Path):
     # here we do not use md5sum because the encoded value may change slightly depneding
     # on python version
     assert abs(sum_value - (-2799.7209571566077)) < 1e-4, "arr list sum does not match"
+
+
+def test_ae_model(project_path: Path):
+    ae_cache = TrainCache.load(project_path, VariationalAutoEncoder)
+    vae = ae_cache.best_model
+
+    create_default_encoding_rule(project_path)
+    bundle = EpisodeBundle.load(project_path)
+    episode = bundle[0]
+    image_seq = episode.get_sequence_by_type(RGBImage)
+
+    arr = torch.stack([image.to_tensor() for image in image_seq])
+    ret = vae.forward(arr)
+    sum_value = torch.sum(ret).item()
+    print(sum_value)
+    assert abs(sum_value - (17908766.0)) < 1e-4, "ae sum does not match"
+
+
+def test_lstm_model(project_path: Path):
+    lstm_cache = TrainCache.load(project_path, LSTM)
+    lstm = lstm_cache.best_model
+    lstm.forward
+
+    encoding_rule = create_default_encoding_rule(project_path)
+    bundle = EpisodeBundle.load(project_path)
+    episode = bundle[0]
+    arr = encoding_rule.apply_to_episode_data(episode)
+
+    dummy_sample = torch.from_numpy(arr).float().unsqueeze(dim=0)
+    n_batch, n_seqlen, n_dim = dummy_sample.shape
+    dummy_context = torch.randn(n_batch, 0)
+    val, _ = lstm.forward(dummy_sample, dummy_context)
+    sum_value = torch.sum(val).item()
+    print(sum_value)
+    assert abs(sum_value - (31.875625610351562)) < 1e-4, "lstm sum does not match"
 
 
 def test_propagator(project_path: Path):
@@ -72,4 +110,6 @@ if __name__ == "__main__":
         # test main
         test_episode_bundle_loading(pp)
         test_encoding_rule(pp)
+        test_ae_model(pp)
+        test_lstm_model(pp)
         test_propagator(pp)
