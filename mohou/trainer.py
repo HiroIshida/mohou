@@ -39,6 +39,7 @@ class TrainCache(Generic[ModelT]):
     train_lossseq_table: Dict[str, List[float]]
     validate_lossseq_table: Dict[str, List[float]]
     file_uuid: str
+    cache_path: Optional[Path] = None  # model specific cache path
 
     @classmethod
     def from_model(cls, model: ModelT) -> "TrainCache[ModelT]":
@@ -188,15 +189,15 @@ class TrainCache(Generic[ModelT]):
             logger.info("model is updated and saved")
 
     @classmethod
-    def load_from_base_path(cls, base_path: Path) -> "TrainCache":
-        model_path = base_path / "model.pth"
-        valid_loss_path = base_path / "validation_loss.npz"
-        train_loss_path = base_path / "train_loss.npz"
+    def load_from_cache_path(cls, cache_path: Path) -> "TrainCache":
+        model_path = cache_path / "model.pth"
+        valid_loss_path = cache_path / "validation_loss.npz"
+        train_loss_path = cache_path / "train_loss.npz"
 
         # [mohou < v0.4]
         # (model_type)-(config_hash)-(uuid)
         # example LSTM-924e4427-bd5653
-        m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
+        m = re.match(r"(\w+)-(\w+)-(\w+)", cache_path.name)
         is_legacy_model_path_exist = m is not None
         if is_legacy_model_path_exist:
             assert m is not None  # nothing but for mypy
@@ -207,8 +208,8 @@ class TrainCache(Generic[ModelT]):
             # [mohou > v0.4.0]
             # (model_type)-(uuid)
             # example LSTM-bd5653
-            m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
-            m = re.match(r"(\w+)-(\w+)", base_path.name)
+            m = re.match(r"(\w+)-(\w+)-(\w+)", cache_path.name)
+            m = re.match(r"(\w+)-(\w+)", cache_path.name)
             assert m is not None
             file_uuid = m[2]
 
@@ -216,7 +217,7 @@ class TrainCache(Generic[ModelT]):
         best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
-        return cls(best_model, train_loss, valid_loss, file_uuid)
+        return cls(best_model, train_loss, valid_loss, file_uuid, cache_path)
 
     @classmethod
     def load_all(
@@ -227,7 +228,7 @@ class TrainCache(Generic[ModelT]):
     ) -> "List[TrainCache[ModelT]]":
 
         ps = cls.filter_result_paths(project_path, model_type, **kwargs)
-        tcache_list = [cls.load_from_base_path(p) for p in ps]
+        tcache_list = [cls.load_from_cache_path(p) for p in ps]
         if len(tcache_list) == 0:
             if model_type is None:
                 model_name = "<not-specified>"
