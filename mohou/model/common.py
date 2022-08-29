@@ -10,7 +10,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mohou.types import Hashable
 from mohou.utils import detect_device
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,7 @@ class LossDict(Dict[str, torch.Tensor]):
 
 
 @dataclass
-class ModelConfigBase(Hashable):
+class ModelConfigBase:
     def to_dict(self) -> Dict:
         d: Dict[str, Any] = {}
         for key in self.__dataclass_fields__.keys():  # type: ignore
@@ -100,17 +99,12 @@ class ModelBase(nn.Module, Generic[ModelConfigT], ABC):
         self.config = config
         logger.info("model name: {}".format(self.__class__.__name__))
         logger.info("model config: {}".format(config))
-        logger.info("hash value of config: {}".format(self.hash_value))
         logger.info("model is initialized")
 
     def put_on_device(self, device: Optional[torch.device] = None):
         if device is not None:
             self.device = device
         self.to(self.device)
-
-    @property
-    def hash_value(self) -> str:
-        return self.config.hash_value
 
     @abstractmethod
     def _setup_from_config(self, config: ModelConfigT) -> None:

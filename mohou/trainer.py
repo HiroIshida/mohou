@@ -70,8 +70,7 @@ class TrainCache(Generic[ModelT]):
     def train_result_path(self, project_path: Path):
         base_path = self.train_result_base_path(project_path)
         class_name = self.best_model.__class__.__name__
-        config_hash = self.best_model.config.hash_value
-        result_path = base_path / "{}-{}-{}".format(class_name, config_hash, self.file_uuid)
+        result_path = base_path / "{}-{}".format(class_name, self.file_uuid)
         return result_path
 
     @classmethod
@@ -193,9 +192,25 @@ class TrainCache(Generic[ModelT]):
         model_path = base_path / "model.pth"
         valid_loss_path = base_path / "validation_loss.npz"
         train_loss_path = base_path / "train_loss.npz"
+
+        # [mohou < v0.4]
+        # (model_type)-(config_hash)-(uuid)
+        # example LSTM-924e4427-bd5653
         m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
-        assert m is not None
-        file_uuid = m[3]
+        is_legacy_model_path_exist = m is not None
+        if is_legacy_model_path_exist:
+            assert m is not None  # nothing but for mypy
+            file_uuid = m[3]
+            message = "NOTE: legacy model (probably created by mohou<0.4) ditected"
+            logger.warn(message)
+        else:
+            # [mohou > v0.4.0]
+            # (model_type)-(uuid)
+            # example LSTM-bd5653
+            m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
+            m = re.match(r"(\w+)-(\w+)", base_path.name)
+            assert m is not None
+            file_uuid = m[2]
 
         best_model: ModelT = torch.load(model_path, map_location=torch.device("cpu"))
         best_model.put_on_device(torch.device("cpu"))
