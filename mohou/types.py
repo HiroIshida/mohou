@@ -288,6 +288,10 @@ class RGBImage(ColorImageBase["RGBImage"]):
     def resize(self, shape2d_new: Tuple[int, int]) -> None:
         self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
 
+    def bgr2rgb(self) -> "RGBImage":
+        data_new = self._data[..., ::-1].copy()
+        return RGBImage(data_new)
+
 
 class GrayImage(ColorImageBase["GrayImage"]):
     _channel: ClassVar[int] = 1
