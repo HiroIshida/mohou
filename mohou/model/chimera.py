@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Generic, Tuple, Type, Union
 
 import torch
@@ -6,23 +7,16 @@ import torch.nn as nn
 
 from mohou.encoder import ImageEncoder
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
-from mohou.model.autoencoder import AutoEncoder
+from mohou.model.autoencoder import VariationalAutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
+from mohou.trainer import TrainCache
 from mohou.types import ImageT
 
 
 @dataclass
 class ChimeraConfig(ModelConfigBase):
-    """config for Chimera model
-    note: considering the original roll of the model config, which constructdefault
-    model only from the config instance, ae_config should be AutoEncoderConfig.
-    However, in the chimera model it is common to first pre-train
-    the autoencoder model only, and then train the entire chimera model. Thus, chimera config
-    may contain AutoEncoder as the ae_config.
-    """
-
-    lstm_config: LSTMConfig
-    ae_config: Union[AutoEncoderConfig, AutoEncoder]  # TODO(HiroIshida): bit dirty
+    lstm_config: Union[Path, LSTMConfig]
+    ae_config: Union[Path, AutoEncoderConfig]
 
 
 class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
@@ -32,21 +26,25 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
 
     image_type: Type[ImageT]
     lstm: LSTM
-    ae: AutoEncoder[ImageT]
+    ae: VariationalAutoEncoder[ImageT]
 
     def _setup_from_config(self, config: ChimeraConfig) -> None:
-        # TODO(HiroIshida) currently fixed to auto encoder
-        self.lstm = LSTM(config.lstm_config)
-        if isinstance(config.ae_config, AutoEncoderConfig):
-            self.ae = AutoEncoder(config.ae_config)
-        elif isinstance(config.ae_config, AutoEncoder):
-            ae = config.ae_config
-            ae.device = self.lstm.device
-            ae.put_on_device()
-            self.ae = ae
+        if isinstance(config.lstm_config, Path):
+            tcache = TrainCache[LSTM].load_from_cache_path(config.lstm_config)
+            self.lstm = tcache.best_model
+        elif isinstance(config.lstm_config, LSTMConfig):
+            self.lstm = LSTM(config.lstm_config)
         else:
             assert False
 
+        # TODO(HiroIshida) currently fixed to vae
+        if isinstance(config.ae_config, Path):
+            tcache = TrainCache[VariationalAutoEncoder].load_from_cache_path(config.ae_config)
+            self.ae = tcache.best_model
+        elif isinstance(config.ae_config, AutoEncoderConfig):
+            self.ae = VariationalAutoEncoder(config.ae_config)
+        else:
+            assert False
         self.image_type = self.ae.image_type
 
     def get_encoder(self) -> ImageEncoder[ImageT]:
@@ -72,7 +70,8 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
 
         # compute lstm loss
         feature_seq_input, feature_seq_output_gt = feature_seqs[:, :-1], feature_seqs[:, 1:]
-        assert self.config.lstm_config.n_static_context == 0
+        if not isinstance(self.config.lstm_config, Path):
+            assert self.config.lstm_config.n_static_context == 0
         static_context = torch.empty(n_batch, 0).to(self.device)
         feature_seq_output, _ = self.lstm.forward(feature_seq_input, static_context)
         pred_loss = torch.mean((feature_seq_output - feature_seq_output_gt) ** 2)

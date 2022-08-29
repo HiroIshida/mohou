@@ -9,7 +9,6 @@ from mohou.dataset import ChimeraDataset
 from mohou.default import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import AutoEncoderConfig, LSTMConfig
-from mohou.model.autoencoder import AutoEncoder
 from mohou.model.chimera import Chimera, ChimeraConfig
 from mohou.types import AngleVector, EpisodeBundle, RGBImage, TerminateFlag
 
@@ -56,8 +55,8 @@ def test_chimera_model(image_av_bundle_uneven, chimera_dataset):  # noqa
     conf = ChimeraConfig(lstm_config, ae_config)
     models.append(Chimera(conf))  # from conf
 
-    conf = ChimeraConfig(conf.lstm_config, AutoEncoder(ae_config))
-    models.append(Chimera(conf))
+    # TODO: test chimera from path
+    # models.append(chimear_from_path)
 
     for model in models:
         model.put_on_device()
