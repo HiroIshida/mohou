@@ -47,11 +47,12 @@ def test_ae_model(project_path: Path):
     episode = bundle[0]
     image_seq = episode.get_sequence_by_type(RGBImage)
 
-    arr = torch.stack([image.to_tensor() for image in image_seq])
+    # do not put many image. float rooted numerical error becomes large
+    arr = torch.stack([image.to_tensor() for image in image_seq[0:3]])
     ret = vae.forward(arr)
     sum_value = torch.sum(ret).item()
     print(sum_value)
-    assert abs(sum_value - (17908766.0)) < 1e-4, "ae sum does not match"
+    assert abs(sum_value - (415137.75)) < 1e-4, "ae sum does not match"
 
 
 def test_lstm_model(project_path: Path):
@@ -80,7 +81,7 @@ def test_propagator(project_path: Path):
 
     for i in range(40):
         prop.feed(episode[i])
-    edict_seq = prop.predict(40)
+    edict_seq = prop.predict(2)
     episode = EpisodeData.from_edict_list(edict_seq, check_terminate_flag=False)
 
     episode.get_sequence_by_type(AngleVector)
@@ -93,7 +94,7 @@ def test_propagator(project_path: Path):
         for elem in seq:
             sum_value += np.sum(elem.numpy())
     print(sum_value)
-    assert abs(sum_value - (1427638191.4711995)) < 1e-5, "sum does not match"
+    assert abs(sum_value - (71112471.21112931)) < 1e-4, "sum does not match"
 
 
 if __name__ == "__main__":
