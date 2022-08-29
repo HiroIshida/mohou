@@ -89,7 +89,7 @@ def create_default_encoding_rule(
     if AngleVector in bundle_spec.type_shape_table:
         av_dim = bundle_spec.type_shape_table[AngleVector][0]
         av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
-        encoders = [av_idendical_encoder]
+        encoders.append(av_idendical_encoder)
 
     if GripperState in bundle_spec.type_shape_table:
         gs_identital_func = VectorIdenticalEncoder(
