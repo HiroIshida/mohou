@@ -26,6 +26,8 @@ jobs:
             - name: pip install this package
               run: |
                   pip3 install -e .
+                  echo "pip freeze"
+                  pip3 freeze
 
             - name: pip install pytest and mypy
               run: |
