@@ -18,9 +18,11 @@ from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
     AnotherGripperState,
+    DepthImage,
     ElementBase,
     EpisodeBundle,
     GripperState,
+    RGBDImage,
     RGBImage,
     TerminateFlag,
     get_all_concrete_leaftypes,
@@ -122,6 +124,8 @@ def create_default_encoding_rule(
     # backward-compatibility of this function.
     order_definition: List[Type[ElementBase]] = [
         RGBImage,
+        DepthImage,
+        RGBDImage,
         AngleVector,
         GripperState,
         AnotherGripperState,
