@@ -199,6 +199,7 @@ class TrainCache(Generic[ModelT]):
         m = re.match(r"(\w+)-(\w+)-(\w+)", base_path.name)
         is_legacy_model_path_exist = m is not None
         if is_legacy_model_path_exist:
+            assert m is not None  # nothing but for mypy
             file_uuid = m[3]
             message = "NOTE: legacy model (probably created by mohou<0.4) ditected"
             logger.warn(message)
