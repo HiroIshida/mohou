@@ -87,7 +87,7 @@ class TrainCache(Generic[ModelT]):
 
             config_query_specified = len(kwargs) > 0
             if not config_query_specified:
-                return False
+                return True
 
             config_path = path / "config.json"
             with config_path.open(mode="r") as f:
