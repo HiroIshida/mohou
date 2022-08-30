@@ -199,8 +199,8 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         std = np.hstack(std_list)
 
         if isinstance(arr, torch.Tensor):
-            mean = torch.from_numpy(mean).float()
-            std = torch.from_numpy(std).float()
+            mean = torch.from_numpy(mean).float().to(arr.device)
+            std = torch.from_numpy(std).float().to(arr.device)
 
         if inverse:
             return (arr * std) + mean  # type: ignore
