@@ -70,7 +70,7 @@ def test_chimera_model(image_av_bundle_uneven, chimera_dataset):  # noqa
         )  # 1 for terminal flag
 
         loss_dict = model.loss((image_seqs, vector_seqs))
-        keys = ["prediction", "reconstruction"]
+        keys = ["prediction", "reconstruction", "kld"]
         for key in keys:
             assert key in loss_dict
             assert loss_dict[key].item() > 0
