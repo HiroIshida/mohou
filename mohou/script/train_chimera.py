@@ -61,13 +61,13 @@ if __name__ == "__main__":
     )
 
     ae_tcache = TrainCache.load(project_path, VariationalAutoEncoder)
-    ae_config = ae_tcache.cache_path
+    ae_config = ae_tcache.cache_path(project_path)
     assert ae_config is not None
 
     if use_pretrained_lstm:
         tcache_lstm = TrainCache.load(project_path, LSTM)
         assert tcache_lstm.cache_path is not None
-        lstm_config: Union[Path, LSTMConfig] = tcache_lstm.cache_path
+        lstm_config: Union[Path, LSTMConfig] = tcache_lstm.cache_path(project_path)
     else:
         image_encoder = load_default_image_encoder(project_path)
         lstm_dim = encoding_rule_except_image.dimension + image_encoder.output_size
