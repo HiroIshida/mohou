@@ -32,7 +32,8 @@ jobs:
             - name: pip install pytest and mypy
               run: |
                   pip3 install pytest
-                  pip3 install mypy==0.910
+                  pip3 install mypy
+                  mypy --version
 
             - name: Run Pytest
               run: |

@@ -107,6 +107,7 @@ def create_default_encoding_rule(
 
     p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)
     if p.exists():  # use cached balacner
+        balancer: Optional[CovarianceBasedScaleBalancer]
         if use_balancer:
             logger.warning(
                 "warn: loading cached CovarianceBasedScaleBalancer. This feature is experimental."
@@ -116,6 +117,7 @@ def create_default_encoding_rule(
             balancer = None
         encoding_rule = EncodingRule.from_encoders(encoders, bundle=None, scale_balancer=balancer)
     else:
+        bundle_for_balancer: Optional[EpisodeBundle]
         if use_balancer:
             bundle_for_balancer = bundle
         else:
