@@ -77,6 +77,7 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 def create_default_encoding_rule(
     project_path: Path,
     include_image_encoder: bool = True,
+    use_balancer: bool = True,
 ) -> EncodingRule:
 
     bundle = EpisodeBundle.load(project_path)
@@ -110,11 +111,22 @@ def create_default_encoding_rule(
 
     p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)
     if p.exists():  # use cached balacner
-        logger.warning("warn: loading cached CovarianceBasedScaleBalancer")
-        balancer = CovarianceBasedScaleBalancer.load(project_path)
+        if use_balancer:
+            logger.warning(
+                "warn: loading cached CovarianceBasedScaleBalancer. This feature is experimental."
+            )
+            balancer = CovarianceBasedScaleBalancer.load(project_path)
+        else:
+            balancer = None
         encoding_rule = EncodingRule.from_encoders(encoders, bundle=None, scale_balancer=balancer)
     else:
-        encoding_rule = EncodingRule.from_encoders(encoders, bundle=bundle, scale_balancer=None)
+        if use_balancer:
+            bundle_for_balancer = bundle
+        else:
+            bundle_for_balancer = None
+        encoding_rule = EncodingRule.from_encoders(
+            encoders, bundle=bundle_for_balancer, scale_balancer=None
+        )
 
     # TODO: Move The following check to unittest? but it's diffcult becaues
     # using this function pre-require the existence of trained AE ...
