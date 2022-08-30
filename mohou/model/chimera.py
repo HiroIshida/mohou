@@ -56,7 +56,14 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         elif isinstance(config.lstm_config, LSTMConfig):
             self.lstm = LSTM(config.lstm_config)
             self.balancer = None
-            raise NotImplementedError("under construction...")
+
+            # If accept creation from LSTMCofing, in the propagation time
+            # custom encoding_rule must be prepared. And such if-else condition
+            # will become bit complex. So, under construction.
+            message = "NOTE: creating LSTM from LSTMConfig.\n"
+            message += "creating from LSTMConfig is supposed to called only in unittest."
+            logger.warn(message)
+            # raise NotImplementedError("under construction...")  # TODO
         else:
             assert False
 
