@@ -212,7 +212,7 @@ class TrainCache(Generic[ModelT]):
         if is_legacy_model_path_exist:
             assert m is not None  # nothing but for mypy
             file_uuid = m[3]
-            message = "NOTE: legacy model's file name (probably created by mohou<0.4) detected."
+            message = "NOTE: legacy model's file name (created by version < 0.4.0) detected."
             logger.warn(change_color_to_yellow(message))
         else:
             # [mohou > v0.4.0]
@@ -241,7 +241,7 @@ class TrainCache(Generic[ModelT]):
         legacy_train_result_path = project_path / "train_result"
         if legacy_train_result_path.exists():
             message = "NOTE: Legacy train_result directory found.\n"
-            message += "Please rename {} to {}.".format(
+            message += "NOTE: Please rename {} to {}.".format(
                 legacy_train_result_path, cls.train_result_base_path(project_path)
             )
             logger.warn(change_color_to_yellow(message))
