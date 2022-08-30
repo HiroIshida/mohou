@@ -5,9 +5,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterator, List, Mapping, Optional, Type, TypeVar
+from typing import Dict, Iterator, List, Mapping, Optional, Type, TypeVar, Union
 
 import numpy as np
+import torch
 
 from mohou.encoder import EncoderBase
 from mohou.types import (
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 ScaleBalancerT = TypeVar("ScaleBalancerT", bound="ScaleBalancerBase")
+ArrayT = TypeVar("ArrayT", bound=Union[torch.Tensor, np.ndarray])
 
 
 class ScaleBalancerBase(ABC):
@@ -40,11 +42,11 @@ class ScaleBalancerBase(ABC):
         return json_file_path
 
     @abstractmethod
-    def apply(self, vec: np.ndarray) -> np.ndarray:
+    def apply(self, arr: ArrayT) -> ArrayT:
         pass
 
     @abstractmethod
-    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
+    def inverse_apply(self, arr: ArrayT) -> ArrayT:
         pass
 
     @abstractmethod
@@ -59,11 +61,11 @@ class ScaleBalancerBase(ABC):
 
 @dataclass(frozen=True)
 class IdenticalScaleBalancer(ScaleBalancerBase):
-    def apply(self, vec: np.ndarray) -> np.ndarray:
-        return vec
+    def apply(self, arr: ArrayT) -> ArrayT:
+        return arr
 
-    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        return vec
+    def inverse_apply(self, arr: ArrayT) -> ArrayT:
+        return arr
 
     def dump(self, project_path: Path) -> None:
         json_file_path = self.get_json_file_path(project_path, create_dir=True)
@@ -186,22 +188,40 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         scaled_stds = list(np.array(max_stds) / max(max_stds))
         return cls(dims, means, scaled_stds)
 
-    def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
-        vec_out = copy.deepcopy(vec)
+    def apply(self, arr: ArrayT) -> ArrayT:
+
+        assert arr.ndim in [1, 2]
+
+        dim = len(arr) if arr.ndim == 1 else arr.shape[1]
+        assert_equal_with_message(dim, sum(self.dims), "vector total dim")
+
+        vec_out = copy.deepcopy(arr)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
-            vec_out[rangee] = vec_out_new
+            mean = self.means[idx_elem]
+            if arr.ndim == 1:
+                vec_out_new = (vec_out[rangee] - mean) / self.scaled_stds[idx_elem]
+                vec_out[rangee] = vec_out_new
+            else:
+                vec_out_new = (vec_out[:, rangee] - mean) / self.scaled_stds[idx_elem]
+                vec_out[:, rangee] = vec_out_new
         return vec_out
 
-    def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
-        vec_out = copy.deepcopy(vec)
+    def inverse_apply(self, arr: ArrayT) -> ArrayT:
+
+        assert arr.ndim in [1, 2]
+
+        dim = len(arr) if arr.ndim == 1 else arr.shape[1]
+        assert_equal_with_message(dim, sum(self.dims), "vector total dim")
+
+        vec_out = copy.deepcopy(arr)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
-            vec_out[rangee] = vec_out_new
+            mean = self.means[idx_elem]
+            if arr.ndim == 1:
+                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + mean
+                vec_out[rangee] = vec_out_new
+            else:
+                vec_out_new = (vec_out[:, rangee] * self.scaled_stds[idx_elem]) + mean
+                vec_out[:, rangee] = vec_out_new
         return vec_out
 
 

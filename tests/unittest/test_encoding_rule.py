@@ -60,9 +60,24 @@ def test_covariance_based_balancer():
     inp = np.random.randn(5)
     balanced = balancer.apply(inp)
     debalanced = balancer.inverse_apply(balanced)
-    np.testing.assert_almost_equal(inp, debalanced, decimal=2)
-
+    np.testing.assert_almost_equal(inp, debalanced, decimal=8)
     np.testing.assert_almost_equal(balancer.scaled_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+    # apply to 2d arr
+    n_batch = 20
+    inp_arr = np.random.randn(n_batch, 5)
+    balanced_arr = balancer.apply(inp_arr)
+    debalanced_arr = balancer.inverse_apply(balanced_arr)
+    np.testing.assert_almost_equal(inp_arr, debalanced_arr, decimal=8)
+    for i in range(n_batch):
+        np.testing.assert_almost_equal(balanced_arr[i], balancer.apply(inp_arr[i]))
+
+    # apply to 2d tensor
+    inp_torch = torch.from_numpy(inp_arr)
+    balanced_torch = balancer.apply(inp_torch)
+    debalanced_torch = balancer.inverse_apply(balanced_torch)
+    np.testing.assert_almost_equal(balanced_arr, balanced_torch.detach().numpy())
+    torch.allclose(inp_torch, debalanced_torch)
 
 
 def test_covariance_based_balancer_dump_and_load():
