@@ -6,11 +6,7 @@ from typing import List, Optional, Type
 import numpy as np
 
 from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import (
-    CompositeEncodingRule,
-    CovarianceBasedScaleBalancer,
-    EncodingRule,
-)
+from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.model import AutoEncoderBase
 from mohou.model.chimera import Chimera
 from mohou.propagator import Propagator, PropagatorBaseT
@@ -168,16 +164,12 @@ def create_default_chimera_propagator(project_path: Path):
     # TODO: move to inside of create_default_propagator
 
     logger.warning("warn: this feature is quite experimental. maybe deleted without notfication")
-    image_encoder = load_default_image_encoder(project_path)
 
     tcache_chimera = TrainCache.load(project_path, Chimera)
     chimera_model = tcache_chimera.best_model
 
-    image_encoder = chimera_model.ae.get_encoder()
-    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
-    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=False)
-
-    rule = CompositeEncodingRule([image_encoding_rule, other_encoding_Rule])
+    rule = create_default_encoding_rule(project_path)
+    rule[RGBImage] = chimera_model.ae.get_encoder()
     propagator = Propagator(chimera_model.lstm, rule)
     return propagator
 
