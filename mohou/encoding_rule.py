@@ -196,9 +196,11 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             if vec.ndim == 1:
-                vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
+                mean = self.means[idx_elem]
             else:
-                vec_out_new = (vec_out[rangee] - self.means[idx_elem][:, None]) / self.scaled_stds[idx_elem]  # type: ignore
+                mean = self.means[idx_elem][:, None]
+
+            vec_out_new = (vec_out[rangee] - mean) / self.scaled_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
 
@@ -212,11 +214,10 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
             if vec.ndim == 1:
-                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
+                mean = self.means[idx_elem]
             else:
-                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem][
-                    :, None
-                ]
+                mean = self.means[idx_elem][:, None]
+            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + mean
             vec_out[rangee] = vec_out_new
         return vec_out
 
