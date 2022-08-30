@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("-aug", type=int, default=4, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
     parser.add_argument("-layer", type=int, default=2, help="number of layers of lstm")
+    parser.add_argument("-rate", type=float, default=2e-4, help="learning rate")
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     n_aug: int = args.aug
     n_hidden: int = args.hidden
     n_layer: int = args.layer
+    learning_rate: float = args.rate
     valid_ratio: float = args.valid_ratio
     use_pretrained_lstm: bool = args.pretrained_lstm
 
@@ -44,7 +46,9 @@ if __name__ == "__main__":
     project_path = get_project_path(project_name)
 
     logger = create_default_logger(project_path, "chimera")  # noqa
-    train_config = TrainConfig(n_epoch=n_epoch, batch_size=5, valid_data_ratio=valid_ratio)
+    train_config = TrainConfig(
+        n_epoch=n_epoch, batch_size=5, valid_data_ratio=valid_ratio, learning_rate=learning_rate
+    )
 
     bundle = EpisodeBundle.load(project_path)
 
