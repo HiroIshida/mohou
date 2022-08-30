@@ -16,7 +16,12 @@ from torch.utils.data import DataLoader, Dataset
 
 import mohou
 from mohou.model import FloatLossDict, ModelT, average_float_loss_dict
-from mohou.utils import log_package_version_info, log_text_with_box, split_with_ratio
+from mohou.utils import (
+    change_color_to_yellow,
+    log_package_version_info,
+    log_text_with_box,
+    split_with_ratio,
+)
 
 logger = logging.getLogger(__name__)
 warnings.simplefilter("always")
@@ -207,8 +212,8 @@ class TrainCache(Generic[ModelT]):
         if is_legacy_model_path_exist:
             assert m is not None  # nothing but for mypy
             file_uuid = m[3]
-            message = "NOTE: legacy model (probably created by mohou<0.4) ditected"
-            logger.warn(message)
+            message = "NOTE: legacy model's file name (probably created by mohou<0.4) detected."
+            logger.warn(change_color_to_yellow(message))
         else:
             # [mohou > v0.4.0]
             # (model_type)-(uuid)
@@ -235,11 +240,11 @@ class TrainCache(Generic[ModelT]):
         # warining for legacy users
         legacy_train_result_path = project_path / "train_result"
         if legacy_train_result_path.exists():
-            message = "legacy train_result directory found\n"
-            message += "please move the models from {} to {}".format(
+            message = "NOTE: Legacy train_result directory found.\n"
+            message += "Please rename {} to {}.".format(
                 legacy_train_result_path, cls.train_result_base_path(project_path)
             )
-            logger.warn(legacy_train_result_path)
+            logger.warn(change_color_to_yellow(message))
 
         ps = cls.filter_result_paths(project_path, model_type, **kwargs)
         tcache_list = [cls.load_from_cache_path(p) for p in ps]

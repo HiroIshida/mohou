@@ -175,3 +175,9 @@ def log_package_version_info(logger, module: types.ModuleType) -> None:
         git_diff_stdout = proc.stdout.decode("utf8")
         logger.info(command_git_diff)
         log_line_by_line(git_diff_stdout)
+
+
+def change_color_to_yellow(message: str) -> str:
+    color = "\033[33m"
+    reset = "\033[0m"
+    return color + message + reset
