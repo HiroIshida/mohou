@@ -54,6 +54,12 @@ class LossDict(Dict[str, torch.Tensor]):
             fld[key] = self[key].detach().clone().cpu().item()
         return fld
 
+    def __mul__(self, scale: float):
+        return LossDict({key: val * scale for key, val in self.items()})
+
+    def __rmul__(self, scale: float):
+        return LossDict({key: val * scale for key, val in self.items()})
+
 
 @dataclass
 class ModelConfigBase:

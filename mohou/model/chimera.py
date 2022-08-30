@@ -101,10 +101,10 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         pred_loss = self.lstm.loss((indices, feature_seqs, static_context))
 
         # compute reconstruction loss
-        reconst_loss = self.ae.loss(images_at_once)
+        ae_loss = self.ae.loss(images_at_once) * 0.1
 
         loss_dict = {}
-        for loss in [pred_loss, reconst_loss]:
+        for loss in [pred_loss, ae_loss]:
             for k, v in loss.items():
                 loss_dict[k] = v
         return LossDict(loss_dict)
