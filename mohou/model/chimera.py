@@ -1,15 +1,20 @@
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, Tuple, Type, Union
+from typing import Generic, Optional, Tuple, Type, Union
 
 import torch
 
 from mohou.encoder import ImageEncoder
+from mohou.encoding_rule import CovarianceBasedScaleBalancer
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import VariationalAutoEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.trainer import TrainCache
 from mohou.types import ImageT
+from mohou.utils import change_color_to_yellow
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -26,13 +31,32 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
     image_type: Type[ImageT]
     lstm: LSTM
     ae: VariationalAutoEncoder[ImageT]
+    balancer: Optional[CovarianceBasedScaleBalancer] = None
 
     def _setup_from_config(self, config: ChimeraConfig) -> None:
         if isinstance(config.lstm_config, Path):
             tcache = TrainCache[LSTM].load_from_cache_path(config.lstm_config)
             self.lstm = tcache.best_model
+            project_path = config.lstm_config.parent.parent
+
+            json_file_path = CovarianceBasedScaleBalancer.get_json_file_path(
+                project_path, create_dir=True
+            )
+            from mohou.default import create_default_encoding_rule
+
+            if not json_file_path.exists():
+                rule = create_default_encoding_rule(project_path)
+                rule.scale_balancer.dump(project_path)
+
+                message = "NOTE: dump scale_balancer."
+                logger.warn(change_color_to_yellow(message))
+
+            balancer = CovarianceBasedScaleBalancer.load(project_path)
+            self.balancer = balancer
         elif isinstance(config.lstm_config, LSTMConfig):
             self.lstm = LSTM(config.lstm_config)
+            self.balancer = None
+            raise NotImplementedError("under construction...")
         else:
             assert False
 
@@ -67,6 +91,9 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         # strong assumption ... !!!!!!!!
         # TODO(HiroIshida) tmporary assume default encoding rule order (i.e. image first)
         feature_seqs = torch.concat((image_feature_seqs, vector_seqs), dim=2)
+
+        if self.balancer is not None:
+            feature_seqs = torch.stack([self.balancer.apply(seq) for seq in feature_seqs])
 
         # compute lstm loss
         static_context = torch.empty(n_batch, 0).to(self.device)

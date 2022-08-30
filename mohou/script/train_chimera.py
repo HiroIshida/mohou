@@ -39,6 +39,8 @@ if __name__ == "__main__":
     valid_ratio: float = args.valid_ratio
     use_pretrained_lstm: bool = args.pretrained_lstm
 
+    assert use_pretrained_lstm
+
     project_path = get_project_path(project_name)
 
     logger = create_default_logger(project_path, "chimera")  # noqa
@@ -46,8 +48,12 @@ if __name__ == "__main__":
 
     bundle = EpisodeBundle.load(project_path)
 
+    # balancer is loaded in chimera model. so no balancer is required.
+    use_balancer = not use_pretrained_lstm
     encoding_rule_except_image = create_default_encoding_rule(
-        project_path, include_image_encoder=False
+        project_path,
+        include_image_encoder=False,
+        use_balancer=use_balancer,
     )
 
     ae_tcache = TrainCache.load(project_path, VariationalAutoEncoder)
