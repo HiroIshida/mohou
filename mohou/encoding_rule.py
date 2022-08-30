@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -188,41 +187,31 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         scaled_stds = list(np.array(max_stds) / max(max_stds))
         return cls(dims, means, scaled_stds)
 
-    def apply(self, arr: ArrayT) -> ArrayT:
+    def _apply(self, arr: ArrayT, inverse: bool) -> ArrayT:
 
         assert arr.ndim in [1, 2]
 
         dim = len(arr) if arr.ndim == 1 else arr.shape[1]
         assert_equal_with_message(dim, sum(self.dims), "vector total dim")
 
-        vec_out = copy.deepcopy(arr)
-        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            mean = self.means[idx_elem]
-            if arr.ndim == 1:
-                vec_out_new = (vec_out[rangee] - mean) / self.scaled_stds[idx_elem]
-                vec_out[rangee] = vec_out_new
-            else:
-                vec_out_new = (vec_out[:, rangee] - mean) / self.scaled_stds[idx_elem]
-                vec_out[:, rangee] = vec_out_new
-        return vec_out
+        mean = np.hstack(self.means)
+        std_list = [np.ones(dim) * std for dim, std, in zip(self.dims, self.scaled_stds)]
+        std = np.hstack(std_list)
+
+        if isinstance(arr, torch.Tensor):
+            mean = torch.from_numpy(mean).float().to(arr.device)  # type: ignore
+            std = torch.from_numpy(std).float().to(arr.device)  # type: ignore
+
+        if inverse:
+            return (arr * std) + mean  # type: ignore
+        else:
+            return (arr - mean) / std  # type: ignore
+
+    def apply(self, arr: ArrayT) -> ArrayT:
+        return self._apply(arr, False)
 
     def inverse_apply(self, arr: ArrayT) -> ArrayT:
-
-        assert arr.ndim in [1, 2]
-
-        dim = len(arr) if arr.ndim == 1 else arr.shape[1]
-        assert_equal_with_message(dim, sum(self.dims), "vector total dim")
-
-        vec_out = copy.deepcopy(arr)
-        for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            mean = self.means[idx_elem]
-            if arr.ndim == 1:
-                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + mean
-                vec_out[rangee] = vec_out_new
-            else:
-                vec_out_new = (vec_out[:, rangee] * self.scaled_stds[idx_elem]) + mean
-                vec_out[:, rangee] = vec_out_new
-        return vec_out
+        return self._apply(arr, True)
 
 
 class EncodingRuleBase(Mapping[Type[ElementBase], EncoderBase]):

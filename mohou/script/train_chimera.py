@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("-aug", type=int, default=4, help="number of augmentation X")
     parser.add_argument("-hidden", type=int, default=200, help="number of hidden state of lstm")
     parser.add_argument("-layer", type=int, default=2, help="number of layers of lstm")
+    parser.add_argument("-rate", type=float, default=2e-4, help="learning rate")
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
@@ -36,28 +37,37 @@ if __name__ == "__main__":
     n_aug: int = args.aug
     n_hidden: int = args.hidden
     n_layer: int = args.layer
+    learning_rate: float = args.rate
     valid_ratio: float = args.valid_ratio
     use_pretrained_lstm: bool = args.pretrained_lstm
+
+    assert use_pretrained_lstm
 
     project_path = get_project_path(project_name)
 
     logger = create_default_logger(project_path, "chimera")  # noqa
-    train_config = TrainConfig(n_epoch=n_epoch, batch_size=5, valid_data_ratio=valid_ratio)
+    train_config = TrainConfig(
+        n_epoch=n_epoch, batch_size=5, valid_data_ratio=valid_ratio, learning_rate=learning_rate
+    )
 
     bundle = EpisodeBundle.load(project_path)
 
+    # balancer is loaded in chimera model. so no balancer is required.
+    use_balancer = not use_pretrained_lstm
     encoding_rule_except_image = create_default_encoding_rule(
-        project_path, include_image_encoder=False
+        project_path,
+        include_image_encoder=False,
+        use_balancer=use_balancer,
     )
 
     ae_tcache = TrainCache.load(project_path, VariationalAutoEncoder)
-    ae_config = ae_tcache.cache_path
+    ae_config = ae_tcache.cache_path(project_path)
     assert ae_config is not None
 
     if use_pretrained_lstm:
         tcache_lstm = TrainCache.load(project_path, LSTM)
         assert tcache_lstm.cache_path is not None
-        lstm_config: Union[Path, LSTMConfig] = tcache_lstm.cache_path
+        lstm_config: Union[Path, LSTMConfig] = tcache_lstm.cache_path(project_path)
     else:
         image_encoder = load_default_image_encoder(project_path)
         lstm_dim = encoding_rule_except_image.dimension + image_encoder.output_size

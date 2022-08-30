@@ -6,11 +6,7 @@ from typing import List, Optional, Type
 import numpy as np
 
 from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
-from mohou.encoding_rule import (
-    CompositeEncodingRule,
-    CovarianceBasedScaleBalancer,
-    EncodingRule,
-)
+from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.model import AutoEncoderBase
 from mohou.model.chimera import Chimera
 from mohou.propagator import Propagator, PropagatorBaseT
@@ -77,6 +73,7 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 def create_default_encoding_rule(
     project_path: Path,
     include_image_encoder: bool = True,
+    use_balancer: bool = True,
 ) -> EncodingRule:
 
     bundle = EpisodeBundle.load(project_path)
@@ -110,11 +107,24 @@ def create_default_encoding_rule(
 
     p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)
     if p.exists():  # use cached balacner
-        logger.warning("warn: loading cached CovarianceBasedScaleBalancer")
-        balancer = CovarianceBasedScaleBalancer.load(project_path)
+        balancer: Optional[CovarianceBasedScaleBalancer]
+        if use_balancer:
+            logger.warning(
+                "warn: loading cached CovarianceBasedScaleBalancer. This feature is experimental."
+            )
+            balancer = CovarianceBasedScaleBalancer.load(project_path)
+        else:
+            balancer = None
         encoding_rule = EncodingRule.from_encoders(encoders, bundle=None, scale_balancer=balancer)
     else:
-        encoding_rule = EncodingRule.from_encoders(encoders, bundle=bundle, scale_balancer=None)
+        bundle_for_balancer: Optional[EpisodeBundle]
+        if use_balancer:
+            bundle_for_balancer = bundle
+        else:
+            bundle_for_balancer = None
+        encoding_rule = EncodingRule.from_encoders(
+            encoders, bundle=bundle_for_balancer, scale_balancer=None
+        )
 
     # TODO: Move The following check to unittest? but it's diffcult becaues
     # using this function pre-require the existence of trained AE ...
@@ -156,16 +166,12 @@ def create_default_chimera_propagator(project_path: Path):
     # TODO: move to inside of create_default_propagator
 
     logger.warning("warn: this feature is quite experimental. maybe deleted without notfication")
-    image_encoder = load_default_image_encoder(project_path)
 
     tcache_chimera = TrainCache.load(project_path, Chimera)
     chimera_model = tcache_chimera.best_model
 
-    image_encoder = chimera_model.ae.get_encoder()
-    image_encoding_rule = EncodingRule.from_encoders([image_encoder])
-    other_encoding_Rule = create_default_encoding_rule(project_path, include_image_encoder=False)
-
-    rule = CompositeEncodingRule([image_encoding_rule, other_encoding_Rule])
+    rule = create_default_encoding_rule(project_path)
+    rule[RGBImage] = chimera_model.ae.get_encoder()
     propagator = Propagator(chimera_model.lstm, rule)
     return propagator
 

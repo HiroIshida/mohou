@@ -44,7 +44,11 @@ class TrainCache(Generic[ModelT]):
     train_lossseq_table: Dict[str, List[float]]
     validate_lossseq_table: Dict[str, List[float]]
     file_uuid: str
-    cache_path: Optional[Path] = None  # model specific cache path
+
+    def cache_path(self, project_path: Path) -> Path:
+        class_name = self.best_model.__class__.__name__
+        cache_name = "{}-{}".format(class_name, self.file_uuid)
+        return self.train_result_base_path(project_path) / cache_name
 
     @classmethod
     def from_model(cls, model: ModelT) -> "TrainCache[ModelT]":
@@ -72,12 +76,6 @@ class TrainCache(Generic[ModelT]):
     def train_result_base_path(project_path: Path) -> Path:
         base_path = project_path / "models"
         return base_path
-
-    def train_result_path(self, project_path: Path):
-        base_path = self.train_result_base_path(project_path)
-        class_name = self.best_model.__class__.__name__
-        result_path = base_path / "{}-{}".format(class_name, self.file_uuid)
-        return result_path
 
     @classmethod
     def filter_result_paths(
@@ -140,6 +138,40 @@ class TrainCache(Generic[ModelT]):
             table[key] = npz_dict[key].tolist()
         return table
 
+    def save(self, project_path: Path):
+        def save():
+            base_path = self.cache_path(project_path)
+            assert base_path is not None  # for mypy
+            base_path.mkdir(exist_ok=True, parents=True)
+            model_path = base_path / "model.pth"
+            model_config_path = base_path / "config.json"
+            valid_loss_path = base_path / "validation_loss.npz"
+            train_loss_path = base_path / "train_loss.npz"
+
+            with model_config_path.open(mode="w") as f:
+                d = self.best_model.config.to_dict()
+                json.dump(d, f, indent=2)
+
+            torch.save(self.best_model, model_path)
+            np.savez(
+                train_loss_path, **self.dump_lossseq_table_as_npz_dict(self.train_lossseq_table)
+            )
+            np.savez(
+                valid_loss_path,
+                **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table),
+            )
+
+        # error handling for keyboard interrupt
+        try:
+            save()
+        except KeyboardInterrupt:
+            logger.info("got keyboard interuppt. but let me dump the object...")
+            save()
+        except Exception as e:
+            logger.info("cannot saved model and losses correctly")
+            raise e
+        logger.info("model is updated and saved")
+
     def update_and_save(
         self,
         model: ModelT,
@@ -165,38 +197,7 @@ class TrainCache(Generic[ModelT]):
         require_update_model = validate_loss_list[-1] == self.min_validate_loss
         if require_update_model:
             self.best_model = model
-
-            def save():
-                base_path = self.train_result_path(project_path)
-                base_path.mkdir(exist_ok=True, parents=True)
-                model_path = base_path / "model.pth"
-                model_config_path = base_path / "config.json"
-                valid_loss_path = base_path / "validation_loss.npz"
-                train_loss_path = base_path / "train_loss.npz"
-
-                with model_config_path.open(mode="w") as f:
-                    d = self.best_model.config.to_dict()
-                    json.dump(d, f, indent=2)
-
-                torch.save(self.best_model, model_path)
-                np.savez(
-                    train_loss_path, **self.dump_lossseq_table_as_npz_dict(self.train_lossseq_table)
-                )
-                np.savez(
-                    valid_loss_path,
-                    **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table),
-                )
-
-            # error handling for keyboard interrupt
-            try:
-                save()
-            except KeyboardInterrupt:
-                logger.info("got keyboard interuppt. but let me dump the object...")
-                save()
-            except Exception as e:
-                logger.info("cannot saved model and losses correctly")
-                raise e
-            logger.info("model is updated and saved")
+            self.save(project_path)
 
     @classmethod
     def load_from_cache_path(cls, cache_path: Path) -> "TrainCache":
@@ -229,7 +230,7 @@ class TrainCache(Generic[ModelT]):
         best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
-        return cls(best_model, train_loss, valid_loss, file_uuid, cache_path)
+        return cls(best_model, train_loss, valid_loss, file_uuid)
 
     @classmethod
     def load_all(

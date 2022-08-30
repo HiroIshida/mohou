@@ -76,7 +76,7 @@ def test_covariance_based_balancer():
     inp_torch = torch.from_numpy(inp_arr)
     balanced_torch = balancer.apply(inp_torch)
     debalanced_torch = balancer.inverse_apply(balanced_torch)
-    np.testing.assert_almost_equal(balanced_arr, balanced_torch.detach().numpy())
+    np.testing.assert_almost_equal(balanced_arr, balanced_torch.detach().numpy(), decimal=4)
     torch.allclose(inp_torch, debalanced_torch)
 
 
