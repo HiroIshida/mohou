@@ -187,20 +187,36 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
         return cls(dims, means, scaled_stds)
 
     def apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+
+        assert vec.ndim in [1, 2]
+
+        dim = len(vec) if vec.ndim == 1 else vec.shape[1]
+        assert_equal_with_message(dim, sum(self.dims), "vector total dim")
+
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
+            if vec.ndim == 1:
+                vec_out_new = (vec_out[rangee] - self.means[idx_elem]) / self.scaled_stds[idx_elem]  # type: ignore
+            else:
+                vec_out_new = (vec_out[rangee] - self.means[idx_elem][:, None]) / self.scaled_stds[idx_elem]  # type: ignore
             vec_out[rangee] = vec_out_new
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
-        assert_equal_with_message(vec.ndim, 1, "vector dim")
-        assert_equal_with_message(len(vec), sum(self.dims), "vector total dim")
+
+        assert vec.ndim in [1, 2]
+
+        dim = len(vec) if vec.ndim == 1 else vec.shape[1]
+        assert_equal_with_message(dim, sum(self.dims), "vector total dim")
+
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
-            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
+            if vec.ndim == 1:
+                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem]
+            else:
+                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + self.means[idx_elem][
+                    :, None
+                ]
             vec_out[rangee] = vec_out_new
         return vec_out
 

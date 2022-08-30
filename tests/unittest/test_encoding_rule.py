@@ -60,9 +60,14 @@ def test_covariance_based_balancer():
     inp = np.random.randn(5)
     balanced = balancer.apply(inp)
     debalanced = balancer.inverse_apply(balanced)
-    np.testing.assert_almost_equal(inp, debalanced, decimal=2)
-
+    np.testing.assert_almost_equal(inp, debalanced, decimal=8)
     np.testing.assert_almost_equal(balancer.scaled_stds, np.array([1.0 / 3.0, 1.0]), decimal=2)
+
+    # apply to 2d arr
+    inp = np.random.randn(100, 5)
+    balanced = balancer.apply(inp)
+    debalanced = balancer.inverse_apply(balanced)
+    np.testing.assert_almost_equal(inp, debalanced, decimal=8)
 
 
 def test_covariance_based_balancer_dump_and_load():
