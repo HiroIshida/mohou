@@ -195,13 +195,13 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
 
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
+            mean = self.means[idx_elem]
             if vec.ndim == 1:
-                mean = self.means[idx_elem]
+                vec_out_new = (vec_out[rangee] - mean) / self.scaled_stds[idx_elem]  # type: ignore
+                vec_out[rangee] = vec_out_new
             else:
-                mean = self.means[idx_elem][:, None]
-
-            vec_out_new = (vec_out[rangee] - mean) / self.scaled_stds[idx_elem]  # type: ignore
-            vec_out[rangee] = vec_out_new
+                vec_out_new = (vec_out[:, rangee] - mean) / self.scaled_stds[idx_elem]  # type: ignore
+                vec_out[:, rangee] = vec_out_new
         return vec_out
 
     def inverse_apply(self, vec: np.ndarray) -> np.ndarray:
@@ -213,12 +213,13 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
 
         vec_out = copy.deepcopy(vec)
         for idx_elem, rangee in enumerate(self.get_bound_list(self.dims)):
+            mean = self.means[idx_elem]
             if vec.ndim == 1:
-                mean = self.means[idx_elem]
+                vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + mean
+                vec_out[rangee] = vec_out_new
             else:
-                mean = self.means[idx_elem][:, None]
-            vec_out_new = (vec_out[rangee] * self.scaled_stds[idx_elem]) + mean
-            vec_out[rangee] = vec_out_new
+                vec_out_new = (vec_out[:, rangee] * self.scaled_stds[idx_elem]) + mean
+                vec_out[:, rangee] = vec_out_new
         return vec_out
 
 
