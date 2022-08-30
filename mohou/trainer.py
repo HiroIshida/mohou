@@ -212,7 +212,9 @@ class TrainCache(Generic[ModelT]):
         if is_legacy_model_path_exist:
             assert m is not None  # nothing but for mypy
             file_uuid = m[3]
-            message = "NOTE: legacy model's file name (created by version < 0.4.0) detected."
+            message = "NOTE: legacy cache directory path {} (probably created by version lower than 0.4.0) detected.".format(
+                cache_path
+            )
             logger.warn(change_color_to_yellow(message))
         else:
             # [mohou > v0.4.0]
