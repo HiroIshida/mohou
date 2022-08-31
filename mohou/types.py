@@ -50,7 +50,7 @@ from mohou.utils import (
     assert_equal_with_message,
     assert_isinstance_with_message,
     canvas_to_ndarray,
-    get_type_from_name,
+    get_all_concrete_leaftypes,
     split_sequence,
 )
 
@@ -504,6 +504,13 @@ class ElementDict(Dict[Type[PrimitiveElementBase], PrimitiveElementBase]):
         return True
 
 
+def get_element_type(type_name: str) -> Type[ElementBase]:
+    for t in get_all_concrete_leaftypes(ElementBase):
+        if type_name == t.__name__:
+            return t
+    assert False, "type {} not found".format(type_name)
+
+
 @dataclass(frozen=True)
 class ElementSequence(HasAList[ElementT], Generic[ElementT]):
     elem_list: List[ElementT]
@@ -575,8 +582,8 @@ class ElementSequence(HasAList[ElementT], Generic[ElementT]):
         for p in episode_dir_path.iterdir():
             result = re.match(r"sequence-(\w+).(\w+)", p.name)
             if result is not None:
-                elem_type = get_type_from_name(result.group(1), ElementBase)
-                d[elem_type] = cls.load(episode_dir_path, elem_type)
+                elem_type = get_element_type(result.group(1))
+                d[elem_type] = cls.load(episode_dir_path, elem_type)  # type: ignore
         return d
 
 
@@ -925,7 +932,7 @@ class BundleSpec(HasTypeShapeTable):
     @classmethod
     def from_dict(cls, d: Dict) -> "BundleSpec":
         d["type_shape_table"] = {
-            get_type_from_name(k, ElementBase): tuple(v) for k, v in d["type_shape_table"].items()
+            get_element_type(k): tuple(v) for k, v in d["type_shape_table"].items()
         }
         d["meta_data"] = MetaData(d["meta_data"])
         return cls(**d)

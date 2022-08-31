@@ -1,37 +1,7 @@
-from typing import Generic
-
 import numpy as np
 import torch
 
-from mohou.encoding_rule import EncodingRuleBase, ScaleBalancerBase
-from mohou.model.autoencoder import AutoEncoderBase
-from mohou.types import ElementBase, ImageT, RGBImage
-from mohou.utils import get_all_concrete_leaftypes, get_type_from_name, splitting_slices
-
-
-class FooBase(Generic[ImageT]):
-    pass
-
-
-class Foo1(FooBase[RGBImage]):
-    pass
-
-
-class Foo2(FooBase[RGBImage]):
-    pass
-
-
-def test_get_all_concrete_leaftypes():
-    # this check if this function works for generic classes
-    lst = get_all_concrete_leaftypes(FooBase)
-    assert set(lst) == {Foo1, Foo2}
-
-
-def test_get_element_type():
-    for base_type in [ElementBase, ScaleBalancerBase, EncodingRuleBase, AutoEncoderBase]:
-        for t in get_all_concrete_leaftypes(base_type):
-            name = t.__name__
-            assert get_type_from_name(name, base_type) == t
+from mohou.utils import splitting_slices
 
 
 def test_splitting_slicers():

@@ -21,8 +21,8 @@ from mohou.types import (
     RGBDImage,
     RGBImage,
     TerminateFlag,
+    get_all_concrete_leaftypes,
 )
-from mohou.utils import get_all_concrete_leaftypes
 
 logger = logging.getLogger(__name__)
 
