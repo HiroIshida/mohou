@@ -92,7 +92,7 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
 
         # for efficiency we encode the image at once
         images_at_once = image_seqs.reshape((n_batch * n_seqlen, *image_seqs.shape[2:]))
-        image_features_at_once = self.ae.get_encoder_module()(images_at_once)
+        image_features_at_once = self.ae.encode(images_at_once)
         image_feature_seqs = image_features_at_once.reshape(n_batch, n_seqlen, -1)
 
         # strong assumption ... !!!!!!!!
