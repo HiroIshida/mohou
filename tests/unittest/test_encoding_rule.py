@@ -15,12 +15,12 @@ from mohou.encoding_rule import (
     EncodingRule,
     IdenticalScaleBalancer,
 )
+from mohou.model import AutoEncoder, AutoEncoderConfig
 from mohou.types import (
     AngleVector,
     DepthImage,
     ElementDict,
     EpisodeBundle,
-    ImageBase,
     RGBDImage,
     RGBImage,
     TerminateFlag,
@@ -105,23 +105,11 @@ def test_covariance_based_balancer_with_static_values():
 def create_encoding_rule_for_image_av_bundle(
     bundle: EpisodeBundle, balance: bool = True
 ) -> EncodingRule:
-    dim_image_encoded = 5
     dim_av = bundle.get_element_shape(AngleVector)[0]
-    image_type = [t for t in bundle.types() if issubclass(t, ImageBase)].pop()
-    dims_image: Tuple[int, int, int] = bundle.get_element_shape(image_type)  # type: ignore
+    dims_image: Tuple[int, int, int] = bundle.get_element_shape(RGBImage)  # type: ignore
 
-    def forward_impl(img_tensor: torch.Tensor):
-        # whatever function as long as it's deterministic injective function
-        vec = img_tensor[0, 0, 0, :dim_image_encoded].float()
-        return vec
-
-    f1 = ImageEncoder(
-        image_type,
-        forward_impl,
-        lambda vec: torch.zeros(tuple(reversed(dims_image))),
-        dims_image,
-        dim_image_encoded,
-    )
+    model = AutoEncoder[RGBImage](AutoEncoderConfig(RGBImage, 10, dims_image[0]))
+    f1 = ImageEncoder.from_auto_encoder(model)
     f2 = VectorIdenticalEncoder(AngleVector, dim_av)
     f3 = VectorIdenticalEncoder(TerminateFlag, 1)
     optional_bundle = bundle if balance else None
@@ -130,27 +118,17 @@ def create_encoding_rule_for_image_av_bundle(
 
 
 def test_encoding_rule_apply_to_edict(rgbd_image_bundle):  # noqa
-    dim_image_encoded = 5
+    pass
 
-    def forward_impl(img_tensor: torch.Tensor):
-        # whatever function as long as it's deterministic injective function
-        vec = img_tensor[0, 0, 0, :dim_image_encoded].float()
-        return vec
-
-    f1 = ImageEncoder(
-        RGBDImage,
-        forward_impl,
-        lambda vec: torch.zeros((4, 30, 30)),
-        (30, 30, 4),
-        5,
-    )
+    model = AutoEncoder[RGBDImage](AutoEncoderConfig(RGBDImage, 10, 28))
+    f1 = ImageEncoder.from_auto_encoder(model)
     rule = EncodingRule.from_encoders([f1])
 
-    rgbd = RGBDImage.dummy_from_shape((30, 30))
+    rgbd = RGBDImage.dummy_from_shape((28, 28))
     rule.apply(ElementDict([rgbd]))
 
-    rgb = RGBImage.dummy_from_shape((30, 30))
-    depth = DepthImage.dummy_from_shape((30, 30))
+    rgb = RGBImage.dummy_from_shape((28, 28))
+    depth = DepthImage.dummy_from_shape((28, 28))
     rule.apply(ElementDict([rgb, depth]))
 
 

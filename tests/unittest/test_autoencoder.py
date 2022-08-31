@@ -3,6 +3,7 @@ from typing import Type
 import numpy as np
 import pytest
 
+from mohou.encoder import ImageEncoder
 from mohou.model import AutoEncoder, AutoEncoderConfig, VariationalAutoEncoder
 from mohou.types import DepthImage, PrimitiveImageBase, RGBDImage, RGBImage
 
@@ -30,7 +31,7 @@ def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
     assert loss > 0.0
 
     # test encoder (This also test ImageEmbedder)
-    encoder = model.get_encoder()
+    encoder = ImageEncoder.from_auto_encoder(model)
     feature_vec: np.ndarray = encoder.forward(img)
     assert list(feature_vec.shape) == [config.n_bottleneck]
     img2 = encoder.backward(feature_vec)

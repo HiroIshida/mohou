@@ -66,6 +66,7 @@ class ImageEncoder(EncoderBase[ImageT]):
         check_callables: bool = True,
     ):
         super().__init__(image_type, input_shape, output_size)
+        self.model = model
 
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
