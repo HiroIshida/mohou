@@ -66,7 +66,7 @@ def load_default_image_encoder(project_path: Path) -> ImageEncoder:
 
     if tcache_autoencoder.best_model is None:
         raise DefaultNotFoundError("traincache was found but best model is not saved ")
-    return tcache_autoencoder.best_model.get_encoder()
+    return ImageEncoder.from_auto_encoder(tcache_autoencoder.best_model)
 
 
 @lru_cache(maxsize=40)
@@ -171,7 +171,7 @@ def create_default_chimera_propagator(project_path: Path):
     chimera_model = tcache_chimera.best_model
 
     rule = create_default_encoding_rule(project_path)
-    rule[RGBImage] = chimera_model.ae.get_encoder()
+    rule[RGBImage] = ImageEncoder.from_auto_encoder(chimera_model.ae)
     propagator = Propagator(chimera_model.lstm, rule)
     return propagator
 

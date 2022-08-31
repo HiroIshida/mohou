@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mohou.encoder import ImageEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT
 
@@ -151,11 +150,11 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
         pass
 
     @abstractmethod
-    def get_encoder_module(self) -> nn.Module:
+    def encode(self, inp: torch.Tensor) -> torch.Tensor:
         """Must be deterministic"""
 
     @abstractmethod
-    def get_decoder_module(self) -> nn.Module:
+    def decode(self, inp: torch.Tensor) -> torch.Tensor:
         """Must be deterministic"""
 
     @abstractmethod
@@ -169,18 +168,7 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         self.check_network_input(input)
-        return self.get_decoder_module()(self.get_encoder_module()(input))
-
-    def get_encoder(self) -> ImageEncoder[ImageT]:
-        np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
-        encoder = ImageEncoder[ImageT](
-            self.image_type,
-            lambda image_tensor: self.get_encoder_module()(image_tensor),
-            lambda encoding: self.get_decoder_module()(encoding),
-            np_image_shape,
-            self.config.n_bottleneck,
-        )
-        return encoder
+        return self.decode(self.encode(input))
 
     def channel(self) -> int:
         return self.image_type.channel()
@@ -194,11 +182,11 @@ class AutoEncoder(AutoEncoderBase[ImageT]):
         loss_value = f_loss(sample, reconstructed)
         return LossDict({"reconstruction": loss_value})
 
-    def get_encoder_module(self) -> nn.Module:
-        return self.encoder_module
+    def encode(self, inp: torch.Tensor) -> torch.Tensor:
+        return self.encoder_module(inp)
 
-    def get_decoder_module(self) -> nn.Module:
-        return self.decoder_module
+    def decode(self, inp: torch.Tensor) -> torch.Tensor:
+        return self.decoder_module(inp)
 
     def compute_reconstruction_loss(self, img: ImageT) -> float:
         tens = img.to_tensor().unsqueeze(dim=0)
@@ -237,11 +225,11 @@ class VariationalAutoEncoder(AutoEncoderBase[ImageT]):
         loss_value = nn.MSELoss()(sample, reconstructed)
         return LossDict({"reconstruction": loss_value, "kld": kld_loss})
 
-    def get_encoder_module(self) -> nn.Module:
-        return nn.Sequential(self.encoder_module, self.dense_mean)
+    def encode(self, input: torch.Tensor) -> torch.Tensor:
+        return nn.Sequential(self.encoder_module, self.dense_mean)(input)
 
-    def get_decoder_module(self) -> nn.Module:
-        return self.decoder_module
+    def decode(self, input: torch.Tensor) -> torch.Tensor:
+        return self.decoder_module(input)
 
     def compute_reconstruction_loss(self, img: ImageT) -> float:
         tens = img.to_tensor().unsqueeze(dim=0)
