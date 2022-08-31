@@ -21,8 +21,8 @@ from mohou.types import (
     RGBDImage,
     RGBImage,
     TerminateFlag,
-    get_all_concrete_leaftypes,
 )
+from mohou.utils import get_all_concrete_leaftypes
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     detect_count = 0
     for t_cand in t_cand_list:
         try:
-            TrainCache.load(project_path, t_cand)
+            TrainCache.load(project_path, t_cand)  # type: ignore [misc]
             t = t_cand
             detect_count += 1
         except FileNotFoundError:

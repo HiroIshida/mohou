@@ -57,7 +57,14 @@ def get_all_concrete_leaftypes(root: Type) -> List[Type]:
 
         for st in t.__subclasses__():
             q.put(st)
-    return list(set(concrete_types))
+    return concrete_types  # type: ignore [return-value]
+
+
+def get_type_from_name(type_name: str, base_type: Type) -> Type:
+    for t in get_all_concrete_leaftypes(base_type):
+        if type_name == t.__name__:
+            return t
+    assert False, "type {} not found".format(type_name)
 
 
 def flatten_lists(list_list: List[List[AnyT]]) -> List[AnyT]:

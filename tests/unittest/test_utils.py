@@ -1,7 +1,23 @@
 import numpy as np
 import torch
 
-from mohou.utils import splitting_slices
+from mohou.encoding_rule import (
+    CovarianceBasedScaleBalancer,
+    EncodingRule,
+    EncodingRuleBase,
+    ScaleBalancerBase,
+)
+from mohou.types import AngleVector, ElementBase
+from mohou.utils import get_type_from_name, splitting_slices
+
+
+def test_get_element_type():
+    assert get_type_from_name("AngleVector", ElementBase) == AngleVector
+    assert (
+        get_type_from_name("CovarianceBasedScaleBalancer", ScaleBalancerBase)
+        == CovarianceBasedScaleBalancer
+    )
+    assert get_type_from_name("EncodingRule", EncodingRuleBase) == EncodingRule
 
 
 def test_splitting_slicers():
