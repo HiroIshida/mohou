@@ -87,22 +87,22 @@ def create_default_encoding_rule(
 
     if AngleVector in bundle_spec.type_shape_table:
         av_dim = bundle_spec.type_shape_table[AngleVector][0]
-        av_idendical_encoder = VectorIdenticalEncoder(AngleVector, av_dim)
+        av_idendical_encoder = VectorIdenticalEncoder.create(AngleVector, av_dim)
         encoders.append(av_idendical_encoder)
 
     if GripperState in bundle_spec.type_shape_table:
-        gs_identital_func = VectorIdenticalEncoder(
+        gs_identital_func = VectorIdenticalEncoder.create(
             GripperState, bundle_spec.type_shape_table[GripperState][0]
         )
         encoders.append(gs_identital_func)
 
     if AnotherGripperState in bundle_spec.type_shape_table:
-        ags_identital_func = VectorIdenticalEncoder(
+        ags_identital_func = VectorIdenticalEncoder.create(
             AnotherGripperState, bundle_spec.type_shape_table[AnotherGripperState][0]
         )
         encoders.append(ags_identital_func)
 
-    tf_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
+    tf_identical_func = VectorIdenticalEncoder.create(TerminateFlag, 1)
     encoders.append(tf_identical_func)
 
     p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)

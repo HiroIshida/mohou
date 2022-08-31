@@ -17,8 +17,8 @@ from mohou.types import AngleVector, EpisodeBundle, RGBImage, TerminateFlag
 def chimera_dataset(image_av_bundle_uneven):  # noqa
     bundle = image_av_bundle_uneven
     dim_av = bundle.get_element_shape(AngleVector)[0]
-    f1 = VectorIdenticalEncoder(AngleVector, dim_av)
-    f2 = VectorIdenticalEncoder(TerminateFlag, 1)
+    f1 = VectorIdenticalEncoder.create(AngleVector, dim_av)
+    f2 = VectorIdenticalEncoder.create(TerminateFlag, 1)
     rule = EncodingRule.from_encoders([f1, f2])
     dataset = ChimeraDataset.from_bundle(bundle, rule)
     return dataset

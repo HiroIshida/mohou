@@ -1,24 +1,39 @@
+import base64
+import pickle
 from abc import ABC, abstractmethod
-from typing import Generic, List, Tuple, Type
+from dataclasses import dataclass
+from typing import Dict, Generic, List, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
 from mohou.model.autoencoder import AutoEncoderBase
-from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT
+from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT, get_element_type
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
+EncoderT = TypeVar("EncoderT", bound="EncoderBase")
 
+
+@dataclass  # type: ignore
 class EncoderBase(ABC, Generic[ElementT]):
     elem_type: Type[ElementT]
     input_shape: Tuple[int, ...]
     output_size: int
 
-    def __init__(self, elem_type: Type[ElementT], input_shape: Tuple[int, ...], output_size: int):
-        self.elem_type = elem_type
-        self.input_shape = input_shape
-        self.output_size = output_size
+    def to_dict(self) -> Dict:
+        d: Dict = {}
+        d["elem_type"] = self.elem_type.__name__
+        d["input_shape"] = self.input_shape
+        d["output_size"] = self.output_size
+        # TODO: automate
+        return d
+
+    @classmethod
+    def from_dict(cls: Type[EncoderT], d: Dict) -> EncoderT:
+        d["elem_type"] = get_element_type(d["elem_type"])
+        d["input_shape"] = tuple(d["input_shape"])
+        return cls(**d)
 
     def forward(self, inp: ElementT, check_size: bool = True) -> np.ndarray:
         assert_isinstance_with_message(inp, self.elem_type)
@@ -52,35 +67,45 @@ class EncoderBase(ABC, Generic[ElementT]):
     def _backward_impl(self, inp: np.ndarray) -> ElementT:
         pass
 
+    def __eq__(self, other: object) -> bool:
+        # DO NOT USE dataclass's default __eq__
+        if not isinstance(other, EncoderBase):
+            return NotImplemented
+        assert type(self) == type(other)
+        for attr in ["elem_type", "input_shape", "output_size"]:
+            if not self.__dict__[attr] == other.__dict__[attr]:
+                return False
+        return True
 
+
+@dataclass(eq=False)
 class ImageEncoder(EncoderBase[ImageT]):
     input_shape: Tuple[int, int, int]
     model: AutoEncoderBase
 
-    def __init__(
-        self,
-        image_type: Type[ImageT],
-        model: AutoEncoderBase[ImageT],
-        input_shape: Tuple[int, int, int],
-        output_size: int,
-        check_callables: bool = True,
-    ):
-        super().__init__(image_type, input_shape, output_size)
-        self.model = model
+    def __post_init__(self):
+        inp_dummy = self.elem_type.dummy_from_shape(self.input_shape[:2])
+        out_dummy = self._forward_impl(inp_dummy)
+        assert_equal_with_message(out_dummy.shape, (self.output_size,), "shape")
 
-        if check_callables:
-            inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
-            out_dummy = self._forward_impl(inp_dummy)
-            assert_equal_with_message(out_dummy.shape, (output_size,), "shape")
-
-            inp_reconstucted = self._backward_impl(out_dummy)
-            assert_isinstance_with_message(inp_reconstucted, self.elem_type)
+        inp_reconstucted = self._backward_impl(out_dummy)
+        assert_isinstance_with_message(inp_reconstucted, self.elem_type)
 
     @classmethod
     def from_auto_encoder(cls, model: AutoEncoderBase) -> "ImageEncoder":
         image_type = model.image_type
         np_image_shape = (model.config.n_pixel, model.config.n_pixel, model.channel())
-        return cls(image_type, model, np_image_shape, model.config.n_bottleneck)
+        return cls(image_type, np_image_shape, model.config.n_bottleneck, model)
+
+    def to_dict(self) -> Dict:
+        d = super().to_dict()
+        d["model"] = base64.b64encode(pickle.dumps(self.model)).decode("utf-8")
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "ImageEncoder":
+        d["model"] = pickle.loads(base64.b64decode(d["model"].encode()))
+        return super().from_dict(d)
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
@@ -94,12 +119,31 @@ class ImageEncoder(EncoderBase[ImageT]):
         out: ImageT = self.elem_type.from_tensor(out_tensor)
         return out
 
+    def __eq__(self, other: object) -> bool:
+        # DO NOT USE dataclass's default __eq__
+        if not isinstance(other, ImageEncoder):
+            return NotImplemented
+        assert type(self) == type(other)
 
+        if not super().__eq__(other):
+            return False
+
+        # https://discuss.pytorch.org/t/check-if-models-have-same-weights/4351/2
+        model1 = self.model
+        model2 = other.model
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            if p1.data.ne(p2.data).sum() > 0:
+                return False
+        return True
+
+
+@dataclass
 class VectorIdenticalEncoder(EncoderBase[VectorT]):
     input_shape: Tuple[int]
 
-    def __init__(self, vector_type: Type[VectorT], dimension: int):
-        super().__init__(vector_type, (dimension,), dimension)
+    @classmethod
+    def create(cls, vector_type: Type[VectorT], dimension: int) -> "VectorIdenticalEncoder":
+        return cls(vector_type, (dimension,), dimension)
 
     def _forward_impl(self, inp: VectorT) -> np.ndarray:
         return inp.numpy()
@@ -118,6 +162,13 @@ class VectorPCAEncoder(EncoderBase[VectorT]):
         super().__init__(vector_type, input_shape, output_dimension)
 
         self.pca = pca
+
+    def to_dict(self) -> Dict:  # type: ignore
+        assert False, "currently not supported"
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "ImageEncoder":  # type: ignore
+        assert False, "currently not supported"
 
     def _forward_impl(self, inp: VectorT) -> np.ndarray:
         inp_as_2d = np.expand_dims(inp.numpy(), axis=0)
