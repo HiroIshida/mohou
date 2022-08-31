@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from mohou.dataset import MarkovControlSystemDataset
-from mohou.encoder import VectorIdenticalEncoder
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model import ControlModel, VariationalAutoEncoder
@@ -14,9 +14,9 @@ from mohou.types import AngleVector, EpisodeBundle
 
 
 def create_obs_rule(project_path: Path):
-    tcache = TrainCache.load(project_path, VariationalAutoEncoder)
+    tcache = TrainCache[VariationalAutoEncoder].load(project_path, VariationalAutoEncoder)
     model = tcache.best_model
-    f = model.get_encoder()
+    f = ImageEncoder.from_auto_encoder(model)
     obs_rule = EncodingRule.from_encoders([f])
     return obs_rule
 

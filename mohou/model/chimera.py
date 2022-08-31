@@ -5,7 +5,6 @@ from typing import Generic, Optional, Tuple, Type, Union
 
 import torch
 
-from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import CovarianceBasedScaleBalancer
 from mohou.model import LSTM, AutoEncoderConfig, LSTMConfig
 from mohou.model.autoencoder import VariationalAutoEncoder
@@ -76,9 +75,6 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
         else:
             assert False
         self.image_type = self.ae.image_type
-
-    def get_encoder(self) -> ImageEncoder[ImageT]:
-        return self.ae.get_encoder()
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> LossDict:
         # TODO(HiroIshida) consider weight later

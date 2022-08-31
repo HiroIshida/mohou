@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mohou.encoder import ImageEncoder
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 from mohou.types import ImageBase, ImageT
 
@@ -170,17 +169,6 @@ class AutoEncoderBase(ModelBase[AutoEncoderConfig], Generic[ImageT]):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         self.check_network_input(input)
         return self.decode(self.encode(input))
-
-    def get_encoder(self) -> ImageEncoder[ImageT]:
-        np_image_shape = (self.config.n_pixel, self.config.n_pixel, self.channel())
-        encoder = ImageEncoder[ImageT](
-            self.image_type,
-            lambda image_tensor: self.encode(image_tensor),
-            lambda encoding: self.decode(encoding),
-            np_image_shape,
-            self.config.n_bottleneck,
-        )
-        return encoder
 
     def channel(self) -> int:
         return self.image_type.channel()

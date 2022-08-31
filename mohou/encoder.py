@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, List, Optional, Tuple, Type
+from typing import Generic, List, Tuple, Type
 
 import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
+from mohou.model.autoencoder import AutoEncoderBase
 from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
@@ -54,22 +55,17 @@ class EncoderBase(ABC, Generic[ElementT]):
 
 class ImageEncoder(EncoderBase[ImageT]):
     input_shape: Tuple[int, int, int]
-    func_forward: Optional[Callable[[torch.Tensor], torch.Tensor]]
-    func_backward: Optional[Callable[[torch.Tensor], torch.Tensor]]
-    # https://stackoverflow.com/questions/51811024/mypy-type-checking-on-callable-thinks-that-member-variable-is-a-method
+    model: AutoEncoderBase
 
     def __init__(
         self,
         image_type: Type[ImageT],
-        func_forward: Callable[[torch.Tensor], torch.Tensor],
-        func_backward: Callable[[torch.Tensor], torch.Tensor],
+        model: AutoEncoderBase[ImageT],
         input_shape: Tuple[int, int, int],
         output_size: int,
         check_callables: bool = True,
     ):
         super().__init__(image_type, input_shape, output_size)
-        self.func_forward = func_forward
-        self.func_backward = func_backward
 
         if check_callables:
             inp_dummy = self.elem_type.dummy_from_shape(input_shape[:2])
@@ -79,17 +75,21 @@ class ImageEncoder(EncoderBase[ImageT]):
             inp_reconstucted = self._backward_impl(out_dummy)
             assert_isinstance_with_message(inp_reconstucted, self.elem_type)
 
+    @classmethod
+    def from_auto_encoder(cls, model: AutoEncoderBase) -> "ImageEncoder":
+        image_type = model.image_type
+        np_image_shape = (model.config.n_pixel, model.config.n_pixel, model.channel())
+        return cls(image_type, model, np_image_shape, model.config.n_bottleneck)
+
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
         inp_tensor = inp.to_tensor().unsqueeze(dim=0)
-        assert self.func_forward is not None
-        out_tensor = self.func_forward(inp_tensor).squeeze(dim=0)
+        out_tensor = self.model.encode(inp_tensor).squeeze(dim=0)
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
 
     def _backward_impl(self, inp: np.ndarray) -> ImageT:
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
-        assert self.func_backward is not None
-        out_tensor = self.func_backward(inp_tensor).squeeze(dim=0)
+        out_tensor = self.model.decode(inp_tensor).squeeze(dim=0)
         out: ImageT = self.elem_type.from_tensor(out_tensor)
         return out
 
