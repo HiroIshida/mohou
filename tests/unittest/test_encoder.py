@@ -8,7 +8,7 @@ from mohou.types import AngleVector, EpisodeBundle, RGBImage
 
 def test_image_encoder_serialization():
     config = AutoEncoderConfig(RGBImage, 16, 28)
-    model = AutoEncoder[RGBImage](config)
+    model = AutoEncoder(config)  # type: ignore [var-annotated]  # for python 3.6 compat
     encoder = ImageEncoder.from_auto_encoder(model)
     encoder_again = ImageEncoder.from_dict(encoder.to_dict())
     assert encoder == encoder_again
