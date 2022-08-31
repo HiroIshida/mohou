@@ -2,6 +2,7 @@ import functools
 import pathlib
 import queue
 import subprocess
+import sys
 import types
 from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast
 
@@ -57,7 +58,24 @@ def get_all_concrete_leaftypes(root: Type) -> List[Type]:
 
         for st in t.__subclasses__():
             q.put(st)
-    return concrete_types  # type: ignore [return-value]
+
+    if sys.version_info.minor > 6:
+        return concrete_types  # type: ignore [return-value]
+    else:
+        # In python <= 3.6, Generic and non generic type are
+        # handled differently ...
+        # So we just filter only non-generic one.
+        # probably related to this issue https://github.com/python/typing/issues/511
+        # [mohou.model.autoencoder.AutoEncoderBase[~ImageT],
+        #  mohou.model.autoencoder.AutoEncoder,
+        #  mohou.model.autoencoder.VariationalAutoEncoder[~ImageT],
+        #  mohou.model.autoencoder.VariationalAutoEncoder[~ImageT]]
+        def is_not_36generic_type(t: Type):
+            if not hasattr(t, "__origin__"):
+                return True
+            return t.__origin__ is None
+
+        return list(filter(is_not_36generic_type, concrete_types))
 
 
 def get_type_from_name(type_name: str, base_type: Type) -> Type:
