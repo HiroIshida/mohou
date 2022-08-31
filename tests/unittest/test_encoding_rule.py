@@ -110,8 +110,8 @@ def create_encoding_rule_for_image_av_bundle(
 
     model = AutoEncoder[RGBImage](AutoEncoderConfig(RGBImage, 10, dims_image[0]))
     f1 = ImageEncoder.from_auto_encoder(model)
-    f2 = VectorIdenticalEncoder(AngleVector, dim_av)
-    f3 = VectorIdenticalEncoder(TerminateFlag, 1)
+    f2 = VectorIdenticalEncoder.create(AngleVector, dim_av)
+    f3 = VectorIdenticalEncoder.create(TerminateFlag, 1)
     optional_bundle = bundle if balance else None
     rule = EncodingRule.from_encoders([f1, f2, f3], bundle=optional_bundle)
     return rule
@@ -162,7 +162,7 @@ def test_encoding_rule_order(image_av_bundle):  # noqa
     # Check dict insertion oreder is preserved
     # NOTE: from 3.7, order is preserved as lang. spec.
     # NOTE: from 3.6, order is preserved in a cpython implementation
-    f4 = VectorIdenticalEncoder(Dummy, 2)
+    f4 = VectorIdenticalEncoder.create(Dummy, 2)
     pairs = [(t, rule[t]) for t in rule.keys()]
     pairs.append((Dummy, f4))
     for pairs_perm in permutations(pairs, 4):
@@ -176,7 +176,7 @@ def test_encoding_rule_assertion(image_av_bundle):  # noqa
     bundle = image_av_bundle
     rule = create_encoding_rule_for_image_av_bundle(bundle)
     # add wrong dimension encoder
-    rule[AngleVector] = VectorIdenticalEncoder(AngleVector, 1000)
+    rule[AngleVector] = VectorIdenticalEncoder.create(AngleVector, 1000)
 
     with pytest.raises(AssertionError):
         rule.apply_to_episode_bundle(bundle)
@@ -186,7 +186,7 @@ def test_composite_encoding_rule(image_av_bundle: EpisodeBundle):  # noqa
     class Dummy1(VectorBase):
         pass
 
-    f1 = VectorIdenticalEncoder(Dummy1, 7)
+    f1 = VectorIdenticalEncoder.create(Dummy1, 7)
     dummy_rule1 = EncodingRule.from_encoders([f1])
 
     image_av_rule = create_encoding_rule_for_image_av_bundle(image_av_bundle, balance=True)
@@ -194,7 +194,7 @@ def test_composite_encoding_rule(image_av_bundle: EpisodeBundle):  # noqa
     class Dummy2(VectorBase):
         pass
 
-    f2 = VectorIdenticalEncoder(Dummy2, 4)
+    f2 = VectorIdenticalEncoder.create(Dummy2, 4)
     dummy_rule2 = EncodingRule.from_encoders([f2])
 
     composite_rule = CompositeEncodingRule([dummy_rule1, image_av_rule, dummy_rule2])

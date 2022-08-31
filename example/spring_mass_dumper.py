@@ -78,8 +78,8 @@ if __name__ == "__main__":
     create_default_logger(project_path, "LSTM")
     smd = SpringMassDumper()
 
-    av_emb = VectorIdenticalEncoder(AngleVector, 3)
-    ef_identical_func = VectorIdenticalEncoder(TerminateFlag, 1)
+    av_emb = VectorIdenticalEncoder.create(AngleVector, 3)
+    ef_identical_func = VectorIdenticalEncoder.create(TerminateFlag, 1)
     rule = EncodingRule.from_encoders([av_emb, ef_identical_func])
 
     if with_training:

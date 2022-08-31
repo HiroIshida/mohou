@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     bundle = EpisodeBundle.load(project_path)
     n_av_dim = bundle.spec.type_shape_table[AngleVector][0]
-    f = VectorIdenticalEncoder(AngleVector, n_av_dim)
+    f = VectorIdenticalEncoder.create(AngleVector, n_av_dim)
     ctrl_rule = EncodingRule.from_encoders([f])
 
     obs_rule = create_obs_rule(project_path)

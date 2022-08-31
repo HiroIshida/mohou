@@ -1,8 +1,23 @@
 import numpy as np
 from test_types import image_av_bundle  # noqa
 
-from mohou.encoder import VectorPCAEncoder
-from mohou.types import AngleVector, EpisodeBundle
+from mohou.encoder import ImageEncoder, VectorIdenticalEncoder, VectorPCAEncoder
+from mohou.model import AutoEncoder, AutoEncoderConfig
+from mohou.types import AngleVector, EpisodeBundle, RGBImage
+
+
+def test_image_encoder_serialization():
+    config = AutoEncoderConfig(RGBImage, 16, 28)
+    model = AutoEncoder(config)  # type: ignore [var-annotated]  # for python 3.6 compat
+    encoder = ImageEncoder.from_auto_encoder(model)
+    encoder_again = ImageEncoder.from_dict(encoder.to_dict())
+    assert encoder == encoder_again
+
+
+def test_av_identical_encoder_serialization():
+    encoder = VectorIdenticalEncoder.create(AngleVector, 7)
+    encoder_again = VectorIdenticalEncoder[AngleVector].from_dict(encoder.to_dict())
+    assert encoder == encoder_again
 
 
 def test_pca_encoder(image_av_bundle):  # noqa
