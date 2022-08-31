@@ -9,7 +9,7 @@ from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.script_utils import create_default_logger, train_autoencoder
 from mohou.setting import setting
 from mohou.trainer import TrainConfig
-from mohou.types import EpisodeBundle, ImageBase, RGBImage, get_element_type
+from mohou.types import EpisodeBundle, ImageBase, RGBImage, get_type_from_name
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         bundle_postfix = None
     bundle = EpisodeBundle.load(project_path, bundle_postfix)
 
-    image_type: Type[ImageBase] = get_element_type(args.image)  # type: ignore
+    image_type: Type[ImageBase] = get_type_from_name(args.image, ImageBase)
     n_pixel, _, _ = bundle.spec.type_shape_table[RGBImage]  # Assuming bundle contains rgb
     model_config = AutoEncoderConfig(image_type, n_bottleneck, n_pixel)
     dataset_config = AutoEncoderDatasetConfig(n_aug)
