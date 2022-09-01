@@ -82,4 +82,4 @@ def test_traincache_load_best_one():
 
         tcache = TrainCache.load(tmp_project_path, LSTM)
         # must pick up the one with lowest loss
-        assert tcache.min_validate_loss == 3.0
+        assert tcache.min_valid_loss[1] == 3.0

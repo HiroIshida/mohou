@@ -67,10 +67,11 @@ class TrainCache(Generic[ModelT]):
         return np.array(partial_lossseq_list).sum(axis=0).tolist()
 
     @property
-    def min_validate_loss(self) -> float:
+    def min_valid_loss(self) -> Tuple[int, float]:
+        """get index and valid loss value if loss corresponding best_model"""
         lossseq = self.reduce_to_lossseq(self.validate_lossseq_table)
-        min_loss_sofar = min(lossseq)
-        return min_loss_sofar
+        index = int(np.argmin(lossseq))
+        return index, lossseq[index]
 
     @staticmethod
     def train_result_base_path(project_path: Path) -> Path:
@@ -194,8 +195,9 @@ class TrainCache(Generic[ModelT]):
             self.validate_lossseq_table[key].append(validate_loss_dict[key])
 
         validate_loss_list = self.reduce_to_lossseq(self.validate_lossseq_table)
-        require_update_model = validate_loss_list[-1] == self.min_validate_loss
-        if require_update_model:
+        require_update = len(validate_loss_list) - 1 == self.min_valid_loss[0]
+        if require_update:
+            assert validate_loss_list[-1] == self.min_valid_loss[1]
             self.best_model = model
             self.save(project_path)
 
@@ -271,7 +273,7 @@ class TrainCache(Generic[ModelT]):
         **kwargs,
     ) -> "TrainCache[ModelT]":
         tcache_list = cls.load_all(project_path, model_type, **kwargs)
-        tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
+        tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_valid_loss[1])
         return tcaceh_list_sorted[0]
 
     def visualize(self) -> Tuple:
