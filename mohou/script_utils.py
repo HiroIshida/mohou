@@ -155,8 +155,7 @@ def visualize_train_histories(project_path: Path):
     for result_path in all_result_paths:
         tcache = TrainCache.load_from_cache_path(result_path)
         image_path = plot_dir_path / (result_path.name + ".png")
-        fig, ax = plt.subplots()
-        tcache.visualize((fig, ax))
+        fig, ax = tcache.visualize()
         fig.savefig(str(image_path))
         print("saved to {}".format(image_path))
 

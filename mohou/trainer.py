@@ -274,15 +274,29 @@ class TrainCache(Generic[ModelT]):
         tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_validate_loss)
         return tcaceh_list_sorted[0]
 
-    def visualize(self, fax: Optional[Tuple] = None):
-        fax = plt.subplots() if fax is None else fax
-        fig, ax = fax
+    def visualize(self) -> Tuple:
+        fig, axes = plt.subplots(1, 3)
+        ax = axes[0]
         train_lossseq = self.reduce_to_lossseq(self.train_lossseq_table)
         valid_lossseq = self.reduce_to_lossseq(self.validate_lossseq_table)
         ax.plot(train_lossseq)
         ax.plot(valid_lossseq)
         ax.set_yscale("log")
         ax.legend(["train", "valid"])
+        ax.title.set_text("valid and train total loss")
+
+        keys = list(self.validate_lossseq_table.keys())
+
+        for key in keys:
+            axes[1].plot(self.train_lossseq_table[key])
+            axes[2].plot(self.validate_lossseq_table[key])
+            axes[1].title.set_text("each train loss")
+            axes[2].title.set_text("each valid loss")
+        for ax in [axes[1], axes[2]]:
+            ax.legend(keys)
+            ax.set_yscale("log")
+
+        return (fig, axes)
 
 
 def train(
