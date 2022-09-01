@@ -30,7 +30,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
-    parser.add_argument("--type_wise_loss", action="store_true", help="use type_wise_loss")
     parser.add_argument("--warm", action="store_true", help="warm start")
     parser.add_argument(
         "--use_image_context", action="store_true", help="initial image as context input"
@@ -61,7 +60,7 @@ if __name__ == "__main__":
         encoding_rule.dimension,
         n_hidden=n_hidden,
         n_layer=n_layer,
-        type_wise_loss=args.type_wise_loss,
+        type_wise_loss=True,
         type_bound_table=encoding_rule.type_bound_table,
     )
     dataset_config = AutoRegressiveDatasetConfig(
