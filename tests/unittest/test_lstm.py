@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from test_encoding_rule import create_encoding_rule_for_image_av_bundle
 from test_types import image_av_bundle  # noqa
@@ -34,10 +36,17 @@ def test_lstm(image_av_bundle):  # noqa
     assert len(loss_dict.keys()) == 1
 
     # test type_wise_loss
+    # This tesk is bit hacky. The reason why I copied the model is to match the
+    # neural network parameters of model1 and model2 to be equal.
+    # And, there is assumtion that type_wise_loss has no effect in creation of
+    # the lstm model
     config.type_wise_loss = True
-    model2: LSTM = LSTM(config)
+    model2 = copy.deepcopy(model)
+    model2.config = config
     loss_dict_detailed = model2.loss(sample)
     assert len(loss_dict_detailed.keys()) == len(rule.keys())
+    error = loss_dict_detailed.to_float_lossdict().total() - loss_dict.to_float_lossdict().total()
+    assert abs(error) < 1e-6
 
 
 def test_lstm_with_window(image_av_bundle):  # noqa

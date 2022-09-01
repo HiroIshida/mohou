@@ -32,16 +32,14 @@ class LSTMConfig(LSTMConfigBase):
     """
     type_wise_loss: if True, loss is computed for each type (following type_bound_table) and
     each loss is stored in the LossDict
-
-    NOTE: loss.total() with type_wise = True end False will not match in general.
-    By type_wise = True, loss of each type is equaly treated regardless of its dimension
-    If type_wise = False, if, say the state is composed of 1dim vector and 16dim vector
-    1dim vector's relative importance is too small because, the loss will take the average
-    over the loss of entire state
     """
 
     type_wise_loss: bool = False
     type_bound_table: Optional[Dict[Type[ElementBase], slice]] = None
+
+    def __post_init__(self):
+        if self.type_wise_loss:
+            assert self.type_bound_table is not None
 
 
 class LSTMBase(ModelBase[LSTMConfigBaseT]):
@@ -77,13 +75,24 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
     ) -> LossDict:
         # NOTE: This is an experimental feature. Compute type-wise prediction loss. LossDict looks like
         # d["AngleVector"] = 0.002, d["RGBImage"] = 0.0003
+
+        def bound2dim(bound: slice) -> int:
+            return bound.stop - bound.start
+
+        total_dim = sum([bound2dim(bound) for bound in type_bound_table.values()])
+
         d = {}
         for elem_type, bound in type_bound_table.items():
+
+            scaler = bound2dim(bound) / total_dim
+
             pred_typewise = state_output_pred[:, :, bound]
             state_sample_output_typewise = state_output_ref[:, :, bound]
-            loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise)
+            loss_value_partial = nn.MSELoss()(pred_typewise, state_sample_output_typewise) * scaler
             key = elem_type.__name__
             d[key] = loss_value_partial
+
+        # take average
         return LossDict(d)
 
     @staticmethod
