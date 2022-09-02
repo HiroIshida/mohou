@@ -1,14 +1,14 @@
 import copy
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
-from mohou.types import EpisodeBundle, TerminateFlag
+from mohou.types import AngleVector, ElementBase, EpisodeBundle, TerminateFlag
 from mohou.utils import AnyT, assert_equal_with_message, assert_seq_list_list_compatible
 
 logger = logging.getLogger(__name__)
@@ -126,6 +126,23 @@ class PaddingSequenceAligner:
 class AutoRegressiveDatasetConfig(SequenceDatasetConfig):
     n_dummy_after_termination: int = 20
     window_size: Optional[int] = None  # if None, all dataset will be just used.
+    av_calibration_bias_std: float = 0.0
+
+
+@dataclass
+class AngleVectorCalibrationBiasRandomizer:
+    type_bound_table: Dict[Type[ElementBase], slice]
+    bias_std: float
+
+    def apply(self, seq: np.ndarray) -> np.ndarray:
+        """apply augmentor seq => seq unlike in SequenceDataAugmentor seq => List[seq]"""
+        bound = self.type_bound_table[AngleVector]
+        av_dim = bound.stop - bound.start
+        calibration_error_vec = np.random.randn(av_dim) * self.bias_std
+
+        seq_new = copy.deepcopy(seq)
+        seq_new[:, bound] = seq_new[:, bound] + calibration_error_vec
+        return seq_new
 
 
 @dataclass
@@ -179,7 +196,10 @@ class AutoRegressiveDataset(Dataset):
         )
 
         # augmentation
-        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config.cov_scale)
+        randomizer1 = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config.cov_scale)
+        randomizer2 = AngleVectorCalibrationBiasRandomizer(
+            encoding_rule.type_bound_table, dataset_config.av_calibration_bias_std
+        )
 
         episode_index_list_auged = []
         state_seq_list_auged = []
@@ -189,12 +209,14 @@ class AutoRegressiveDataset(Dataset):
             seq = state_seq_list[episode_index]
             static_context = static_context_list[episode_index]
 
+            # append the original
             episode_index_list_auged.append(episode_index)
             state_seq_list_auged.append(seq)
             static_context_list_auged.append(static_context)
 
+            # append the augmented
             for _ in range(dataset_config.n_aug):
-                seq_randomized = augmentor.apply(seq)
+                seq_randomized = randomizer2.apply(randomizer1.apply(seq))
 
                 episode_index_list_auged.append(episode_index)
                 state_seq_list_auged.append(seq_randomized)
