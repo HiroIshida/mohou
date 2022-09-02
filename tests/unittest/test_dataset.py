@@ -1,3 +1,5 @@
+from typing import Dict, Type
+
 import numpy as np
 from test_encoding_rule import create_encoding_rule_for_image_av_bundle  # noqa
 from test_types import image_av_bundle_uneven  # noqa
@@ -11,9 +13,13 @@ from mohou.dataset import (
     MarkovControlSystemDataset,
     SequenceDatasetConfig,
 )
-from mohou.dataset.sequence_dataset import PaddingSequenceAligner, SequenceDataAugmentor
+from mohou.dataset.sequence_dataset import (
+    AngleVectorCalibrationBiasRandomizer,
+    PaddingSequenceAligner,
+    SequenceDataAugmentor,
+)
 from mohou.encoding_rule import EncodingRule
-from mohou.types import AngleVector, EpisodeBundle, RGBImage
+from mohou.types import AngleVector, ElementBase, EpisodeBundle, GripperState, RGBImage
 from mohou.utils import flatten_lists
 
 
@@ -63,6 +69,38 @@ def test_sequence_data_augmentor():
     covmat = np.cov(auged_seq.T)
     diff = np.abs(covmat - cov_scaled_ground_trugh)
     assert np.max(diff) < 1.0
+
+
+def test_angle_vector_calibration_bias_randomizer():
+    bias_std = 0.1
+    av_dim = 7
+    type_bound_table: Dict[Type[ElementBase], slice] = {
+        GripperState: slice(0, 1),
+        AngleVector: slice(1, 1 + av_dim),
+        RGBImage: slice(8, 24),
+    }
+    randomizer = AngleVectorCalibrationBiasRandomizer(type_bound_table, bias_std)
+
+    # test bias is same throuout the single sequence
+    seq_original = np.random.randn(40, 24)
+    seq_randomized = randomizer.apply(seq_original)
+    bias_vec_list = (seq_randomized - seq_original).tolist()
+    bias_vec_ref = bias_vec_list[0]
+    for bias_vec in bias_vec_list:
+        np.testing.assert_almost_equal(bias_vec, bias_vec_ref)
+
+    # test randomization is done with specified std
+    bias_list = []
+    for _ in range(10000):
+        seq_original = np.random.randn(3, 24)
+        seq_randomized = randomizer.apply(seq_original)
+        bias = (seq_randomized - seq_original)[0]
+        bias_list.append(bias)
+
+    bias_arr = np.array(bias_list)
+    av_bound = type_bound_table[AngleVector]
+    for i in range(av_bound.start, av_bound.stop):
+        assert abs(np.std(bias_arr[:, i]) - bias_std) < 0.01
 
 
 def test_padding_sequnece_alginer():
