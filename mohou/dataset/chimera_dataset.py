@@ -13,11 +13,7 @@ from mohou.dataset.sequence_dataset import (
 )
 from mohou.encoding_rule import EncodingRule
 from mohou.types import EpisodeBundle, ImageBase, RGBImage
-from mohou.utils import (
-    assert_equal_with_message,
-    assert_seq_list_list_compatible,
-    flatten_lists,
-)
+from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
 
 
 @dataclass
@@ -64,10 +60,15 @@ class ChimeraDataset(Dataset):
 
         # data augmentation
         augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, dataset_config)
-        vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
-        image_seqs_auged: List[List[RGBImage]] = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(dataset_config.n_aug + 1)] for seq in image_seqs]
-        )
+        vector_seqs_auged = []
+        image_seqs_auged = []
+        for image, seq in zip(image_seqs, vector_seqs):
+            vector_seqs_auged.append(copy.deepcopy(seq))
+            image_seqs_auged.append(image)
+
+            for _ in range(dataset_config.n_aug):
+                image_seqs_auged.append(image)
+                vector_seqs_auged.append(augmentor.apply(seq))
 
         # align seq list
         n_after_termination = dataset_config.n_dummy_after_termination

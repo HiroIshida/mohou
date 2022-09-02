@@ -9,12 +9,7 @@ from torch.utils.data import Dataset
 
 from mohou.encoding_rule import EncodingRule
 from mohou.types import EpisodeBundle, TerminateFlag
-from mohou.utils import (
-    AnyT,
-    assert_equal_with_message,
-    assert_seq_list_list_compatible,
-    flatten_lists,
-)
+from mohou.utils import AnyT, assert_equal_with_message, assert_seq_list_list_compatible
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +65,7 @@ class SequenceDataAugmentor:
         cov_mat = np.cov(state_diffs.T)
         return cov_mat
 
-    def apply(self, seq: np.ndarray) -> List[np.ndarray]:
+    def apply(self, seq: np.ndarray) -> np.ndarray:
         """apply augmentation
         seq: 2dim array (n_seqlen, n_dim)
         """
@@ -79,16 +74,12 @@ class SequenceDataAugmentor:
 
         covmat_scaled = self.covmat * self.config.cov_scale**2
 
-        seq_original = copy.deepcopy(seq)
-        auged_seq_list: List[np.ndarray] = [seq_original]
-        for _ in range(self.config.n_aug):
-            n_seqlen, n_dim = seq_original.shape
-            mean = np.zeros(n_dim)
-            noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
-            noised_seq = seq_original + noises
-            auged_seq_list.append(noised_seq)
+        seq_copied = copy.deepcopy(seq)
 
-        return auged_seq_list
+        n_seqlen, n_dim = seq_copied.shape
+        mean = np.zeros(n_dim)
+        noises = np.random.multivariate_normal(mean, covmat_scaled, n_seqlen)
+        return seq_copied + noises
 
 
 @dataclass
@@ -182,7 +173,7 @@ class AutoRegressiveDataset(Dataset):
 
         state_seq_list = encoding_rule.apply_to_episode_bundle(bundle)
 
-        # setting up biases
+        # setting up static contect
         if static_context_list is None:  # create sequence of 0-dim vector
             static_context_list = [np.zeros((0)) for _ in range(len(state_seq_list))]
         assert_equal_with_message(
@@ -192,19 +183,24 @@ class AutoRegressiveDataset(Dataset):
         # augmentation
         augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config)
 
-        episode_indices_list_auged = []
+        episode_index_list_auged = []
         state_seq_list_auged = []
-        for index, seq in enumerate(state_seq_list):
-            seq_auged = augmentor.apply(seq)
-            episode_indices_list_auged.extend([index] * len(seq_auged))
-            state_seq_list_auged.extend(seq_auged)
+        static_context_list_auged = []
 
-        static_context_list_auged = flatten_lists(
-            [
-                [copy.deepcopy(c) for _ in range(dataset_config.n_aug + 1)]
-                for c in static_context_list
-            ]
-        )  # +1 for original data
+        for episode_index in range(len(state_seq_list)):
+            seq = state_seq_list[episode_index]
+            static_context = static_context_list[episode_index]
+
+            episode_index_list_auged.append(episode_index)
+            state_seq_list_auged.append(seq)
+            static_context_list_auged.append(static_context)
+
+            for _ in range(dataset_config.n_aug):
+                seq_randomized = augmentor.apply(seq)
+
+                episode_index_list_auged.append(episode_index)
+                state_seq_list_auged.append(seq_randomized)
+                static_context_list_auged.append(copy.deepcopy(static_context))
 
         if dataset_config.window_size is None:
             # make all sequence to the same length due to torch batch computation requirement
@@ -215,31 +211,31 @@ class AutoRegressiveDataset(Dataset):
 
             return cls(
                 state_seq_list_auged_adjusted,
-                episode_indices_list_auged,
+                episode_index_list_auged,
                 static_context_list_auged,
                 encoding_rule,
             )
         else:
-            # split sequence by window size
+            # split sequence by window size (Experimental feature!)
             window_state_seq_list = []
-            window_episode_indices_list = []
+            window_episode_index_list = []
             window_static_context_list = []
 
             window_size = dataset_config.window_size
 
             for seq_idx in range(len(state_seq_list_auged)):
                 state_seq = state_seq_list_auged[seq_idx]
-                episode_idx = episode_indices_list_auged[seq_idx]
+                episode_idx = episode_index_list_auged[seq_idx]
                 context = static_context_list_auged[seq_idx]
 
                 n_window = len(state_seq) - window_size + 1
                 for window_idx in range(n_window):
                     window_state_seq_list.append(state_seq[window_idx : window_idx + window_size])
-                    window_episode_indices_list.append(episode_idx)
+                    window_episode_index_list.append(episode_idx)
                     window_static_context_list.append(context)
             return cls(
                 window_state_seq_list,
-                window_episode_indices_list,
+                window_episode_index_list,
                 window_static_context_list,
                 encoding_rule,
             )
@@ -278,11 +274,18 @@ class MarkovControlSystemDataset(Dataset):
         obs_seq_list = observation_encoding_rule.apply_to_episode_bundle(bundle)
         assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
+        # augmentation
         ctrl_augmentor = SequenceDataAugmentor.from_seqs(ctrl_seq_list, config, take_diff=False)
         obs_augmentor = SequenceDataAugmentor.from_seqs(obs_seq_list, config, take_diff=True)
 
-        ctrl_seq_list_auged = flatten_lists([ctrl_augmentor.apply(seq) for seq in ctrl_seq_list])
-        obs_seq_list_auged = flatten_lists([obs_augmentor.apply(seq) for seq in obs_seq_list])
+        ctrl_seq_list_auged = []
+        obs_seq_list_auged = []
+        for ctrl_seq, obs_seq in zip(ctrl_seq_list, obs_seq_list):
+            ctrl_seq_list_auged.append(ctrl_seq)
+            obs_seq_list_auged.append(obs_seq)
+            for _ in range(config.n_aug):
+                ctrl_seq_list_auged.append(ctrl_augmentor.apply(ctrl_seq))
+                obs_seq_list_auged.append(obs_augmentor.apply(obs_seq))
 
         inp_ctrl_seq = []
         inp_obs_seq = []
