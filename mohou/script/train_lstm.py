@@ -28,6 +28,9 @@ if __name__ == "__main__":
     parser.add_argument("-layer", type=int, default=4, help="number of layers of lstm")
     parser.add_argument("-cov-scale", type=float, default=0.1, help="covariance scale in aug")
     parser.add_argument(
+        "-avbias-std", type=float, default=0.0, help="std of angle vector calibration bias std"
+    )
+    parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
     parser.add_argument("--type_wise_loss", action="store_true", help="use type_wise_loss")
@@ -45,6 +48,7 @@ if __name__ == "__main__":
     n_layer: int = args.layer
     window_size: Optional[int] = args.window
     cov_scale: float = args.cov_scale
+    av_calibration_bias_std: float = args.avbias_std
     valid_ratio: float = args.valid_ratio
     warm_start: bool = args.warm
     use_image_context: bool = args.use_image_context
@@ -65,7 +69,10 @@ if __name__ == "__main__":
         type_bound_table=encoding_rule.type_bound_table,
     )
     dataset_config = AutoRegressiveDatasetConfig(
-        n_aug=n_aug, cov_scale=cov_scale, window_size=window_size
+        n_aug=n_aug,
+        cov_scale=cov_scale,
+        window_size=window_size,
+        av_calibration_bias_std=av_calibration_bias_std,
     )
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
 
