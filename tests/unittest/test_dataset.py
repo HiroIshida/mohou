@@ -103,6 +103,18 @@ def test_angle_vector_calibration_bias_randomizer():
         assert abs(np.std(bias_arr[:, i]) - bias_std) < 0.01
 
 
+def test_angle_vector_calibration_bias_randomizer_when_av_not_included():
+    bias_std = 0.1
+    type_bound_table: Dict[Type[ElementBase], slice] = {
+        GripperState: slice(0, 1),
+        RGBImage: slice(2, 6),
+    }
+    randomizer = AngleVectorCalibrationBiasRandomizer(type_bound_table, bias_std)
+    seq_original = np.random.randn(40, 24)
+    seq_randomized = randomizer.apply(seq_original)
+    np.testing.assert_almost_equal(seq_randomized, seq_original)
+
+
 def test_padding_sequnece_alginer():
     # simple test
     aligner = PaddingSequenceAligner(10)

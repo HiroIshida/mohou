@@ -136,6 +136,10 @@ class AngleVectorCalibrationBiasRandomizer:
 
     def apply(self, seq: np.ndarray) -> np.ndarray:
         """apply augmentor seq => seq unlike in SequenceDataAugmentor seq => List[seq]"""
+
+        if AngleVector not in self.type_bound_table:
+            return seq
+
         bound = self.type_bound_table[AngleVector]
         av_dim = bound.stop - bound.start
         calibration_error_vec = np.random.randn(av_dim) * self.bias_std
