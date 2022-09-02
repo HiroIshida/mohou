@@ -35,8 +35,6 @@ def test_autoencoder_dataset(image_av_bundle_uneven):  # noqa
 
 def test_sequence_data_augmentor():
     cov_scale = 0.9
-    config = SequenceDatasetConfig(n_aug=1, cov_scale=cov_scale)
-
     cov_grount_truth = np.diag([2**2, 3**2])
 
     def creat_random_walk(n_seqlen: int) -> np.ndarray:
@@ -53,7 +51,7 @@ def test_sequence_data_augmentor():
         n_seqlen = 100 + np.random.randint(10)  # real data length is different from seq to seq
         random_walks.append(creat_random_walk(n_seqlen))
 
-    augmentor = SequenceDataAugmentor.from_seqs(random_walks, config)
+    augmentor = SequenceDataAugmentor.from_seqs(random_walks, cov_scale=cov_scale)
 
     # check if cov computed from seqs matches with the original
     diff = np.abs(augmentor.covmat - cov_grount_truth)

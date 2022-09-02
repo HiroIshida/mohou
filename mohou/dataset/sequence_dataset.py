@@ -32,12 +32,10 @@ class SequenceDatasetConfig:
 @dataclass
 class SequenceDataAugmentor:
     covmat: np.ndarray
-    config: SequenceDatasetConfig
+    cov_scale: float
 
     @classmethod
-    def from_seqs(
-        cls, seq_list: List[np.ndarray], config: SequenceDatasetConfig, take_diff: bool = True
-    ):
+    def from_seqs(cls, seq_list: List[np.ndarray], cov_scale: float, take_diff: bool = True):
         """construct augmentor.
         seq_list: sequence list used to compute covariance matrix
         take_diff: if True, covaraince is computed using state difference (e.g. {s[t] - s[t-1]}_{1:T})
@@ -47,7 +45,7 @@ class SequenceDataAugmentor:
             covmat = cls.compute_diff_covariance(seq_list)
         else:
             covmat = cls.compute_covariance(seq_list)
-        return cls(covmat, config)
+        return cls(covmat, cov_scale)
 
     @staticmethod
     def compute_covariance(state_seq_list: List[np.ndarray]) -> np.ndarray:
@@ -72,7 +70,7 @@ class SequenceDataAugmentor:
         assert seq.ndim == 2
         assert seq.shape[1] == self.covmat.shape[0]
 
-        covmat_scaled = self.covmat * self.config.cov_scale**2
+        covmat_scaled = self.covmat * self.cov_scale**2
 
         seq_copied = copy.deepcopy(seq)
 
@@ -181,7 +179,7 @@ class AutoRegressiveDataset(Dataset):
         )
 
         # augmentation
-        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config)
+        augmentor = SequenceDataAugmentor.from_seqs(state_seq_list, dataset_config.cov_scale)
 
         episode_index_list_auged = []
         state_seq_list_auged = []
@@ -275,8 +273,12 @@ class MarkovControlSystemDataset(Dataset):
         assert_seq_list_list_compatible([ctrl_seq_list, obs_seq_list])
 
         # augmentation
-        ctrl_augmentor = SequenceDataAugmentor.from_seqs(ctrl_seq_list, config, take_diff=False)
-        obs_augmentor = SequenceDataAugmentor.from_seqs(obs_seq_list, config, take_diff=True)
+        ctrl_augmentor = SequenceDataAugmentor.from_seqs(
+            ctrl_seq_list, config.cov_scale, take_diff=False
+        )
+        obs_augmentor = SequenceDataAugmentor.from_seqs(
+            obs_seq_list, config.cov_scale, take_diff=True
+        )
 
         ctrl_seq_list_auged = []
         obs_seq_list_auged = []
