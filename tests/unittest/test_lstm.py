@@ -36,7 +36,7 @@ def test_lstm(image_av_bundle):  # noqa
     assert len(loss_dict.keys()) == 1
 
     # test type_wise_loss
-    # This tesk is bit hacky. The reason why I copied the model is to match the
+    # This test is bit hacky. The reason why I copied the model is to match the
     # neural network parameters of model1 and model2 to be equal.
     # And, there is assumtion that type_wise_loss has no effect in creation of
     # the lstm model
@@ -47,6 +47,12 @@ def test_lstm(image_av_bundle):  # noqa
     assert len(loss_dict_detailed.keys()) == len(rule.keys())
     error = loss_dict_detailed.to_float_lossdict().total() - loss_dict.to_float_lossdict().total()
     assert abs(error) < 1e-6
+
+    loss_dict.total().backward()
+    loss_dict_detailed.total().backward()
+
+    for param1, param2 in zip(model.parameters(), model2.parameters()):
+        assert torch.allclose(param1.grad, param2.grad)
 
 
 def test_lstm_with_window(image_av_bundle):  # noqa
