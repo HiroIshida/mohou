@@ -35,8 +35,6 @@ def test_autoencoder_dataset(image_av_bundle_uneven):  # noqa
 
 def test_sequence_data_augmentor():
     cov_scale = 0.9
-    config = SequenceDatasetConfig(n_aug=1, cov_scale=cov_scale)
-
     cov_grount_truth = np.diag([2**2, 3**2])
 
     def creat_random_walk(n_seqlen: int) -> np.ndarray:
@@ -53,20 +51,18 @@ def test_sequence_data_augmentor():
         n_seqlen = 100 + np.random.randint(10)  # real data length is different from seq to seq
         random_walks.append(creat_random_walk(n_seqlen))
 
-    augmentor = SequenceDataAugmentor.from_seqs(random_walks, config)
+    augmentor = SequenceDataAugmentor.from_seqs(random_walks, cov_scale=cov_scale)
 
     # check if cov computed from seqs matches with the original
     diff = np.abs(augmentor.covmat - cov_grount_truth)
     assert np.max(diff) < 1.0
 
-    auged_seqs = augmentor.apply(np.zeros((1000, 2)))
-    auged_seqs.pop(0)
+    auged_seq = augmentor.apply(np.zeros((10000, 2)))
 
     cov_scaled_ground_trugh = cov_grount_truth * cov_scale**2
-    for seq in auged_seqs:
-        covmat = np.cov(seq.T)
-        diff = np.abs(covmat - cov_scaled_ground_trugh)
-        assert np.max(diff) < 1.0
+    covmat = np.cov(auged_seq.T)
+    diff = np.abs(covmat - cov_scaled_ground_trugh)
+    assert np.max(diff) < 1.0
 
 
 def test_padding_sequnece_alginer():

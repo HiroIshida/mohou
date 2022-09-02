@@ -13,11 +13,7 @@ from mohou.dataset.sequence_dataset import (
 )
 from mohou.encoding_rule import EncodingRule
 from mohou.types import EpisodeBundle, ImageBase, RGBImage
-from mohou.utils import (
-    assert_equal_with_message,
-    assert_seq_list_list_compatible,
-    flatten_lists,
-)
+from mohou.utils import assert_equal_with_message, assert_seq_list_list_compatible
 
 
 @dataclass
@@ -45,11 +41,11 @@ class ChimeraDataset(Dataset):
         cls,
         bundle: EpisodeBundle,
         encoding_rule: EncodingRule,
-        dataset_config: Optional[AutoRegressiveDatasetConfig] = None,
+        config: Optional[AutoRegressiveDatasetConfig] = None,
     ) -> "ChimeraDataset":
 
-        if dataset_config is None:
-            dataset_config = AutoRegressiveDatasetConfig()
+        if config is None:
+            config = AutoRegressiveDatasetConfig()
 
         # assume that encoding_rule does not have encoder for image
         for elem_type in encoding_rule.keys():
@@ -63,14 +59,19 @@ class ChimeraDataset(Dataset):
             image_seqs.append(tmp.elem_list)
 
         # data augmentation
-        augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, dataset_config)
-        vector_seqs_auged = flatten_lists([augmentor.apply(seq) for seq in vector_seqs])
-        image_seqs_auged: List[List[RGBImage]] = flatten_lists(
-            [[copy.deepcopy(seq) for _ in range(dataset_config.n_aug + 1)] for seq in image_seqs]
-        )
+        augmentor = SequenceDataAugmentor.from_seqs(vector_seqs, config.cov_scale)
+        vector_seqs_auged = []
+        image_seqs_auged = []
+        for image, seq in zip(image_seqs, vector_seqs):
+            vector_seqs_auged.append(copy.deepcopy(seq))
+            image_seqs_auged.append(image)
+
+            for _ in range(config.n_aug):
+                image_seqs_auged.append(image)
+                vector_seqs_auged.append(augmentor.apply(seq))
 
         # align seq list
-        n_after_termination = dataset_config.n_dummy_after_termination
+        n_after_termination = config.n_dummy_after_termination
         assert_seq_list_list_compatible([image_seqs_auged, vector_seqs_auged])
         aligner = PaddingSequenceAligner.from_seqs(image_seqs_auged, n_after_termination)
         image_seqs_aligned = [aligner.apply(seq) for seq in image_seqs_auged]

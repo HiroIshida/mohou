@@ -74,9 +74,7 @@ if __name__ == "__main__":
         lstm_config = LSTMConfig(lstm_dim, n_hidden=n_hidden, n_layer=n_layer)
 
     dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug)
-    dataset = ChimeraDataset.from_bundle(
-        bundle, encoding_rule_except_image, dataset_config=dataset_config
-    )
+    dataset = ChimeraDataset.from_bundle(bundle, encoding_rule_except_image, config=dataset_config)
 
     conf = ChimeraConfig(lstm_config=lstm_config, ae_config=ae_config)
     model = Chimera(conf)  # type: ignore[var-annotated]
