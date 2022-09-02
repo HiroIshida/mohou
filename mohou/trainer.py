@@ -311,6 +311,7 @@ def train(
     log_package_version_info(logger, mohou)
     log_text_with_box(logger, "train log")
     logger.info("train start with config: {}".format(config))
+    logger.info("model cache path: {}".format(tcache.cache_path(project_path)))
 
     model = tcache.best_model
 
