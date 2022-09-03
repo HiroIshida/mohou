@@ -9,12 +9,20 @@ Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rl
 one of result of applying this framework to rlbench's task
 
 ## Instllation
+
+For stable version:
+```bash
+pip3 install mohou
 ```
+
+For beta from source:
+```bash
 git clone https://github.com/HiroIshida/mohou.git
 cd mohou
 pip install -e . 
 ```
-After this pip install you are ready to start [pybullet demo](/pipeline/pybullet_demo.sh)! We also provide [rlbench_demo](/pipeline/rlbench_demo.sh). As for rlbench demo, additional installation step of pyrep and rlbench is required.  See https://github.com/stepjam/RLBench for the detail.
+
+After the pip install you are ready to start [pybullet demo](/pipeline/pybullet_demo.sh)! We also provide [rlbench_demo](/pipeline/rlbench_demo.sh). As for rlbench demo, additional installation step of pyrep and rlbench is required.  See https://github.com/stepjam/RLBench for the detail.
 
 
 ## Introduction
