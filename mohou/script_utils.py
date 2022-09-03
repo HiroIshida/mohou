@@ -409,7 +409,7 @@ def plot_execution_result(
     project_path: Path, propagator: PropagatorBase, edict_seq: List[ElementDict], n_prop: int = 10
 ):
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
-    propagator.clear_fed_data()
+    propagator.reset()
 
     # plot actual data
     episode = EpisodeData.from_edict_list(edict_seq, check_terminate_flag=False)

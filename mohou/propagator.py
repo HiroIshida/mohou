@@ -64,7 +64,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         checker = TerminateChecker()
         return checker(self.predicted_terminated_flags)
 
-    def clear_fed_data(self) -> None:
+    def reset(self) -> None:
         self.fed_state_list = []
         self.is_initialized = False
 
