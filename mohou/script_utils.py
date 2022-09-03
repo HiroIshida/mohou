@@ -195,8 +195,8 @@ def visualize_image_reconstruction(
 
             fig, (ax1, ax2) = plt.subplots(1, 2)
             fig.suptitle("left: original, right: reconstructed")
-            ax1.imshow(img.to_rgb()._data)
-            ax2.imshow(img_reconstructed.to_rgb()._data)
+            ax1.imshow(img.to_rgb().numpy())
+            ax2.imshow(img_reconstructed.to_rgb().numpy())
             filename = "result-{}-{}.png".format(postfix, i)
             if prefix is not None:
                 filename = prefix + "-" + str(filename)
@@ -226,7 +226,7 @@ def add_text_to_image(image: ImageBase, text: str, color: str):
     fig = plt.figure(tight_layout={"pad": 0})
     ax = plt.subplot(1, 1, 1)
     ax.axis("off")
-    ax.imshow(image.to_rgb()._data)
+    ax.imshow(image.to_rgb().numpy())
     bbox = dict(boxstyle="round", facecolor="white", alpha=0.4)
     ax.text(7, 1, text, fontsize=15, color=color, verticalalignment="top", bbox=bbox)
     fig.canvas.draw()
