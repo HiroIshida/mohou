@@ -2,13 +2,14 @@ import base64
 import pickle
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Generic, List, Tuple, Type, TypeVar
+from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
 from mohou.model.autoencoder import AutoEncoderBase
+from mohou.model.common import ModelBase
 from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT, get_element_type
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
@@ -78,8 +79,20 @@ class EncoderBase(ABC, Generic[ElementT]):
         return True
 
 
+class HasAModel(ABC):
+    @abstractmethod
+    def _get_model(self) -> ModelBase:
+        pass
+
+    def get_device(self) -> Optional[torch.device]:
+        return self._get_model().device
+
+    def set_device(self, device: torch.device) -> None:
+        self._get_model().put_on_device(device)
+
+
 @dataclass(eq=False)
-class ImageEncoder(EncoderBase[ImageT]):
+class ImageEncoder(EncoderBase[ImageT], HasAModel):
     input_shape: Tuple[int, int, int]
     model: AutoEncoderBase
 
@@ -135,6 +148,9 @@ class ImageEncoder(EncoderBase[ImageT]):
             if p1.data.ne(p2.data).sum() > 0:
                 return False
         return True
+
+    def _get_model(self) -> ModelBase:
+        return self.model
 
 
 @dataclass

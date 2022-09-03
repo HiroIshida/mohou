@@ -26,6 +26,7 @@ from mohou.types import (
     TerminateFlag,
     VectorBase,
 )
+from mohou.utils import change_color_to_yellow
 
 
 def test_identical_balancer():
@@ -180,6 +181,36 @@ def test_encoding_rule_assertion(image_av_bundle):  # noqa
 
     with pytest.raises(AssertionError):
         rule.apply_to_episode_bundle(bundle)
+
+
+def test_encoding_rule_set_device_get_device(image_av_bundle: EpisodeBundle):  # noqa
+
+    if not torch.cuda.is_available():
+        message = "test is skipped because cuda is unavailable"
+        print(change_color_to_yellow(message))
+        return
+
+    bundle = image_av_bundle
+    rule = create_encoding_rule_for_image_av_bundle(bundle)
+
+    cpu_device = torch.device("cpu")
+    cuda_device = torch.device("cuda")
+
+    rule.set_device(cpu_device)
+    assert rule[RGBImage].get_device() == cpu_device  # type: ignore
+    assert rule.get_device() == cpu_device
+
+    rule.set_device(cuda_device)
+    assert rule[RGBImage].get_device() == cuda_device  # type: ignore
+    assert rule.get_device() == cuda_device
+
+    # test if rule does not contains any deep models
+    av_encoder = VectorIdenticalEncoder.create(AngleVector, 7)
+    rule2 = EncodingRule.from_encoders([av_encoder])
+    assert rule2.get_device() is None
+
+    rule2.set_device(cuda_device)
+    assert rule2.get_device() is None
 
 
 def test_composite_encoding_rule(image_av_bundle: EpisodeBundle):  # noqa

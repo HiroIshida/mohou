@@ -46,6 +46,10 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
     ):
+
+        if encoding_rule.get_device() is not None:
+            assert lstm.device == encoding_rule.get_device()
+
         self.lstm_model = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
