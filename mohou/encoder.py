@@ -121,14 +121,15 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
         return super().from_dict(d)
 
     def _forward_impl(self, inp: ImageT) -> np.ndarray:
-        inp_tensor = inp.to_tensor().unsqueeze(dim=0)
+        inp_tensor = inp.to_tensor().unsqueeze(dim=0).to(self.get_device())
         out_tensor = self.model.encode(inp_tensor).squeeze(dim=0)
         out_numpy = out_tensor.cpu().detach().numpy()
         return out_numpy
 
     def _backward_impl(self, inp: np.ndarray) -> ImageT:
         inp_tensor = torch.from_numpy(inp).unsqueeze(dim=0).float()
-        out_tensor = self.model.decode(inp_tensor).squeeze(dim=0)
+        inp_tensor = inp_tensor.to(self.get_device())
+        out_tensor = self.model.decode(inp_tensor).squeeze(dim=0).cpu()
         out: ImageT = self.elem_type.from_tensor(out_tensor)
         return out
 
