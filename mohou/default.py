@@ -32,7 +32,7 @@ class DefaultNotFoundError(Exception):
 
 def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     # TODO(HiroIshida) dirty...
-    tcache_list = TrainCache.load_all(project_path)
+    tcache_list: List[TrainCache] = TrainCache.load_all(project_path)
 
     type_list = []
     for tcache in tcache_list:
