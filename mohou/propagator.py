@@ -10,6 +10,7 @@ from mohou.encoding_rule import EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.lstm import LSTMBaseT
 from mohou.types import ElementDict, TerminateFlag
+from mohou.utils import detect_device
 
 
 @dataclass
@@ -35,7 +36,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
     n_init_duplicate: int
     is_initialized: bool
     predicted_terminated_flags: List[TerminateFlag]
-    static_context: Optional[np.ndarray] = None
+    static_context: np.ndarray
     prop_hidden: bool = False
     _hidden: Optional[torch.Tensor] = None  # hidden state of lstm
 
@@ -45,7 +46,14 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         encoding_rule: EncodingRuleBase,
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
+        device: Optional[torch.device] = None,
     ):
+
+        if device is None:
+            device = detect_device()
+        encoding_rule.set_device(device)
+        lstm.put_on_device(device)
+
         self.lstm_model = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
@@ -122,7 +130,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
                 self._hidden = hidden
 
             state_pred_torch = out[0, -1, :]
-            state_pred = state_pred_torch.detach().numpy()
+            state_pred = state_pred_torch.cpu().detach().numpy()
 
             if force_continue:
                 state_pred[-1] = CONTINUE_FLAG_VALUE
@@ -130,6 +138,20 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
             pred_state_list.append(state_pred)
 
         return pred_state_list
+
+    def get_device(self) -> Optional[torch.device]:
+        rule_device = self.encoding_rule.get_device()
+        lstm_device = self.lstm_model.device
+
+        if rule_device is None:
+            return lstm_device
+        else:
+            assert rule_device == lstm_device
+            return rule_device
+
+    def set_device(self, device: torch.device) -> None:
+        self.encoding_rule.set_device(device)
+        self.lstm_model.put_on_device(device)
 
     @classmethod
     @abstractmethod
@@ -150,8 +172,12 @@ class Propagator(PropagatorBase[LSTM]):
         return LSTM
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
-        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
-        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        def numpy_to_unsqueezed_torch(arr: np.ndarray) -> torch.Tensor:
+            device = self.get_device()
+            return torch.from_numpy(arr).float().unsqueeze(dim=0).to(device)
+
+        context_torch = numpy_to_unsqueezed_torch(self.static_context)
+        states_torch = numpy_to_unsqueezed_torch(states)
         out, hidden = self.lstm_model.forward(states_torch, context_torch, self._hidden)
         return out, hidden
 
@@ -174,8 +200,12 @@ class PBLSTMPropagator(PropagatorBase[PBLSTM]):
         return PBLSTM
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
-        context_torch = torch.from_numpy(self.static_context).float().unsqueeze(dim=0)
-        pb_torch = torch.from_numpy(self.parametric_bias).float().unsqueeze(dim=0)
-        states_torch = torch.from_numpy(states).float().unsqueeze(dim=0)
+        def numpy_to_unsqueezed_torch(arr: np.ndarray) -> torch.Tensor:
+            device = self.get_device()
+            return torch.from_numpy(arr).float().unsqueeze(dim=0).to(device)
+
+        context_torch = numpy_to_unsqueezed_torch(self.static_context)
+        pb_torch = numpy_to_unsqueezed_torch(self.parametric_bias)
+        states_torch = numpy_to_unsqueezed_torch(states)
         out, hidden = self.lstm_model.forward(states_torch, pb_torch, context_torch, self._hidden)
         return out, hidden

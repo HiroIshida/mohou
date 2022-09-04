@@ -9,7 +9,7 @@ from typing import Dict, Iterator, List, Mapping, Optional, Type, TypeVar, Union
 import numpy as np
 import torch
 
-from mohou.encoder import EncoderBase
+from mohou.encoder import EncoderBase, HasAModel
 from mohou.types import (
     CompositeImageBase,
     ElementBase,
@@ -259,6 +259,22 @@ class EncodingRuleBase(Mapping[Type[ElementBase], EncoderBase]):
 
         assert vector_seq_list[0].ndim == 2
         return vector_seq_list
+
+    def get_device(self) -> Optional[torch.device]:
+        device_list = []
+        for encoder in self.values():
+            if isinstance(encoder, HasAModel):
+                device_list.append(encoder.get_device())
+        if len(device_list) == 0:
+            return None
+        device_set = set(device_list)
+        assert len(device_set) == 1, "Do not mix more than 1 devices"
+        return device_set.pop()
+
+    def set_device(self, device: torch.device) -> None:
+        for encoder in self.values():
+            if isinstance(encoder, HasAModel):
+                encoder.set_device(device)
 
 
 class EncodingRule(Dict[Type[ElementBase], EncoderBase], EncodingRuleBase):
