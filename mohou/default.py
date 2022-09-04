@@ -21,7 +21,6 @@ from mohou.types import (
     RGBDImage,
     RGBImage,
     TerminateFlag,
-    get_all_concrete_leaftypes,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,28 +32,20 @@ class DefaultNotFoundError(Exception):
 
 def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
     # TODO(HiroIshida) dirty...
-    t: Optional[Type[AutoEncoderBase]] = None
+    tcache_list: List[TrainCache] = TrainCache.load_all(project_path)
 
-    t_cand_list = get_all_concrete_leaftypes(AutoEncoderBase)
+    type_list = []
+    for tcache in tcache_list:
+        model = tcache.best_model
+        if isinstance(model, AutoEncoderBase):
+            type_list.append(model.__class__)
+    type_set = set(type_list)
 
-    detect_count = 0
-    for t_cand in t_cand_list:
-        try:
-            TrainCache.load(project_path, t_cand)
-            t = t_cand
-            detect_count += 1
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            raise e
-
-    if detect_count == 0:
+    if len(type_set) == 0:
         raise DefaultNotFoundError("no autoencoder found")
-    if detect_count > 1:
+    if len(type_set) > 1:
         raise DefaultNotFoundError("multiple autoencoder found")
-
-    assert t is not None  # redundant but for mypy check
-    return t
+    return type_set.pop()
 
 
 def load_default_image_encoder(project_path: Path) -> ImageEncoder:
