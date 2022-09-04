@@ -51,7 +51,6 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
 
         if device is None:
             device = detect_device()
-
         encoding_rule.set_device(device)
         lstm.put_on_device(device)
 
@@ -141,10 +140,14 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         return pred_state_list
 
     def get_device(self) -> Optional[torch.device]:
-        device = self.encoding_rule.get_device()
-        if device is not None:
-            assert self.lstm_model.device == device
-        return device
+        rule_device = self.encoding_rule.get_device()
+        lstm_device = self.lstm_model.device
+
+        if rule_device is None:
+            return lstm_device
+        else:
+            assert rule_device == lstm_device
+            return rule_device
 
     def set_device(self, device: torch.device) -> None:
         self.encoding_rule.set_device(device)
@@ -175,7 +178,6 @@ class Propagator(PropagatorBase[LSTM]):
 
         context_torch = numpy_to_unsqueezed_torch(self.static_context)
         states_torch = numpy_to_unsqueezed_torch(states)
-
         out, hidden = self.lstm_model.forward(states_torch, context_torch, self._hidden)
         return out, hidden
 
