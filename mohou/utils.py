@@ -1,4 +1,5 @@
 import functools
+import inspect
 import pathlib
 import queue
 import subprocess
@@ -53,10 +54,12 @@ def get_all_concrete_leaftypes(root: Type) -> List[Type]:
     while not q.empty():
         t: Type = q.get()
         if len(t.__subclasses__()) == 0:
-            concrete_types.append(t)
+            if not inspect.isabstract(t):
+                concrete_types.append(t)
 
         for st in t.__subclasses__():
             q.put(st)
+
     return list(set(concrete_types))
 
 
