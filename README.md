@@ -1,8 +1,8 @@
 ## mohou [![CI](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/test.yaml) [![PypI Auto Release](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml/badge.svg)](https://github.com/HiroIshida/mohou/actions/workflows/release.yaml) [![pypi-version](https://badge.fury.io/py/mohou.svg)](https://pypi.org/project/mohou/) [![python-version](https://img.shields.io/pypi/pyversions/mohou.svg)](https://pypi.org/project/mohou/)
 
-This package implements conv-autoencoder based visuo-motor imitation learning using pytorch. This package focuses on extensibility. One can define custom data types (vector, image and composite-image) and also map/inverse from these custom types to feature vector that fed into the LSTM. Alongside the imitation learning framework, this package provides two demo using pybullet and rlbench. 
+This package implements conv-autoencoder based visuo-motor imitation learning using pytorch. This package focuses on extensibility. One can define custom data types (vector, image and composite-image) and also map/inverse from these custom types to feature vector that fed into the LSTM. Alongside the imitation learning framework, this package provides two demo using pybullet and rlbench to show example usage. Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rlbench demo](/pipeline/rlbench_demo.sh). The results of demo is available on [google drive](https://drive.google.com/drive/folders/1RQU76D5YpKuQ81AZfPMU1YlgIdNrliyt?usp=sharing).
 
-Please try [kinematic pybullet demo](/pipeline/pybullet_demo.sh) and [dynamic rlbench demo](/pipeline/rlbench_demo.sh). The results of demo is available on [google drive](https://drive.google.com/drive/folders/1RQU76D5YpKuQ81AZfPMU1YlgIdNrliyt?usp=sharing).
+The ros wrapper of this package can be found in [mohou_ros](https://github.com/HiroIshida/mohou_ros). Although `mohou_ros` currently supports only PR2 robot, many useful utilities and scripts for working with a real robot are included.
 
 <img src="https://user-images.githubusercontent.com/38597814/160765355-b1d490a9-fb9b-40da-b1fb-d9eae476fda0.gif" width="50%" />
 
@@ -22,10 +22,11 @@ cd mohou
 pip install -e . 
 ```
 
+## Introduction
+
+### The example pipeline
 After the pip install you are ready to start [pybullet demo](/pipeline/pybullet_demo.sh)! We also provide [rlbench_demo](/pipeline/rlbench_demo.sh). As for rlbench demo, additional installation step of pyrep and rlbench is required.  See https://github.com/stepjam/RLBench for the detail.
 
-
-## Introduction
 ### concept of "project"
 First, the important concept of the mohou package is "project". Each "project" has each directory and the directory contains everything, e.g. dataset, trained models, visualization results.  Thanks to this concept, hard-coding the file path of `TrainCache` and  `EpisodeBundle`, and many other stuff can be avoided. The use of the concept of project enables easy loading many objects. For example, `EpisodeBundle` which is a bundle of episodic sequential data is 
 can be dumped and loaded by
