@@ -75,6 +75,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
     def reset(self) -> None:
         self.fed_state_list = []
         self.is_initialized = False
+        self.predicted_terminated_flags = []
 
     @property
     def require_static_context(self) -> bool:
