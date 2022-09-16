@@ -4,7 +4,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterator, List, Mapping, Optional, Type, TypeVar, Union
+from typing import (
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import torch
@@ -327,7 +337,7 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase], EncodingRuleBase):
     @classmethod
     def from_encoders(
         cls,
-        encoder_list: List[EncoderBase],
+        encoder_list: Sequence[EncoderBase],
         bundle: Optional[EpisodeBundle] = None,
         scale_balancer: Optional[ScaleBalancerBase] = None,
     ) -> "EncodingRule":
