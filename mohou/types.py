@@ -1154,7 +1154,7 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
                     )
 
             # TODO: using python tarfile is clean appoach. If get annoyed, please send a PR
-            cmd = "cd {} && tar cvf {} *".format(tmp_dir_path, tarfile_path)
+            cmd = "cd {} && tar cf {} *".format(tmp_dir_path, tarfile_path)
             subprocess.run(cmd, shell=True)
 
         # extra dump just for debugging (the following info is not requried to load bundle)
