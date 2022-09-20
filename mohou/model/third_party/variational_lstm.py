@@ -7,11 +7,9 @@
 # MIT License
 # Copyright (c) 2021 Katerina Margatina
 
-from typing import Optional
 
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from torch.nn.functional import dropout
 from torch.nn.parameter import Parameter
 
@@ -31,26 +29,32 @@ class LockedDropout(nn.Module):
     """
 
     p_dropout: float
-    mask: Optional[Variable] = None
+    feature_size: int
+    max_batch_size: int
+    mask: torch.Tensor
 
-    def __init__(self, p_dropout: float):
+    def __init__(self, p_dropout: float, feature_size: int, max_batch_size: int = 500):
         self.p_dropout = p_dropout
+        self.feature_size = feature_size
+        self.max_batch_size = max_batch_size
+        self.reset_mask()
         super().__init__()
 
-    def _reset_mask(self, x: torch.Tensor) -> None:
-        batch_size, seq_length, feat_size = x.size()
-        m = x.data.new(batch_size, 1, feat_size).bernoulli_(1 - self.p_dropout)
-        mask = Variable(m, requires_grad=False) / (1 - self.p_dropout)
-        self.mask = mask  # type: ignore
+    def reset_mask(self) -> None:
+        mask = torch.ones(self.max_batch_size, 1, self.feature_size)
+        mask.bernoulli_(1 - self.p_dropout)
+        self.mask = mask
 
     def forward(self, x: torch.Tensor):
-        assert dropout is not None
-        if self.mask is None or self.training:
-            self._reset_mask(x)
+        batch_size, n_seq_len, feature_size = x.shape
 
-        assert self.mask is not None
-        mask = self.mask.expand_as(x)
-        return mask * x
+        if self.mask is None or self.training:
+            self.reset_mask()
+        self.mask = self.mask.to(x.device)
+
+        mask_partial = self.mask[:batch_size]
+        mask_expand = mask_partial.expand_as(x)
+        return mask_expand * x
 
 
 class WeightDrop(torch.nn.Module):
@@ -135,7 +139,9 @@ class WeightDrop(torch.nn.Module):
     def forward(self, *args):
         if self.training:
             self._setweights()
-        return self.module.forward(*args)
+        # self.module.to(torch.device("cuda"))
+        # self.to(torch.device("cuda"))
+        return self.module(*args)
 
 
 class VariationalLSTM(nn.Module):
@@ -174,8 +180,8 @@ class VariationalLSTM(nn.Module):
         self.pack = pack
         self.last = last
 
-        self.lockdrop_inp = LockedDropout(dropouti)
-        self.lockdrop_out = LockedDropout(dropouto)
+        self.lockdrop_inp = LockedDropout(dropouti, ninput)
+        self.lockdrop_out = LockedDropout(dropouto, nhidden)
 
         if not isinstance(nhidden, list):
             nhidden = [nhidden for _ in range(nlayers)]
