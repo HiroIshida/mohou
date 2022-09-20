@@ -33,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
+    parser.add_argument("--variational", action="store_true", help="variational")
     parser.add_argument("--warm", action="store_true", help="warm start")
     parser.add_argument(
         "--use_image_context", action="store_true", help="initial image as context input"
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     av_calibration_bias_std: float = args.avbias_std
     valid_ratio: float = args.valid_ratio
     warm_start: bool = args.warm
+    variational_lstm: bool = args.variational
     use_image_context: bool = args.use_image_context
 
     if project_path_str is None:
@@ -64,6 +66,7 @@ if __name__ == "__main__":
         encoding_rule.dimension,
         n_hidden=n_hidden,
         n_layer=n_layer,
+        variational=variational_lstm,
         type_wise_loss=True,
         type_bound_table=encoding_rule.type_bound_table,
     )
