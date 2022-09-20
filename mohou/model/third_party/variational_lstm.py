@@ -7,6 +7,8 @@
 # MIT License
 # Copyright (c) 2021 Katerina Margatina
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -28,28 +30,37 @@ class LockedDropout(nn.Module):
     paper: https://arxiv.org/pdf/1708.02182.pdf (see Section 4.2)
     """
 
-    def __init__(self):
+    p_dropout: float
+    mask: Optional[Variable] = None
+
+    def __init__(self, p_dropout: float):
+        self.p_dropout = p_dropout
         super().__init__()
 
-    def forward(self, x, dropout=0.5):
-        if not self.training or not dropout:
-            return x
+    def _reset_mask(self, x: torch.Tensor) -> None:
         batch_size, seq_length, feat_size = x.size()
-        m = x.data.new(batch_size, 1, feat_size).bernoulli_(1 - dropout)
-        mask = Variable(m, requires_grad=False) / (1 - dropout)
-        mask = mask.expand_as(x)
+        m = x.data.new(batch_size, 1, feat_size).bernoulli_(1 - self.p_dropout)
+        mask = Variable(m, requires_grad=False) / (1 - self.p_dropout)
+        self.mask = mask  # type: ignore
+
+    def forward(self, x: torch.Tensor):
+        assert dropout is not None
+        if self.mask is None or self.training:
+            self._reset_mask(x)
+
+        assert self.mask is not None
+        mask = self.mask.expand_as(x)
         return mask * x
 
 
 class WeightDrop(torch.nn.Module):
-    def __init__(self, module, weights, dropout=0, variational=True):
+    def __init__(self, module, weights, dropout: float):
         """
         Dropout class that is paired with a torch module to make sure that the SAME mask
         will be sampled and applied to ALL timesteps.
         :param module: nn. module (e.g. nn.Linear, nn.LSTM)
         :param weights: which weights to apply dropout (names of weights of module)
         :param dropout: dropout to be applied
-        :param variational: if True applies Variational Dropout, if False applies DropConnect (different masks!!!)
 
         Code from https://github.com/salesforce/awd-lstm-lm
         paper: https://arxiv.org/pdf/1708.02182.pdf
@@ -59,7 +70,6 @@ class WeightDrop(torch.nn.Module):
         self.module = module
         self.weights = weights
         self.dropout = dropout
-        self.variational = variational
         self._setup()
 
     def widget_demagnetizer_y2k_edition(*args, **kwargs):
@@ -87,6 +97,8 @@ class WeightDrop(torch.nn.Module):
             w = getattr(self.module, name_w)
             del self.module._parameters[name_w]
             self.module.register_parameter(name_w + "_raw", Parameter(w.data))
+
+        self._setweights()
 
     def _setweights(self):
         """
@@ -121,11 +133,16 @@ class WeightDrop(torch.nn.Module):
             setattr(self.module, name_w, w)
 
     def forward(self, *args):
-        self._setweights()
+        if self.training:
+            self._setweights()
         return self.module.forward(*args)
 
 
 class VariationalLSTM(nn.Module):
+    lockdrop_inp: LockedDropout
+    lockdrop_out: LockedDropout
+    lstms: nn.ModuleList
+
     def __init__(
         self,
         ninput,
@@ -157,7 +174,8 @@ class VariationalLSTM(nn.Module):
         self.pack = pack
         self.last = last
 
-        self.lockdrop = LockedDropout()
+        self.lockdrop_inp = LockedDropout(dropouti)
+        self.lockdrop_out = LockedDropout(dropouto)
 
         if not isinstance(nhidden, list):
             nhidden = [nhidden for _ in range(nlayers)]
@@ -165,11 +183,8 @@ class VariationalLSTM(nn.Module):
         self.ninp = ninput
         self.nhid = nhidden
         self.nlayers = nlayers
-        self.dropouti = dropouti  # rnn input dropout
-        self.dropoutw = dropoutw  # rnn recurrent dropout
-        self.dropouto = dropouto  # rnn output dropout
         if dropout == 0.0 and dropouto != 0.0:
-            self.dropout = self.dropouto  # rnn output dropout (of the last RNN layer)
+            self.dropout = dropouto  # rnn output dropout (of the last RNN layer)
 
         lstms = [
             nn.LSTM(
@@ -188,7 +203,6 @@ class VariationalLSTM(nn.Module):
         ]
 
         self.lstms = nn.ModuleList(dropped_lstms)
-        # self.init_weights()
 
     def reorder_hidden(self, hidden, order):
         """
@@ -230,7 +244,7 @@ class VariationalLSTM(nn.Module):
         batch_size, seq_length, feat_size = x.size()
 
         # Dropout to inputs of the RNN (dropouti)
-        emb = self.lockdrop(x, self.dropouti)
+        emb = self.lockdrop_inp(x)
 
         if hidden is None:
             hidden = self.init_hidden(batch_size)
@@ -249,13 +263,13 @@ class VariationalLSTM(nn.Module):
             raw_outputs.append(raw_output)
             if i != self.nlayers - 1:
                 # apply dropout to the output of the l-th RNN layer (dropouto)
-                raw_output = self.lockdrop(raw_output, self.dropouto)
+                raw_output = self.lockdrop_out(raw_output)
                 # save 'dropped-out outputs' in a list
                 outputs.append(raw_output)
         hidden = new_hidden
 
         # Dropout to the output of the last RNN layer (dropout)
-        output = self.lockdrop(raw_output, self.dropout)
+        output = self.lockdrop_out(raw_output)
         outputs.append(output)
 
         # result = output.view(output.size(0) * output.size(1), output.size(2))
