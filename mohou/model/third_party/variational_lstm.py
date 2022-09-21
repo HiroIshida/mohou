@@ -210,6 +210,12 @@ class VariationalLSTM(nn.Module):
 
         self.lstms = nn.ModuleList(dropped_lstms)
 
+    def randomize(self) -> None:
+        self.lockdrop_inp.reset_mask()
+        self.lockdrop_out.reset_mask()
+        for rnn in self.lstms:
+            rnn._setweights()  # type: ignore
+
     def reorder_hidden(self, hidden, order):
         """
         :param hidden:
