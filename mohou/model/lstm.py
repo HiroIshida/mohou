@@ -55,7 +55,7 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
 
         if variational:
             lstm_layer: Union[nn.LSTM, VariationalLSTM] = VariationalLSTM(
-                n_input, n_hidden, n_layer, dropouti=0.5, dropoutw=0.5, dropouto=0.5
+                n_input, n_hidden, n_layer, dropouti=0.1, dropoutw=0.1, dropouto=0.1
             )
         else:
             lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
