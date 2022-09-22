@@ -79,7 +79,7 @@ def train_autoencoder(
     ae_type: Type[AutoEncoderBase] = AutoEncoder,
     bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
-):
+) -> TrainCache:
 
     if bundle is None:
         bundle = EpisodeBundle.load(project_path)
@@ -93,6 +93,7 @@ def train_autoencoder(
         model = ae_type(model_config)  # type: ignore
         tcache = TrainCache.from_model(model)  # type: ignore[var-annotated]
         train(project_path, tcache, dataset, config=train_config)
+    return tcache
 
 
 def train_lstm(
@@ -105,7 +106,7 @@ def train_lstm(
     bundle: Optional[EpisodeBundle] = None,
     warm_start: bool = False,
     context_list: Optional[List[np.ndarray]] = None,
-):
+) -> TrainCache:
 
     assert model_config.window_size == dataset_config.window_size
     if model_config.window_size is not None:
@@ -145,6 +146,7 @@ def train_lstm(
         model = model_type(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore
         train(project_path, tcache, dataset, config=train_config)
+    return tcache
 
 
 def visualize_train_histories(project_path: Path):
