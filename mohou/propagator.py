@@ -168,11 +168,6 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
         self.encoding_rule.set_device(device)
         self.propagator_model.put_on_device(device)
 
-    @classmethod
-    @abstractmethod
-    def lstm_type(cls) -> Type[LSTMBaseT]:
-        pass
-
     @abstractmethod
     def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         pass
@@ -182,10 +177,6 @@ PropagatorBaseT = TypeVar("PropagatorBaseT", bound=LSTMPropagatorBase)
 
 
 class _LSTMPropagator(LSTMPropagatorBase[LSTM]):
-    @classmethod
-    def lstm_type(cls) -> Type[LSTM]:
-        return LSTM
-
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         def numpy_to_unsqueezed_torch(arr: np.ndarray) -> torch.Tensor:
             device = self.get_device()
@@ -238,10 +229,6 @@ class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
         n_pb_dim = self.propagator_model.config.n_pb_dim
         vec = np.zeros(n_pb_dim)
         self.set_parametric_bias(vec)
-
-    @classmethod
-    def lstm_type(cls) -> Type[PBLSTM]:
-        return PBLSTM
 
     def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         def numpy_to_unsqueezed_torch(arr: np.ndarray) -> torch.Tensor:
