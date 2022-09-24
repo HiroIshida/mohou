@@ -10,6 +10,7 @@ import numpy as np
 import tqdm
 
 from mohou.model.autoencoder import VariationalAutoEncoder
+from mohou.utils import change_color_to_yellow
 
 try:
     from moviepy.editor import ImageSequenceClip
@@ -34,7 +35,8 @@ from mohou.model import (
     PBLSTMConfig,
 )
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.propagator import LSTMPropagatorBase
+from mohou.model.markov import ProportionalModel, ProportionalModelConfig
+from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     ElementBase,
@@ -146,6 +148,31 @@ def train_lstm(
         model = model_type(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore
         train(project_path, tcache, dataset, config=train_config)
+    return tcache
+
+
+def train_proportional_model(
+    project_path: Path,
+    encoding_rule: EncodingRule,
+    model_config: ProportionalModelConfig,
+    dataset_config: AutoRegressiveDatasetConfig,
+    train_config: TrainConfig,
+) -> TrainCache[ProportionalModel]:
+
+    message = "This function is highly experimental. Maybe deleted without notification."
+    logger.warn(change_color_to_yellow(message))
+
+    bundle = EpisodeBundle.load(project_path)
+
+    dataset = AutoRegressiveDataset.from_bundle(
+        bundle,
+        encoding_rule,
+        dataset_config=dataset_config,
+    )
+
+    model = ProportionalModel(model_config)
+    tcache = TrainCache.from_model(model)  # type: ignore
+    train(project_path, tcache, dataset, config=train_config)
     return tcache
 
 
@@ -321,7 +348,7 @@ class VectorSequencePlotter:
         self.fig.savefig(str(image_path), format="png", dpi=300, bbox_inches="tight")
 
 
-def visualize_lstm_propagation(project_path: Path, propagator: LSTMPropagatorBase, n_prop: int):
+def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     save_dir_path = project_path / "lstm_result"
     save_dir_path.mkdir(exist_ok=True)
@@ -409,7 +436,7 @@ def visualize_lstm_propagation(project_path: Path, propagator: LSTMPropagatorBas
 
 def plot_execution_result(
     project_path: Path,
-    propagator: LSTMPropagatorBase,
+    propagator: PropagatorBase,
     edict_seq: List[ElementDict],
     n_prop: int = 10,
 ):
