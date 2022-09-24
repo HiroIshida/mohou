@@ -12,6 +12,7 @@ from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
 from mohou.model.lstm import LSTMBaseT
+from mohou.model.markov import ProportionalModel
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device
@@ -37,15 +38,33 @@ PropagatorT = TypeVar("PropagatorT", bound="PropagatorBase")
 
 
 class PropagatorBase(ABC, Generic[ModelT]):
+    propagator_model: ModelT
+    encoding_rule: EncodingRuleBase
+
     @classmethod
     @abstractmethod
     def create_default(cls: Type[PropagatorT], porject_path: Path) -> PropagatorT:
         pass
 
+    @property
+    @abstractmethod
+    def require_static_context(self) -> bool:
+        pass
+
+    @abstractmethod
+    def feed(self, elem_dict: ElementDict) -> None:
+        pass
+
+    @abstractmethod
+    def predict(self, n_prop: int) -> List[ElementDict]:
+        pass
+
+    @abstractmethod
+    def reset(self) -> None:
+        pass
+
 
 class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
-    propagator_model: LSTMBaseT
-    encoding_rule: EncodingRuleBase
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
@@ -100,7 +119,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
         assert self.propagator_model.config.n_static_context == len(value)
         self.static_context = value
 
-    def feed(self, elem_dict: ElementDict):
+    def feed(self, elem_dict: ElementDict) -> None:
         self._feed(elem_dict)
         if not self.is_initialized:
             for _ in range(self.n_init_duplicate):
@@ -109,7 +128,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
         if not self.is_initialized:
             self.is_initialized = True
 
-    def _feed(self, elem_dict: ElementDict):
+    def _feed(self, elem_dict: ElementDict) -> None:
         if TerminateFlag not in elem_dict:
             elem_dict[TerminateFlag] = TerminateFlag.from_bool(False)
         state_with_flag = self.encoding_rule.apply(elem_dict)
@@ -242,3 +261,41 @@ class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
             states_torch, pb_torch, context_torch, self._hidden
         )
         return out, hidden
+
+
+@dataclass
+class ProportionalModelPropagator(PropagatorBase[ProportionalModel]):
+    model: ProportionalModel
+    encoding_rule: EncodingRuleBase
+    fed_vector: Optional[np.ndarray] = None
+
+    @classmethod
+    def create_default(cls, project_path: Path) -> "ProportionalModelPropagator":
+        tcache = TrainCache.load(project_path, ProportionalModel)
+        encoding_rule = EncodingRule.create_default(project_path)
+        return cls(tcache.best_model, encoding_rule)
+
+    @property
+    def require_static_context(self) -> bool:
+        # currently not support static context
+        return False
+
+    def feed(self, elem_dict: ElementDict) -> None:
+        feature_vector = self.encoding_rule.apply(elem_dict)
+        self.fed_vector = feature_vector
+
+    def predict(self, n_prop: int) -> List[ElementDict]:
+        assert self.fed_vector is not None
+        feeding_vector_list = [self.fed_vector]
+        for _ in range(n_prop):
+            latest_vector = feeding_vector_list[-1]
+            torch_vector = torch.from_numpy(latest_vector).float()
+            seq_sample = torch_vector.unsqueeze(0).unsqueeze(0)
+            pred_sample = self.model.forward(seq_sample).squeeze()
+            feeding_vector_list.append(pred_sample.cpu().detach().numpy())
+        pred_vector_list = feeding_vector_list[1:]
+        pred_edict_list = [self.encoding_rule.inverse_apply(vec) for vec in pred_vector_list]
+        return pred_edict_list
+
+    def reset(self) -> None:
+        pass
