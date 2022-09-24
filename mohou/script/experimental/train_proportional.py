@@ -2,13 +2,40 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-from mohou.dataset import AutoRegressiveDatasetConfig
+from mohou.dataset.sequence_dataset import (
+    AutoRegressiveDataset,
+    AutoRegressiveDatasetConfig,
+)
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
-from mohou.model.experimental import ProportionalModelConfig
-from mohou.script_utils import create_default_logger, train_proportional_model
+from mohou.model.experimental import ProportionalModel, ProportionalModelConfig
+from mohou.script_utils import create_default_logger
 from mohou.setting import setting
-from mohou.trainer import TrainConfig
+from mohou.trainer import TrainCache, TrainConfig, train
+from mohou.types import EpisodeBundle
+
+
+def train_proportional_model(
+    project_path: Path,
+    encoding_rule: EncodingRule,
+    model_config: ProportionalModelConfig,
+    dataset_config: AutoRegressiveDatasetConfig,
+    train_config: TrainConfig,
+) -> TrainCache[ProportionalModel]:
+
+    bundle = EpisodeBundle.load(project_path)
+
+    dataset = AutoRegressiveDataset.from_bundle(
+        bundle,
+        encoding_rule,
+        dataset_config=dataset_config,
+    )
+
+    model = ProportionalModel(model_config)
+    tcache = TrainCache.from_model(model)  # type: ignore
+    train(project_path, tcache, dataset, config=train_config)
+    return tcache
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
