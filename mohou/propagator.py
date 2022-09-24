@@ -11,8 +11,8 @@ from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
+from mohou.model.experimental import ProportionalModel
 from mohou.model.lstm import LSTMBaseT
-from mohou.model.markov import ProportionalModel
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device

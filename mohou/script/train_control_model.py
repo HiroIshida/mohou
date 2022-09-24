@@ -6,7 +6,7 @@ from mohou.encoder import ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model import ControlModel, VariationalAutoEncoder
-from mohou.model.markov import MarkoveModelConfig
+from mohou.model.experimental import MarkoveModelConfig
 from mohou.script_utils import create_default_logger
 from mohou.setting import setting
 from mohou.trainer import TrainCache, TrainConfig, train

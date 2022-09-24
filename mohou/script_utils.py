@@ -10,7 +10,6 @@ import numpy as np
 import tqdm
 
 from mohou.model.autoencoder import VariationalAutoEncoder
-from mohou.utils import change_color_to_yellow
 
 try:
     from moviepy.editor import ImageSequenceClip
@@ -35,7 +34,6 @@ from mohou.model import (
     PBLSTMConfig,
 )
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.model.markov import ProportionalModel, ProportionalModelConfig
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
@@ -148,31 +146,6 @@ def train_lstm(
         model = model_type(model_config)
         tcache = TrainCache.from_model(model)  # type: ignore
         train(project_path, tcache, dataset, config=train_config)
-    return tcache
-
-
-def train_proportional_model(
-    project_path: Path,
-    encoding_rule: EncodingRule,
-    model_config: ProportionalModelConfig,
-    dataset_config: AutoRegressiveDatasetConfig,
-    train_config: TrainConfig,
-) -> TrainCache[ProportionalModel]:
-
-    message = "This function is highly experimental. Maybe deleted without notification."
-    logger.warn(change_color_to_yellow(message))
-
-    bundle = EpisodeBundle.load(project_path)
-
-    dataset = AutoRegressiveDataset.from_bundle(
-        bundle,
-        encoding_rule,
-        dataset_config=dataset_config,
-    )
-
-    model = ProportionalModel(model_config)
-    tcache = TrainCache.from_model(model)  # type: ignore
-    train(project_path, tcache, dataset, config=train_config)
     return tcache
 
 

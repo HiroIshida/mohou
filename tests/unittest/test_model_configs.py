@@ -2,8 +2,8 @@ from typing import List
 
 from mohou.model.autoencoder import AutoEncoderConfig
 from mohou.model.common import ModelConfigBase
+from mohou.model.experimental import MarkoveModelConfig
 from mohou.model.lstm import LSTMConfig
-from mohou.model.markov import MarkoveModelConfig
 from mohou.types import RGBImage
 
 
