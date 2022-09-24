@@ -135,6 +135,7 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
                 prediction_loss = partial_loss
             else:
                 prediction_loss += partial_loss
+        prediction_loss = prediction_loss / float(n_window_desired)
 
         f_loss = nn.MSELoss()
         X0_hat = self.decoder(Z0)
