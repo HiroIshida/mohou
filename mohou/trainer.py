@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import uuid
 import warnings
@@ -275,6 +276,21 @@ class TrainCache(Generic[ModelT]):
         tcache_list = cls.load_all(project_path, model_type, **kwargs)
         tcaceh_list_sorted = sorted(tcache_list, key=lambda tcache: tcache.min_valid_loss[1])
         return tcaceh_list_sorted[0]
+
+    @classmethod
+    def load_latest(
+        cls,
+        project_path: Path,
+        model_type: Type[ModelT],
+        **kwargs,
+    ) -> "TrainCache[ModelT]":
+        def get_cache_time_stamp(tcache: TrainCache) -> float:
+            p = tcache.cache_path(project_path)
+            return os.path.getmtime(p)
+
+        tcache_list = cls.load_all(project_path, model_type, **kwargs)
+        tcache_list_sorted = sorted(tcache_list, key=get_cache_time_stamp)
+        return tcache_list_sorted[-1]
 
     def visualize(self) -> Tuple:
         fig, axes = plt.subplots(1, 3)

@@ -1,4 +1,5 @@
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -83,3 +84,15 @@ def test_traincache_load_best_one():
         tcache = TrainCache.load(tmp_project_path, LSTM)
         # must pick up the one with lowest loss
         assert tcache.min_valid_loss[1] == 3.0
+
+
+def test_traincache_load_latest():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_project_path = Path(tmp_dir)
+
+        for n_input in range(10):
+            time.sleep(1e-2)  # to create different time stamp
+            conf = LSTMConfig(n_input, n_hidden=10, n_layer=1)
+            dump_train_cache(conf, 1.0, tmp_project_path)
+            tcache = TrainCache.load_latest(tmp_project_path, LSTM)
+            assert tcache.best_model.config == conf
