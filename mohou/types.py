@@ -1107,7 +1107,7 @@ class EpisodeBundle(HasAList[EpisodeData], HasTypeShapeTable):
         project_path: Path,
         postfix: Optional[str] = None,
         exist_ok: bool = False,
-        compress: bool = False,
+        compress: bool = True,
     ) -> None:
         """dump the bundle
 
