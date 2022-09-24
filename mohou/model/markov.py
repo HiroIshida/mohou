@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
+from torch.nn.parameter import Parameter
 
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
@@ -73,3 +74,60 @@ class ControlModel(ModelBase):
         loss = nn.MSELoss()(out_obs_sample, out_obs)
         return LossDict({"prediction": loss})
         return self.layer(sample)
+
+
+@dataclass
+class ProportionalModelConfig(ModelConfigBase):
+    n_input: int
+    n_bottleneck: int = 6
+    n_layer: int = 2
+
+
+class ProportionalModel(ModelBase[ProportionalModelConfig]):
+    # This model is highly experimental. Maybe deleted without any notification.
+    encoder: nn.Module
+    decoder: nn.Module
+    propagator: nn.Module
+    p_value: Parameter
+
+    def _setup_from_config(self, config: ProportionalModelConfig) -> None:
+        layers = build_linear_layers(
+            config.n_input, config.n_bottleneck, 100, config.n_layer, activation="tanh"
+        )
+        self.encoder = nn.Sequential(*layers)
+
+        layers = build_linear_layers(
+            config.n_bottleneck, config.n_input, 100, config.n_layer, activation="tanh"
+        )
+        self.decoder = nn.Sequential(*layers)
+
+        param = Parameter(torch.zeros(1))
+        self.register_parameter("kp", param)
+        self.p_value = param
+
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+        # NOTE: episode index and static context is not supported in this model
+        _, seq_sample, _ = sample
+
+        n_batch, n_seq_len, n_dim = seq_sample.shape
+        sample_pre = seq_sample[:, :-1, :].reshape(-1, n_dim)
+        sample_post = seq_sample[:, 1:, :].reshape(-1, n_dim)
+
+        z_pre = self.encoder(sample_pre)
+
+        sample_pre_reconst = self.decoder(z_pre)
+        z_post_est = (1.0 - self.p_value) * z_pre
+        z_post = self.encoder(sample_post)
+
+        f_loss = nn.MSELoss()
+        reconstruction_loss = f_loss(sample_pre_reconst, sample_pre)
+        prediction_loss = f_loss(z_post_est, z_post)
+        return LossDict({"reconstruction": reconstruction_loss, "prediction": prediction_loss})
+
+    def forward(self, seq_sample: torch.Tensor) -> torch.Tensor:
+        n_batch, n_seq_len, n_dim = seq_sample.shape
+        sample_pre = seq_sample.reshape(-1, n_dim)
+        z = self.encoder(sample_pre)
+        z_post = (1.0 - self.p_value) * z
+        sample_post = self.decoder(z_post)
+        return sample_post
