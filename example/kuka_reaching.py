@@ -15,7 +15,6 @@ import tinyfk
 import tqdm
 from moviepy.editor import ImageSequenceClip
 
-from mohou.default import create_default_propagator, load_default_image_encoder
 from mohou.file import create_project_dir, get_project_path
 from mohou.propagator import LSTMPropagator
 from mohou.types import (
@@ -222,12 +221,8 @@ if __name__ == "__main__":
         bm.set_box(target_pos)
 
         # prepare propagator
-        propagator = create_default_propagator(project_path, LSTMPropagator)
-        if propagator.require_static_context:
-            image_encoder = load_default_image_encoder(project_path)
-            rgb, _ = bm.take_photo(n_pixel)
-            context = image_encoder.forward(rgb)
-            propagator.set_static_context(context)
+        propagator = LSTMPropagator.create_default(project_path)
+        assert not propagator.require_static_context
 
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
 

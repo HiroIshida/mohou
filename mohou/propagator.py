@@ -7,9 +7,8 @@ import numpy as np
 import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.default import create_default_encoding_rule
 from mohou.encoder import ImageEncoder
-from mohou.encoding_rule import EncodingRuleBase
+from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
 from mohou.model.lstm import LSTMBaseT
@@ -202,7 +201,7 @@ class LSTMPropagator(_LSTMPropagator):
     @classmethod
     def create_default(cls, project_path: Path) -> "LSTMPropagator":
         tcach_lstm = TrainCache.load(project_path, LSTM)
-        encoding_rule = create_default_encoding_rule(project_path)
+        encoding_rule = EncodingRule.create_default(project_path)
         return cls(tcach_lstm.best_model, encoding_rule)
 
 
@@ -214,7 +213,7 @@ class ChimeraPropagator(_LSTMPropagator):
         tcache_chimera = TrainCache.load(project_path, Chimera)
         chimera_model = tcache_chimera.best_model
 
-        rule = create_default_encoding_rule(project_path)
+        rule = EncodingRule.create_default(project_path)
         rule[RGBImage] = ImageEncoder.from_auto_encoder(chimera_model.ae)
         return cls(chimera_model.lstm, rule)
 
@@ -225,7 +224,7 @@ class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
     @classmethod
     def create_default(cls, project_path: Path) -> "PBLSTMPropagator":
         tcach_lstm = TrainCache.load(project_path, PBLSTM)
-        encoding_rule = create_default_encoding_rule(project_path)
+        encoding_rule = EncodingRule.create_default(project_path)
         prop = cls(tcach_lstm.best_model, encoding_rule)
         prop.set_pb_to_zero()
         return prop

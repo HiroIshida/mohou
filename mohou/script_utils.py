@@ -22,7 +22,7 @@ from mohou.dataset import (
     AutoRegressiveDataset,
     AutoRegressiveDatasetConfig,
 )
-from mohou.default import load_default_image_encoder
+from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import (
     LSTM,
@@ -330,7 +330,7 @@ def visualize_lstm_propagation(project_path: Path, propagator: LSTMPropagatorBas
     if propagator.require_static_context:
         raise NotImplementedError("not implemented yet")
 
-    image_encoder = load_default_image_encoder(project_path)
+    image_encoder = ImageEncoder.create_default(project_path)
     image_type = image_encoder.elem_type
 
     for idx, episode_data in enumerate(bundle):

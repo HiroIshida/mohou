@@ -9,7 +9,8 @@ from typing import Union
 
 from mohou.dataset.chimera_dataset import ChimeraDataset
 from mohou.dataset.sequence_dataset import AutoRegressiveDatasetConfig
-from mohou.default import create_default_encoding_rule, load_default_image_encoder
+from mohou.encoder import ImageEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model import LSTM, LSTMConfig, VariationalAutoEncoder
 from mohou.model.chimera import Chimera, ChimeraConfig
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     # balancer is loaded in chimera model. so no balancer is required.
     use_balancer = not use_pretrained_lstm
-    encoding_rule_except_image = create_default_encoding_rule(
+    encoding_rule_except_image = EncodingRule.create_default(
         project_path,
         include_image_encoder=False,
         use_balancer=use_balancer,
@@ -69,7 +70,7 @@ if __name__ == "__main__":
         assert tcache_lstm.cache_path is not None
         lstm_config: Union[Path, LSTMConfig] = tcache_lstm.cache_path(project_path)
     else:
-        image_encoder = load_default_image_encoder(project_path)
+        image_encoder = ImageEncoder.create_default(project_path)
         lstm_dim = encoding_rule_except_image.dimension + image_encoder.output_size
         lstm_config = LSTMConfig(lstm_dim, n_hidden=n_hidden, n_layer=n_layer)
 

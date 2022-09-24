@@ -2,6 +2,7 @@ import base64
 import pickle
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
@@ -10,6 +11,7 @@ from sklearn.decomposition import PCA
 
 from mohou.model.autoencoder import AutoEncoderBase
 from mohou.model.common import ModelBase
+from mohou.trainer import TrainCache
 from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT, get_element_type
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
 
@@ -103,6 +105,31 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
 
         inp_reconstucted = self._backward_impl(out_dummy)
         assert_isinstance_with_message(inp_reconstucted, self.elem_type)
+
+    @staticmethod
+    def auto_detect_autoencoder_type(project_path: Path) -> Type[AutoEncoderBase]:
+        # TODO(HiroIshida) dirty...
+        tcache_list: List[TrainCache] = TrainCache.load_all(project_path)
+
+        type_list = []
+        for tcache in tcache_list:
+            model = tcache.best_model
+            if isinstance(model, AutoEncoderBase):
+                type_list.append(model.__class__)
+        type_set = set(type_list)
+
+        assert len(type_set) != 0, "no autoencoder found"
+        assert len(type_set) == 1, "multiple autoencoder found"
+        return type_set.pop()
+
+    @classmethod
+    def create_default(cls, project_path: Path) -> "ImageEncoder":
+        ae_type = ImageEncoder.auto_detect_autoencoder_type(project_path)
+        try:
+            tcache_autoencoder = TrainCache.load(project_path, ae_type)
+        except Exception:
+            raise RuntimeError("not TrainCache for autoencoder is found ")
+        return cls.from_auto_encoder(tcache_autoencoder.best_model)
 
     @classmethod
     def from_auto_encoder(cls, model: AutoEncoderBase) -> "ImageEncoder":

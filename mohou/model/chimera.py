@@ -41,10 +41,10 @@ class Chimera(ModelBase[ChimeraConfig], Generic[ImageT]):
             json_file_path = CovarianceBasedScaleBalancer.get_json_file_path(
                 project_path, create_dir=True
             )
-            from mohou.default import create_default_encoding_rule
+            from mohou.encoding_rule import EncodingRule
 
             if not json_file_path.exists():
-                rule = create_default_encoding_rule(project_path)
+                rule = EncodingRule.create_default(project_path)
                 rule.scale_balancer.dump(project_path)
 
                 message = "NOTE: dump scale_balancer."

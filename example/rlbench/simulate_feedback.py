@@ -13,7 +13,6 @@ from rlbench.backend.task import Task
 from rlbench.environment import Environment
 from utils import setup_observation_config
 
-from mohou.default import create_default_propagator
 from mohou.file import get_project_path
 from mohou.propagator import LSTMPropagator
 from mohou.types import (
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     for i in range(n_sim):
         task.reset()
 
-        prop = create_default_propagator(project_path, LSTMPropagator)
+        prop = LSTMPropagator.create_default(project_path)
 
         rgb_seq_gif = []
 

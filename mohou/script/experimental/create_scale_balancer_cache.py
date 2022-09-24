@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-from mohou.default import create_default_encoding_rule
+from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 
 if __name__ == "__main__":
@@ -18,5 +18,5 @@ if __name__ == "__main__":
     else:
         project_path = Path(project_path_str)
 
-    rule = create_default_encoding_rule(project_path)
+    rule = EncodingRule.create_default(project_path)
     rule.scale_balancer.dump(project_path)
