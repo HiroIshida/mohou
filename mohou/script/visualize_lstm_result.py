@@ -5,6 +5,7 @@ from pathlib import Path
 from mohou.file import get_project_path
 from mohou.propagator import (
     ChimeraPropagator,
+    DisentangleLSTMPropagator,
     LSTMPropagator,
     PBLSTMPropagator,
     PropagatorBase,
@@ -19,6 +20,7 @@ class Propagatorselection(Enum):
     pblstm = PBLSTMPropagator
     chimera = ChimeraPropagator
     proportional = ProportionalModelPropagator
+    disentangle = DisentangleLSTMPropagator
 
 
 if __name__ == "__main__":
