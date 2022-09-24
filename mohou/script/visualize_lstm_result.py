@@ -3,7 +3,7 @@ from pathlib import Path
 
 from mohou.default import create_default_chimera_propagator, create_default_propagator
 from mohou.file import get_project_path
-from mohou.propagator import LSTMPropagatorBase, PBLSTMPropagator, Propagator
+from mohou.propagator import LSTMPropagator, LSTMPropagatorBase, PBLSTMPropagator
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
 
@@ -18,7 +18,7 @@ def get_propagator(project_path: Path, use_pb: bool, use_chimera: bool) -> LSTMP
     elif use_chimera:
         return create_default_chimera_propagator(project_path)
     else:
-        return create_default_propagator(project_path, prop_type=Propagator)
+        return create_default_propagator(project_path, prop_type=LSTMPropagator)
 
 
 if __name__ == "__main__":

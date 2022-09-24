@@ -9,7 +9,7 @@ from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model import LSTM, LSTMConfig
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.script_utils import create_default_logger
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     # compute xs_est and terminate flag est
     assert tcache.best_model is not None
-    prop = Propagator(tcache.best_model, encoding_rule=rule)
+    prop = LSTMPropagator(tcache.best_model, encoding_rule=rule)
     av = AngleVector(state_init)
     elem_dict = ElementDict([av])
     prop.feed(elem_dict)

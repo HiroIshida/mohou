@@ -30,7 +30,7 @@ from skrobot.models.urdf import RobotModelFromURDF
 from mohou.asset import get_panda_urdf_path
 from mohou.default import create_default_propagator
 from mohou.file import create_project_dir, get_project_path
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.types import (
     AngleVector,
     ElementDict,
@@ -360,7 +360,7 @@ class Task:
         bundle = EpisodeBundle.load(project_path)
         w: int = bundle[0].metadata["sampling_width"]  # type: ignore
 
-        propagator = create_default_propagator(project_path, Propagator)
+        propagator = create_default_propagator(project_path, LSTMPropagator)
         assert not propagator.require_static_context, "if needed please make a PR"
 
         self.reset(randomize_world=True)

@@ -9,7 +9,7 @@ from mohou.encoder import EncoderBase, ImageEncoder, VectorIdenticalEncoder
 from mohou.encoding_rule import CovarianceBasedScaleBalancer, EncodingRule
 from mohou.model import AutoEncoderBase
 from mohou.model.chimera import Chimera
-from mohou.propagator import Propagator, PropagatorBaseT
+from mohou.propagator import LSTMPropagator, PropagatorBaseT
 from mohou.trainer import TrainCache
 from mohou.types import (
     AngleVector,
@@ -163,7 +163,7 @@ def create_default_chimera_propagator(project_path: Path):
 
     rule = create_default_encoding_rule(project_path)
     rule[RGBImage] = ImageEncoder.from_auto_encoder(chimera_model.ae)
-    propagator = Propagator(chimera_model.lstm, rule)
+    propagator = LSTMPropagator(chimera_model.lstm, rule)
     return propagator
 
 

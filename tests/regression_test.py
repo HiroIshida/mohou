@@ -8,7 +8,7 @@ import torch
 
 from mohou.default import create_default_encoding_rule, create_default_propagator
 from mohou.model import LSTM, VariationalAutoEncoder
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.trainer import TrainCache
 from mohou.types import AngleVector, EpisodeBundle, EpisodeData, RGBImage, TerminateFlag
 
@@ -75,7 +75,7 @@ def test_lstm_model(project_path: Path):
 
 
 def test_propagator(project_path: Path):
-    prop: Propagator = create_default_propagator(project_path, Propagator)
+    prop: LSTMPropagator = create_default_propagator(project_path, LSTMPropagator)
     bundle = EpisodeBundle.load(project_path)
     episode = bundle[0]
 

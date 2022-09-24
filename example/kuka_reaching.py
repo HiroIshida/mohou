@@ -17,7 +17,7 @@ from moviepy.editor import ImageSequenceClip
 
 from mohou.default import create_default_propagator, load_default_image_encoder
 from mohou.file import create_project_dir, get_project_path
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -173,7 +173,7 @@ class BulletManager(object):
 
         return ElementSequence(rgb_list), ElementSequence(depth_list), ElementSequence(angles_list)
 
-    def simulate_feedback(self, propagator: Propagator, n_pixel=112) -> List[RGBImage]:
+    def simulate_feedback(self, propagator: LSTMPropagator, n_pixel=112) -> List[RGBImage]:
         rgb_list = []
         for i in range(200):
             rgb, depth = self.take_photo(n_pixel)
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         bm.set_box(target_pos)
 
         # prepare propagator
-        propagator = create_default_propagator(project_path, Propagator)
+        propagator = create_default_propagator(project_path, LSTMPropagator)
         if propagator.require_static_context:
             image_encoder = load_default_image_encoder(project_path)
             rgb, _ = bm.take_photo(n_pixel)

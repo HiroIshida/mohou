@@ -175,7 +175,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
 PropagatorBaseT = TypeVar("PropagatorBaseT", bound=LSTMPropagatorBase)
 
 
-class Propagator(LSTMPropagatorBase[LSTM]):
+class LSTMPropagator(LSTMPropagatorBase[LSTM]):
     @classmethod
     def lstm_type(cls) -> Type[LSTM]:
         return LSTM

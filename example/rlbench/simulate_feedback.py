@@ -15,7 +15,7 @@ from utils import setup_observation_config
 
 from mohou.default import create_default_propagator
 from mohou.file import get_project_path
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     for i in range(n_sim):
         task.reset()
 
-        prop = create_default_propagator(project_path, Propagator)
+        prop = create_default_propagator(project_path, LSTMPropagator)
 
         rgb_seq_gif = []
 
