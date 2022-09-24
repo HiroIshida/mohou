@@ -116,31 +116,33 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
 
         n_batch, n_seq_len, n_dim = seq_sample.shape
         X0 = seq_sample.reshape(-1, n_dim)
-
         Z0 = self.encoder(X0)
+        Z0_reshaped = Z0.reshape(n_batch, n_seq_len, self.config.n_bottleneck)
 
-        n_window_desired = 10
-        n_window_max = Z0.shape[1] - 1
-        n_window = min(n_window_desired, n_window_max)
-        prediction_loss: Optional[torch.Tensor] = None
-        Z_prop_est = Z0
-        for window in range(1, n_window + 1):
-            p_value = self.get_p_value(Z_prop_est)
-            print("min: {}, max {}".format(torch.min(p_value), torch.max(p_value)))
-            Z_prop_est = Z_prop_est * (1 - p_value)
-            Z_prop_est_cut = Z_prop_est[:, :-window]
-            Z_prop = Z0[:, window:]
-            partial_loss = nn.MSELoss()(Z_prop, Z_prop_est_cut)
-            if prediction_loss is None:
-                prediction_loss = partial_loss
-            else:
-                prediction_loss += partial_loss
-        prediction_loss = prediction_loss / float(n_window_desired)
-
+        # compute reconstruction loss
         f_loss = nn.MSELoss()
         X0_hat = self.decoder(Z0)
         reconstruction_loss = f_loss(X0_hat, X0)
-        assert prediction_loss is not None
+
+        # compute prediction loss
+        prediction_loss_list: List[torch.Tensor] = []
+        n_window_desired = 10
+        n_window_max = n_seq_len - 1
+        n_window = min(n_window_desired, n_window_max)
+
+        Z_prop_est = Z0
+        for window in range(1, n_window + 1):
+            KP = self.get_p_value(Z_prop_est)
+            print("min: {}, max {}".format(torch.min(KP), torch.max(KP)))
+            Z_prop_est = Z_prop_est * (1 - KP)
+
+            Z_prop_est_reshaped = Z_prop_est.reshape(n_batch, n_seq_len, self.config.n_bottleneck)
+            Z_prop_est_reshaped_cut = Z_prop_est_reshaped[:, :-window, :]
+            Z_prop_reshaped_cut = Z0_reshaped[:, window:, :]
+            partial_loss = nn.MSELoss()(Z_prop_est_reshaped_cut, Z_prop_reshaped_cut)
+            prediction_loss_list.append(partial_loss)
+
+        prediction_loss = torch.sum(torch.stack(prediction_loss_list)) / len(prediction_loss_list)
         return LossDict({"reconstruction": reconstruction_loss, "prediction": prediction_loss})
 
     def forward(self, seq_sample: torch.Tensor) -> torch.Tensor:
