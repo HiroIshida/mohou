@@ -3,12 +3,12 @@ from pathlib import Path
 
 from mohou.default import create_default_chimera_propagator, create_default_propagator
 from mohou.file import get_project_path
-from mohou.propagator import PBLSTMPropagator, Propagator, PropagatorBase
+from mohou.propagator import LSTMPropagatorBase, PBLSTMPropagator, Propagator
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
 
 
-def get_propagator(project_path: Path, use_pb: bool, use_chimera: bool) -> PropagatorBase:
+def get_propagator(project_path: Path, use_pb: bool, use_chimera: bool) -> LSTMPropagatorBase:
     assert not (use_pb and use_chimera), "currently chimera does not support pb"
 
     if use_pb:

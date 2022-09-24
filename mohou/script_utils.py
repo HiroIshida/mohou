@@ -34,7 +34,7 @@ from mohou.model import (
     PBLSTMConfig,
 )
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.propagator import PropagatorBase
+from mohou.propagator import LSTMPropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (
     ElementBase,
@@ -321,7 +321,7 @@ class VectorSequencePlotter:
         self.fig.savefig(str(image_path), format="png", dpi=300, bbox_inches="tight")
 
 
-def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n_prop: int):
+def visualize_lstm_propagation(project_path: Path, propagator: LSTMPropagatorBase, n_prop: int):
     bundle = EpisodeBundle.load(project_path).get_untouch_bundle()
     save_dir_path = project_path / "lstm_result"
     save_dir_path.mkdir(exist_ok=True)
@@ -408,7 +408,10 @@ def visualize_lstm_propagation(project_path: Path, propagator: PropagatorBase, n
 
 
 def plot_execution_result(
-    project_path: Path, propagator: PropagatorBase, edict_seq: List[ElementDict], n_prop: int = 10
+    project_path: Path,
+    propagator: LSTMPropagatorBase,
+    edict_seq: List[ElementDict],
+    n_prop: int = 10,
 ):
     timestr = "_" + time.strftime("%Y%m%d%H%M%S")
     propagator.reset()
