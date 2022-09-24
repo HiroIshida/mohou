@@ -73,3 +73,83 @@ class ControlModel(ModelBase):
         loss = nn.MSELoss()(out_obs_sample, out_obs)
         return LossDict({"prediction": loss})
         return self.layer(sample)
+
+
+@dataclass
+class ProportionalModelConfig(ModelConfigBase):
+    n_input: int
+    n_bottleneck: int = 6
+    n_layer: int = 2
+
+
+class ProportionalModel(ModelBase[ProportionalModelConfig]):
+    # This model is highly experimental. Maybe deleted without any notification.
+    encoder: nn.Module
+    decoder: nn.Module
+    propagator: nn.Module
+    # p_value: Parameter
+    p_value: nn.Module
+
+    def _setup_from_config(self, config: ProportionalModelConfig) -> None:
+        layers = build_linear_layers(
+            config.n_input, config.n_bottleneck, 100, config.n_layer, activation="tanh"
+        )
+        self.encoder = nn.Sequential(*layers)
+
+        layers = build_linear_layers(
+            config.n_bottleneck, config.n_input, 100, config.n_layer, activation="tanh"
+        )
+        self.decoder = nn.Sequential(*layers)
+
+        # param = Parameter(torch.ones(1) * 0.0)
+        # self.register_parameter("kp", param)
+        layers = build_linear_layers(config.n_bottleneck, 1, config.n_bottleneck * 2, 2, "tanh")
+        layers.append(nn.Tanh())
+        self.p_value = nn.Sequential(*layers)
+
+    def get_p_value(self, bottoleneck_tensor: torch.Tensor) -> torch.Tensor:
+        return 0.5 * (self.p_value(bottoleneck_tensor) + 0.5)
+
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+        # NOTE: episode index and static context is not supported in this model
+        _, seq_sample, _ = sample
+
+        n_batch, n_seq_len, n_dim = seq_sample.shape
+        X0 = seq_sample.reshape(-1, n_dim)
+        Z0 = self.encoder(X0)
+        Z0_reshaped = Z0.reshape(n_batch, n_seq_len, self.config.n_bottleneck)
+
+        # compute reconstruction loss
+        f_loss = nn.MSELoss()
+        X0_hat = self.decoder(Z0)
+        reconstruction_loss = f_loss(X0_hat, X0)
+
+        # compute prediction loss
+        prediction_loss_list: List[torch.Tensor] = []
+        n_window_desired = 10
+        n_window_max = n_seq_len - 1
+        n_window = min(n_window_desired, n_window_max)
+
+        Z_prop_est = Z0
+        for window in range(1, n_window + 1):
+            KP = self.get_p_value(Z_prop_est)
+            print("min: {}, max {}".format(torch.min(KP), torch.max(KP)))
+            Z_prop_est = Z_prop_est * (1 - KP)
+
+            Z_prop_est_reshaped = Z_prop_est.reshape(n_batch, n_seq_len, self.config.n_bottleneck)
+            Z_prop_est_reshaped_cut = Z_prop_est_reshaped[:, :-window, :]
+            Z_prop_reshaped_cut = Z0_reshaped[:, window:, :]
+            partial_loss = nn.MSELoss()(Z_prop_est_reshaped_cut, Z_prop_reshaped_cut)
+            prediction_loss_list.append(partial_loss)
+
+        prediction_loss = torch.sum(torch.stack(prediction_loss_list)) / len(prediction_loss_list)
+        return LossDict({"reconstruction": reconstruction_loss, "prediction": prediction_loss})
+
+    def forward(self, seq_sample: torch.Tensor) -> torch.Tensor:
+        n_batch, n_seq_len, n_dim = seq_sample.shape
+        sample_pre = seq_sample.reshape(-1, n_dim)
+        z = self.encoder(sample_pre)
+        p_value = self.get_p_value(z)
+        z_post = (1.0 - p_value) * z
+        sample_post = self.decoder(z_post)
+        return sample_post
