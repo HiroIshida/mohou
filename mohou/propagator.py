@@ -1,16 +1,20 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
+from mohou.default import create_default_encoding_rule
+from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
 from mohou.model.lstm import LSTMBaseT
-from mohou.types import ElementDict, TerminateFlag
+from mohou.trainer import TrainCache
+from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device
 
 
@@ -34,7 +38,10 @@ PropagatorT = TypeVar("PropagatorT", bound="PropagatorBase")
 
 
 class PropagatorBase(ABC, Generic[ModelT]):
-    pass
+    @classmethod
+    @abstractmethod
+    def create_default(cls: Type[PropagatorT], porject_path: Path) -> PropagatorT:
+        pass
 
 
 class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
@@ -175,7 +182,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
 PropagatorBaseT = TypeVar("PropagatorBaseT", bound=LSTMPropagatorBase)
 
 
-class LSTMPropagator(LSTMPropagatorBase[LSTM]):
+class _LSTMPropagator(LSTMPropagatorBase[LSTM]):
     @classmethod
     def lstm_type(cls) -> Type[LSTM]:
         return LSTM
@@ -191,8 +198,37 @@ class LSTMPropagator(LSTMPropagatorBase[LSTM]):
         return out, hidden
 
 
+class LSTMPropagator(_LSTMPropagator):
+    @classmethod
+    def create_default(cls, project_path: Path) -> "LSTMPropagator":
+        tcach_lstm = TrainCache.load(project_path, LSTM)
+        encoding_rule = create_default_encoding_rule(project_path)
+        return cls(tcach_lstm.best_model, encoding_rule)
+
+
+class ChimeraPropagator(_LSTMPropagator):
+    @classmethod
+    def create_default(cls, project_path: Path) -> "ChimeraPropagator":
+        from mohou.model.chimera import Chimera
+
+        tcache_chimera = TrainCache.load(project_path, Chimera)
+        chimera_model = tcache_chimera.best_model
+
+        rule = create_default_encoding_rule(project_path)
+        rule[RGBImage] = ImageEncoder.from_auto_encoder(chimera_model.ae)
+        return cls(chimera_model.lstm, rule)
+
+
 class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
     parametric_bias: np.ndarray
+
+    @classmethod
+    def create_default(cls, project_path: Path) -> "PBLSTMPropagator":
+        tcach_lstm = TrainCache.load(project_path, PBLSTM)
+        encoding_rule = create_default_encoding_rule(project_path)
+        prop = cls(tcach_lstm.best_model, encoding_rule)
+        prop.set_pb_to_zero()
+        return prop
 
     def set_parametric_bias(self, value: np.ndarray) -> None:
         assert value.ndim == 1
