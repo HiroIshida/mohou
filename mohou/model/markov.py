@@ -3,7 +3,6 @@ from typing import List, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
-from torch.nn.parameter import Parameter
 
 from mohou.model.common import LossDict, ModelBase, ModelConfigBase
 
@@ -88,7 +87,8 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
     encoder: nn.Module
     decoder: nn.Module
     propagator: nn.Module
-    p_value: Parameter
+    # p_value: Parameter
+    p_value: nn.Module
 
     def _setup_from_config(self, config: ProportionalModelConfig) -> None:
         layers = build_linear_layers(
@@ -101,33 +101,52 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
         )
         self.decoder = nn.Sequential(*layers)
 
-        param = Parameter(torch.zeros(1))
-        self.register_parameter("kp", param)
-        self.p_value = param
+        # param = Parameter(torch.ones(1) * 0.0)
+        # self.register_parameter("kp", param)
+        layers = build_linear_layers(config.n_bottleneck, 1, config.n_bottleneck * 2, 2, "tanh")
+        layers.append(nn.Tanh())
+        self.p_value = nn.Sequential(*layers)
+
+    def get_p_value(self, bottoleneck_tensor: torch.Tensor) -> torch.Tensor:
+        return 0.5 * (self.p_value(bottoleneck_tensor) + 0.5)
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
         # NOTE: episode index and static context is not supported in this model
         _, seq_sample, _ = sample
 
         n_batch, n_seq_len, n_dim = seq_sample.shape
-        sample_pre = seq_sample[:, :-1, :].reshape(-1, n_dim)
-        sample_post = seq_sample[:, 1:, :].reshape(-1, n_dim)
+        X0 = seq_sample.reshape(-1, n_dim)
 
-        z_pre = self.encoder(sample_pre)
+        Z0 = self.encoder(X0)
 
-        sample_pre_reconst = self.decoder(z_pre)
-        z_post_est = (1.0 - self.p_value) * z_pre
-        z_post = self.encoder(sample_post)
+        n_window_desired = 10
+        n_window_max = Z0.shape[1] - 1
+        n_window = min(n_window_desired, n_window_max)
+        prediction_loss: Optional[torch.Tensor] = None
+        Z_prop_est = Z0
+        for window in range(1, n_window + 1):
+            p_value = self.get_p_value(Z_prop_est)
+            print("min: {}, max {}".format(torch.min(p_value), torch.max(p_value)))
+            Z_prop_est = Z_prop_est * (1 - p_value)
+            Z_prop_est_cut = Z_prop_est[:, :-window]
+            Z_prop = Z0[:, window:]
+            partial_loss = nn.MSELoss()(Z_prop, Z_prop_est_cut)
+            if prediction_loss is None:
+                prediction_loss = partial_loss
+            else:
+                prediction_loss += partial_loss
 
         f_loss = nn.MSELoss()
-        reconstruction_loss = f_loss(sample_pre_reconst, sample_pre)
-        prediction_loss = f_loss(z_post_est, z_post)
+        X0_hat = self.decoder(Z0)
+        reconstruction_loss = f_loss(X0_hat, X0)
+        assert prediction_loss is not None
         return LossDict({"reconstruction": reconstruction_loss, "prediction": prediction_loss})
 
     def forward(self, seq_sample: torch.Tensor) -> torch.Tensor:
         n_batch, n_seq_len, n_dim = seq_sample.shape
         sample_pre = seq_sample.reshape(-1, n_dim)
         z = self.encoder(sample_pre)
-        z_post = (1.0 - self.p_value) * z
+        p_value = self.get_p_value(z)
+        z_post = (1.0 - p_value) * z
         sample_post = self.decoder(z_post)
         return sample_post
