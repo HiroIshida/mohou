@@ -1,27 +1,11 @@
 import argparse
-from enum import Enum
 from pathlib import Path
 
 from mohou.file import get_project_path
-from mohou.propagator import (
-    ChimeraPropagator,
-    DisentangleLSTMPropagator,
-    LSTMPropagator,
-    PBLSTMPropagator,
-    PropagatorBase,
-    ProportionalModelPropagator,
-)
+from mohou.propagator import PropagatorBase, PropagatorSelection
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
-
-
-class Propagatorselection(Enum):
-    lstm = LSTMPropagator
-    pblstm = PBLSTMPropagator
-    chimera = ChimeraPropagator
-    proportional = ProportionalModelPropagator
-    disentangle = DisentangleLSTMPropagator
-
+from mohou.types import Type
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -41,6 +25,6 @@ if __name__ == "__main__":
     else:
         project_path = Path(project_path_str)
 
-    prop_type: PropagatorBase = Propagatorselection[model_str].value
+    prop_type: Type[PropagatorBase] = PropagatorSelection[model_str].value
     propagator = prop_type.create_default(project_path)
     visualize_lstm_propagation(project_path, propagator, n_prop)
