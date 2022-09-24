@@ -5,7 +5,7 @@ import pickle
 import tempfile
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Type
 
 import numpy as np
 import psutil
@@ -16,7 +16,7 @@ import tqdm
 from moviepy.editor import ImageSequenceClip
 
 from mohou.file import create_project_dir, get_project_path
-from mohou.propagator import LSTMPropagator
+from mohou.propagator import PropagatorBase, PropagatorSelection
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -172,7 +172,7 @@ class BulletManager(object):
 
         return ElementSequence(rgb_list), ElementSequence(depth_list), ElementSequence(angles_list)
 
-    def simulate_feedback(self, propagator: LSTMPropagator, n_pixel=112) -> List[RGBImage]:
+    def simulate_feedback(self, propagator: PropagatorBase, n_pixel=112) -> List[RGBImage]:
         rgb_list = []
         for i in range(200):
             rgb, depth = self.take_photo(n_pixel)
@@ -195,6 +195,9 @@ if __name__ == "__main__":
     parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=100, help="epoch num")
     parser.add_argument("-m", type=int, default=112, help="pixel num")
+    parser.add_argument(
+        "-model", type=str, default="lstm", help="select prop model if --feedback specified"
+    )
     parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
     args = parser.parse_args()
     n_epoch: int = args.n
@@ -203,6 +206,7 @@ if __name__ == "__main__":
     project_name: str = args.pn
     n_untouch: int = args.untouch
     project_path_str: Optional[str] = args.pp
+    model_str: str = args.model
 
     if project_path_str is None:
         assert project_name is not None
@@ -221,7 +225,8 @@ if __name__ == "__main__":
         bm.set_box(target_pos)
 
         # prepare propagator
-        propagator = LSTMPropagator.create_default(project_path)
+        prop_type: Type[PropagatorBase] = PropagatorSelection[model_str].value
+        propagator = prop_type.create_default(project_path)
         assert not propagator.require_static_context
 
         rgb_list = bm.simulate_feedback(propagator, n_pixel)
