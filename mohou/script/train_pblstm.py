@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.default import create_default_encoding_rule
+from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model.lstm import PBLSTM, PBLSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     bundle = EpisodeBundle.load(project_path)
 
-    encoding_rule = create_default_encoding_rule(project_path)
+    encoding_rule = EncodingRule.create_default(project_path)
     model_config = PBLSTMConfig(
         encoding_rule.dimension,
         n_hidden=n_hidden,

@@ -1,17 +1,35 @@
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+import numpy as np
 
 from mohou.dataset import AutoRegressiveDatasetConfig
-from mohou.default import (
-    create_default_encoding_rule,
-    create_default_image_context_list,
-)
+from mohou.encoder import ImageEncoder
+from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
 from mohou.model.lstm import LSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
 from mohou.setting import setting
 from mohou.trainer import TrainConfig
+from mohou.types import EpisodeBundle
+
+
+def create_default_image_context_list(
+    project_path: Path, bundle: Optional[EpisodeBundle] = None
+) -> List[np.ndarray]:
+    if bundle is None:
+        bundle = EpisodeBundle.load(project_path)
+    image_encoder = ImageEncoder.create_default(project_path)
+
+    context_list = []
+    for episode in bundle:
+        seq = episode.get_sequence_by_type(image_encoder.elem_type)
+        context = image_encoder.forward(seq[0])
+        context_list.append(context)
+
+    return context_list
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -61,7 +79,7 @@ if __name__ == "__main__":
 
     logger = create_default_logger(project_path, "lstm")  # noqa
 
-    encoding_rule = create_default_encoding_rule(project_path)
+    encoding_rule = EncodingRule.create_default(project_path)
     model_config = LSTMConfig(
         encoding_rule.dimension,
         n_hidden=n_hidden,

@@ -1,24 +1,26 @@
 import argparse
 from pathlib import Path
 
-from mohou.default import create_default_chimera_propagator, create_default_propagator
 from mohou.file import get_project_path
-from mohou.propagator import PBLSTMPropagator, Propagator, PropagatorBase
+from mohou.propagator import (
+    ChimeraPropagator,
+    LSTMPropagator,
+    LSTMPropagatorBase,
+    PBLSTMPropagator,
+)
 from mohou.script_utils import visualize_lstm_propagation
 from mohou.setting import setting
 
 
-def get_propagator(project_path: Path, use_pb: bool, use_chimera: bool) -> PropagatorBase:
+def get_propagator(project_path: Path, use_pb: bool, use_chimera: bool) -> LSTMPropagatorBase:
     assert not (use_pb and use_chimera), "currently chimera does not support pb"
 
     if use_pb:
-        propagator = create_default_propagator(project_path, prop_type=PBLSTMPropagator)
-        propagator.set_pb_to_zero()
-        return propagator
+        return PBLSTMPropagator.create_default(project_path)
     elif use_chimera:
-        return create_default_chimera_propagator(project_path)
+        return ChimeraPropagator.create_default(project_path)
     else:
-        return create_default_propagator(project_path, prop_type=Propagator)
+        return LSTMPropagator.create_default(project_path)
 
 
 if __name__ == "__main__":

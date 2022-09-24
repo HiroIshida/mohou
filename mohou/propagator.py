@@ -1,15 +1,19 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import torch
 
 from mohou.constant import CONTINUE_FLAG_VALUE
-from mohou.encoding_rule import EncodingRuleBase
+from mohou.encoder import ImageEncoder
+from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
+from mohou.model.common import ModelT
 from mohou.model.lstm import LSTMBaseT
-from mohou.types import ElementDict, TerminateFlag
+from mohou.trainer import TrainCache
+from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device
 
 
@@ -29,8 +33,18 @@ class TerminateChecker:
         return bool(np.all(flag_arr[-self.n_check_flag :] > self.terminate_threshold).item())
 
 
-class PropagatorBase(ABC, Generic[LSTMBaseT]):
-    lstm_model: LSTMBaseT
+PropagatorT = TypeVar("PropagatorT", bound="PropagatorBase")
+
+
+class PropagatorBase(ABC, Generic[ModelT]):
+    @classmethod
+    @abstractmethod
+    def create_default(cls: Type[PropagatorT], porject_path: Path) -> PropagatorT:
+        pass
+
+
+class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
+    propagator_model: LSTMBaseT
     encoding_rule: EncodingRuleBase
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
@@ -54,7 +68,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         encoding_rule.set_device(device)
         lstm.put_on_device(device)
 
-        self.lstm_model = lstm
+        self.propagator_model = lstm
         self.encoding_rule = encoding_rule
         self.fed_state_list = []
         self.n_init_duplicate = n_init_duplicate
@@ -79,11 +93,11 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
 
     @property
     def require_static_context(self) -> bool:
-        return self.lstm_model.config.n_static_context > 0
+        return self.propagator_model.config.n_static_context > 0
 
     def set_static_context(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert self.lstm_model.config.n_static_context == len(value)
+        assert self.propagator_model.config.n_static_context == len(value)
         self.static_context = value
 
     def feed(self, elem_dict: ElementDict):
@@ -142,7 +156,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
 
     def get_device(self) -> Optional[torch.device]:
         rule_device = self.encoding_rule.get_device()
-        lstm_device = self.lstm_model.device
+        lstm_device = self.propagator_model.device
 
         if rule_device is None:
             return lstm_device
@@ -152,7 +166,7 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
 
     def set_device(self, device: torch.device) -> None:
         self.encoding_rule.set_device(device)
-        self.lstm_model.put_on_device(device)
+        self.propagator_model.put_on_device(device)
 
     @classmethod
     @abstractmethod
@@ -164,10 +178,10 @@ class PropagatorBase(ABC, Generic[LSTMBaseT]):
         pass
 
 
-PropagatorBaseT = TypeVar("PropagatorBaseT", bound=PropagatorBase)
+PropagatorBaseT = TypeVar("PropagatorBaseT", bound=LSTMPropagatorBase)
 
 
-class Propagator(PropagatorBase[LSTM]):
+class _LSTMPropagator(LSTMPropagatorBase[LSTM]):
     @classmethod
     def lstm_type(cls) -> Type[LSTM]:
         return LSTM
@@ -179,20 +193,49 @@ class Propagator(PropagatorBase[LSTM]):
 
         context_torch = numpy_to_unsqueezed_torch(self.static_context)
         states_torch = numpy_to_unsqueezed_torch(states)
-        out, hidden = self.lstm_model.forward(states_torch, context_torch, self._hidden)
+        out, hidden = self.propagator_model.forward(states_torch, context_torch, self._hidden)
         return out, hidden
 
 
-class PBLSTMPropagator(PropagatorBase[PBLSTM]):
+class LSTMPropagator(_LSTMPropagator):
+    @classmethod
+    def create_default(cls, project_path: Path) -> "LSTMPropagator":
+        tcach_lstm = TrainCache.load(project_path, LSTM)
+        encoding_rule = EncodingRule.create_default(project_path)
+        return cls(tcach_lstm.best_model, encoding_rule)
+
+
+class ChimeraPropagator(_LSTMPropagator):
+    @classmethod
+    def create_default(cls, project_path: Path) -> "ChimeraPropagator":
+        from mohou.model.chimera import Chimera
+
+        tcache_chimera = TrainCache.load(project_path, Chimera)
+        chimera_model = tcache_chimera.best_model
+
+        rule = EncodingRule.create_default(project_path)
+        rule[RGBImage] = ImageEncoder.from_auto_encoder(chimera_model.ae)
+        return cls(chimera_model.lstm, rule)
+
+
+class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
     parametric_bias: np.ndarray
+
+    @classmethod
+    def create_default(cls, project_path: Path) -> "PBLSTMPropagator":
+        tcach_lstm = TrainCache.load(project_path, PBLSTM)
+        encoding_rule = EncodingRule.create_default(project_path)
+        prop = cls(tcach_lstm.best_model, encoding_rule)
+        prop.set_pb_to_zero()
+        return prop
 
     def set_parametric_bias(self, value: np.ndarray) -> None:
         assert value.ndim == 1
-        assert len(value) == self.lstm_model.config.n_pb_dim
+        assert len(value) == self.propagator_model.config.n_pb_dim
         self.parametric_bias = value
 
     def set_pb_to_zero(self) -> None:
-        n_pb_dim = self.lstm_model.config.n_pb_dim
+        n_pb_dim = self.propagator_model.config.n_pb_dim
         vec = np.zeros(n_pb_dim)
         self.set_parametric_bias(vec)
 
@@ -208,5 +251,7 @@ class PBLSTMPropagator(PropagatorBase[PBLSTM]):
         context_torch = numpy_to_unsqueezed_torch(self.static_context)
         pb_torch = numpy_to_unsqueezed_torch(self.parametric_bias)
         states_torch = numpy_to_unsqueezed_torch(states)
-        out, hidden = self.lstm_model.forward(states_torch, pb_torch, context_torch, self._hidden)
+        out, hidden = self.propagator_model.forward(
+            states_torch, pb_torch, context_torch, self._hidden
+        )
         return out, hidden

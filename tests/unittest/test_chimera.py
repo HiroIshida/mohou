@@ -6,7 +6,7 @@ from test_encoding_rule import create_encoding_rule_for_image_av_bundle
 from test_types import image_av_bundle_uneven  # noqa
 
 from mohou.dataset import ChimeraDataset
-from mohou.default import VectorIdenticalEncoder
+from mohou.encoder import VectorIdenticalEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.model import AutoEncoderConfig, LSTMConfig
 from mohou.model.chimera import Chimera, ChimeraConfig

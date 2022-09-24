@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import torch
 
-from mohou.default import create_default_encoding_rule, create_default_propagator
+from mohou.encoding_rule import EncodingRule
 from mohou.model import LSTM, VariationalAutoEncoder
-from mohou.propagator import Propagator
+from mohou.propagator import LSTMPropagator
 from mohou.trainer import TrainCache
 from mohou.types import AngleVector, EpisodeBundle, EpisodeData, RGBImage, TerminateFlag
 
@@ -28,7 +28,7 @@ def test_episode_bundle_loading(project_path: Path):
 
 
 def test_encoding_rule(project_path: Path):
-    encoding_rule = create_default_encoding_rule(project_path)
+    encoding_rule = EncodingRule.create_default(project_path)
     bundle = EpisodeBundle.load(project_path)
     arr_list = encoding_rule.apply_to_episode_bundle(bundle)
     sum_value = sum([np.sum(arr) for arr in arr_list])
@@ -42,7 +42,6 @@ def test_ae_model(project_path: Path):
     ae_cache = TrainCache.load(project_path, VariationalAutoEncoder)
     vae = ae_cache.best_model
 
-    create_default_encoding_rule(project_path)
     bundle = EpisodeBundle.load(project_path)
     episode = bundle[0]
     image_seq = episode.get_sequence_by_type(RGBImage)
@@ -60,7 +59,7 @@ def test_lstm_model(project_path: Path):
     lstm = lstm_cache.best_model
     lstm.forward
 
-    encoding_rule = create_default_encoding_rule(project_path)
+    encoding_rule = EncodingRule.create_default(project_path)
     bundle = EpisodeBundle.load(project_path)
     episode = bundle[0]
     arr = encoding_rule.apply_to_episode_data(episode)
@@ -75,7 +74,7 @@ def test_lstm_model(project_path: Path):
 
 
 def test_propagator(project_path: Path):
-    prop: Propagator = create_default_propagator(project_path, Propagator)
+    prop: LSTMPropagator = LSTMPropagator.create_default(project_path)
     bundle = EpisodeBundle.load(project_path)
     episode = bundle[0]
 

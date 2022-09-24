@@ -1,15 +1,10 @@
 import argparse
 from pathlib import Path
 
-from mohou.default import auto_detect_autoencoder_type
+from mohou.encoder import ImageEncoder
 from mohou.file import get_project_path
-from mohou.model import VariationalAutoEncoder
-from mohou.script_utils import (
-    visualize_image_reconstruction,
-    visualize_variational_autoencoder,
-)
+from mohou.script_utils import visualize_image_reconstruction
 from mohou.setting import setting
-from mohou.trainer import TrainCache
 from mohou.types import EpisodeBundle
 
 if __name__ == "__main__":
@@ -29,9 +24,6 @@ if __name__ == "__main__":
 
     bundle = EpisodeBundle.load(project_path)
 
-    ae_type = auto_detect_autoencoder_type(project_path)
-    model = TrainCache.load(project_path, ae_type).best_model
+    image_encoder = ImageEncoder.create_default(project_path)
+    model = image_encoder.model
     visualize_image_reconstruction(project_path, bundle, model, n_vis)
-
-    if ae_type == VariationalAutoEncoder:
-        visualize_variational_autoencoder(project_path)

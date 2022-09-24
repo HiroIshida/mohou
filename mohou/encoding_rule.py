@@ -11,6 +11,7 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -19,14 +20,21 @@ from typing import (
 import numpy as np
 import torch
 
-from mohou.encoder import EncoderBase, HasAModel
+from mohou.encoder import EncoderBase, HasAModel, ImageEncoder, VectorIdenticalEncoder
 from mohou.types import (
+    AngleVector,
+    AnotherGripperState,
     CompositeImageBase,
+    DepthImage,
     ElementBase,
     ElementDict,
     EpisodeBundle,
     EpisodeData,
+    GripperState,
     PrimitiveElementBase,
+    RGBDImage,
+    RGBImage,
+    TerminateFlag,
 )
 from mohou.utils import assert_equal_with_message, get_bound_list
 
@@ -287,6 +295,9 @@ class EncodingRuleBase(Mapping[Type[ElementBase], EncoderBase]):
                 encoder.set_device(device)
 
 
+_default_encoding_rule_cache: Dict[Tuple, "EncodingRule"] = {}
+
+
 class EncodingRule(Dict[Type[ElementBase], EncoderBase], EncodingRuleBase):
     scale_balancer: ScaleBalancerBase
 
@@ -372,6 +383,94 @@ class EncodingRule(Dict[Type[ElementBase], EncoderBase], EncodingRuleBase):
                 vector_seq_concated, dims
             )
         return rule
+
+    @classmethod
+    def create_default(
+        cls,
+        project_path: Path,
+        include_image_encoder: bool = True,
+        use_balancer: bool = True,
+    ) -> "EncodingRule":
+
+        cache_key = (project_path, include_image_encoder, use_balancer)
+        if cache_key in _default_encoding_rule_cache:
+            return _default_encoding_rule_cache[cache_key]
+
+        bundle = EpisodeBundle.load(project_path)
+        bundle_spec = bundle.spec
+
+        encoders: List[EncoderBase] = []
+
+        if include_image_encoder:
+            image_encoder = ImageEncoder.create_default(project_path)
+            encoders.append(image_encoder)
+
+        if AngleVector in bundle_spec.type_shape_table:
+            av_dim = bundle_spec.type_shape_table[AngleVector][0]
+            av_idendical_encoder = VectorIdenticalEncoder.create(AngleVector, av_dim)
+            encoders.append(av_idendical_encoder)
+
+        if GripperState in bundle_spec.type_shape_table:
+            gs_identital_func = VectorIdenticalEncoder.create(
+                GripperState, bundle_spec.type_shape_table[GripperState][0]
+            )
+            encoders.append(gs_identital_func)
+
+        if AnotherGripperState in bundle_spec.type_shape_table:
+            ags_identital_func = VectorIdenticalEncoder.create(
+                AnotherGripperState, bundle_spec.type_shape_table[AnotherGripperState][0]
+            )
+            encoders.append(ags_identital_func)
+
+        tf_identical_func = VectorIdenticalEncoder.create(TerminateFlag, 1)
+        encoders.append(tf_identical_func)
+
+        p = CovarianceBasedScaleBalancer.get_json_file_path(project_path)
+        if p.exists():  # use cached balacner
+            balancer: Optional[CovarianceBasedScaleBalancer]
+            if use_balancer:
+                logger.warning(
+                    "warn: loading cached CovarianceBasedScaleBalancer. This feature is experimental."
+                )
+                balancer = CovarianceBasedScaleBalancer.load(project_path)
+            else:
+                balancer = None
+            encoding_rule = EncodingRule.from_encoders(
+                encoders, bundle=None, scale_balancer=balancer
+            )
+        else:
+            bundle_for_balancer: Optional[EpisodeBundle]
+            if use_balancer:
+                bundle_for_balancer = bundle
+            else:
+                bundle_for_balancer = None
+            encoding_rule = EncodingRule.from_encoders(
+                encoders, bundle=bundle_for_balancer, scale_balancer=None
+            )
+
+        # TODO: Move The following check to unittest? but it's diffcult becaues
+        # using this function pre-require the existence of trained AE ...
+        # so temporary, check using assertion
+
+        # check if ordered propery. Keeping this order is important to satisfy the
+        # backward-compatibility of this function.
+        order_definition: List[Type[ElementBase]] = [
+            RGBImage,
+            DepthImage,
+            RGBDImage,
+            AngleVector,
+            GripperState,
+            AnotherGripperState,
+            TerminateFlag,
+        ]
+        indices = [order_definition.index(key) for key in encoding_rule.keys()]
+        is_ordered_propery = sorted(indices) == indices
+        assert is_ordered_propery
+
+        # update cache
+        _default_encoding_rule_cache[cache_key] = encoding_rule
+
+        return encoding_rule
 
 
 @dataclass
