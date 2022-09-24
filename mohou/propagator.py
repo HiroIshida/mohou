@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Generic, List, Optional, Tuple, Type, TypeVar
 
@@ -318,3 +319,11 @@ class ProportionalModelPropagator(PropagatorBase[ProportionalModel]):
 
     def reset(self) -> None:
         pass
+
+
+class PropagatorSelection(Enum):
+    lstm = LSTMPropagator
+    pblstm = PBLSTMPropagator
+    chimera = ChimeraPropagator
+    proportional = ProportionalModelPropagator
+    disentangle = DisentangleLSTMPropagator
