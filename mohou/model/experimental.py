@@ -160,9 +160,10 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
 class DisentangleLSTMConfig(ModelConfigBase):
     n_state_with_flag: int
     n_bottleneck: int = 10
-    n_fc_depth: int = 3
-    n_hidden: int = 200
-    n_layer: int = 1
+    n_fc_layer: int = 3
+    n_fc_hidden: int = 100
+    n_lstm_hidden: int = 200
+    n_lstm_layer: int = 1
 
 
 class DisentangleLSTM(ModelBase[DisentangleLSTMConfig]):
@@ -172,16 +173,26 @@ class DisentangleLSTM(ModelBase[DisentangleLSTMConfig]):
 
     def _setup_from_config(self, config: DisentangleLSTMConfig) -> None:
         layers = build_linear_layers(
-            config.n_state_with_flag, config.n_bottleneck, 100, config.n_fc_depth, activation="tanh"
+            config.n_state_with_flag,
+            config.n_bottleneck,
+            config.n_fc_hidden,
+            config.n_fc_layer,
+            activation="tanh",
         )
         self.encoder = nn.Sequential(*layers)
 
         layers = build_linear_layers(
-            config.n_bottleneck, config.n_state_with_flag, 100, config.n_fc_depth, activation="tanh"
+            config.n_bottleneck,
+            config.n_state_with_flag,
+            config.n_fc_hidden,
+            config.n_fc_layer,
+            activation="tanh",
         )
         self.decoder = nn.Sequential(*layers)
 
-        conf = LSTMConfig(config.n_bottleneck, 0, config.n_hidden, config.n_layer, n_output_layer=1)
+        conf = LSTMConfig(
+            config.n_bottleneck, 0, config.n_lstm_hidden, config.n_lstm_layer, n_output_layer=1
+        )
         self.lstm = LSTM(conf)
 
     def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
