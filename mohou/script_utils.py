@@ -34,8 +34,8 @@ from mohou.model import (
     LSTMConfig,
     PBLSTMConfig,
 )
+from mohou.model.experimental import ProportionalModel, ProportionalModelConfig
 from mohou.model.lstm import LSTMBase, LSTMConfigBase
-from mohou.model.markov import ProportionalModel, ProportionalModelConfig
 from mohou.propagator import PropagatorBase
 from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import (

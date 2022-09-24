@@ -5,7 +5,7 @@ from typing import Optional
 from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
-from mohou.model.markov import ProportionalModelConfig
+from mohou.model.experimental import ProportionalModelConfig
 from mohou.script_utils import create_default_logger, train_proportional_model
 from mohou.setting import setting
 from mohou.trainer import TrainConfig
