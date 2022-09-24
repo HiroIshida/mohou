@@ -11,8 +11,7 @@ from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
-from mohou.model.experimental import ProportionalModel
-from mohou.model.lstm import LSTMBaseT
+from mohou.model.experimental import DisentangleLSTM, ProportionalModel
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device
@@ -64,7 +63,7 @@ class PropagatorBase(ABC, Generic[ModelT]):
         pass
 
 
-class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
+class LSTMPropagatorBase(PropagatorBase[ModelT]):
     fed_state_list: List[np.ndarray]  # eatch state is equipped with flag
     n_init_duplicate: int
     is_initialized: bool
@@ -75,7 +74,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
 
     def __init__(
         self,
-        lstm: LSTMBaseT,
+        lstm: ModelT,
         encoding_rule: EncodingRuleBase,
         n_init_duplicate: int = 0,
         prop_hidden: bool = False,
@@ -96,9 +95,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
         self.is_initialized = False
         self.predicted_terminated_flags = []
 
-        require_static_context = lstm.config.n_static_context > 0
-
-        if not require_static_context:  # auto set
+        if not self.require_static_context:  # auto set
             self.static_context = np.empty((0,))
 
     def is_terminated(self) -> bool:
@@ -112,9 +109,13 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
 
     @property
     def require_static_context(self) -> bool:
-        return self.propagator_model.config.n_static_context > 0
+        if hasattr(self.propagator_model.config, "n_static_context"):
+            return self.propagator_model.config.n_static_context > 0
+        else:
+            return False
 
     def set_static_context(self, value: np.ndarray) -> None:
+        assert hasattr(self.propagator_model.config, "n_static_context")
         assert value.ndim == 1
         assert self.propagator_model.config.n_static_context == len(value)
         self.static_context = value
@@ -188,7 +189,7 @@ class LSTMPropagatorBase(PropagatorBase[LSTMBaseT]):
         self.propagator_model.put_on_device(device)
 
     @abstractmethod
-    def _forward(self, state: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
         pass
 
 
@@ -261,6 +262,24 @@ class PBLSTMPropagator(LSTMPropagatorBase[PBLSTM]):
             states_torch, pb_torch, context_torch, self._hidden
         )
         return out, hidden
+
+
+class DisentangleLSTMPropagator(LSTMPropagatorBase[DisentangleLSTM]):
+    @classmethod
+    def create_default(cls, project_path: Path) -> "DisentangleLSTMPropagator":
+        tcache = TrainCache.load(project_path, DisentangleLSTM)
+        encoding_rule = EncodingRule.create_default(project_path)
+        return cls(tcache.best_model, encoding_rule)
+
+    def _forward(self, states: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
+        def numpy_to_unsqueezed_torch(arr: np.ndarray) -> torch.Tensor:
+            device = self.get_device()
+            return torch.from_numpy(arr).float().unsqueeze(dim=0).to(device)
+
+        states_torch = numpy_to_unsqueezed_torch(states)
+        pred_torch = self.propagator_model.forward(states_torch)
+        hidden = torch.empty((0,)).to(self.get_device())  # dummy
+        return pred_torch, hidden
 
 
 @dataclass
