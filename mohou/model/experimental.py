@@ -134,7 +134,7 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
         Z_prop_est = Z0
         for window in range(1, n_window + 1):
             KP = self.get_p_value(Z_prop_est)
-            print("min: {}, max {}".format(torch.min(KP), torch.max(KP)))
+            # print("min: {}, max {}".format(torch.min(KP), torch.max(KP)))
             Z_prop_est = Z_prop_est * (1 - KP)
 
             Z_prop_est_reshaped = Z_prop_est.reshape(n_batch, n_seq_len, self.config.n_bottleneck)

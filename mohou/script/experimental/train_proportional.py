@@ -15,12 +15,13 @@ from mohou.trainer import TrainCache, TrainConfig, train
 from mohou.types import EpisodeBundle
 
 
-def train_proportional_model(
+def train_proportional(
     project_path: Path,
     encoding_rule: EncodingRule,
     model_config: ProportionalModelConfig,
     dataset_config: AutoRegressiveDatasetConfig,
     train_config: TrainConfig,
+    tcache_pretrained: Optional[TrainCache] = None,
 ) -> TrainCache[ProportionalModel]:
 
     bundle = EpisodeBundle.load(project_path)
@@ -31,8 +32,11 @@ def train_proportional_model(
         dataset_config=dataset_config,
     )
 
-    model = ProportionalModel(model_config)
-    tcache = TrainCache.from_model(model)  # type: ignore
+    if tcache_pretrained is not None:
+        tcache = tcache_pretrained
+    else:
+        model = ProportionalModel(model_config)
+        tcache = TrainCache.from_model(model)  # type: ignore
     train(project_path, tcache, dataset, config=train_config)
     return tcache
 
@@ -68,7 +72,7 @@ if __name__ == "__main__":
     dataset_config = AutoRegressiveDatasetConfig(n_aug=n_aug, cov_scale=cov_scale)
     train_config = TrainConfig(n_epoch=n_epoch, valid_data_ratio=valid_ratio)
 
-    train_proportional_model(
+    train_proportional(
         project_path,
         encoding_rule,
         model_config,
