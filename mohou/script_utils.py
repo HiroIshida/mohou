@@ -104,7 +104,7 @@ def train_lstm(
     train_config: TrainConfig,
     model_type: Type[LSTMBase] = LSTM,
     bundle: Optional[EpisodeBundle] = None,
-    warm_start: bool = False,
+    tcache_pretrained: Optional[TrainCache] = None,
     context_list: Optional[List[np.ndarray]] = None,
 ) -> TrainCache:
 
@@ -138,15 +138,12 @@ def train_lstm(
         static_context_list=context_list,
     )
 
-    if warm_start:
-        logger.info("warm start")
-        tcache = TrainCache.load(project_path, LSTM)
-        train(project_path, tcache, dataset, config=train_config)
-    else:
+    if tcache_pretrained is None:
         model = model_type(model_config)
-        tcache = TrainCache.from_model(model)  # type: ignore
-        train(project_path, tcache, dataset, config=train_config)
-    return tcache
+        tcache_pretrained = TrainCache.from_model(model)  # type: ignore
+
+    train(project_path, tcache_pretrained, dataset, config=train_config)
+    return tcache_pretrained
 
 
 def visualize_train_histories(project_path: Path):
