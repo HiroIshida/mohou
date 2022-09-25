@@ -24,7 +24,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-valid-ratio", type=float, default=0.1, help="split rate for validation dataset"
     )
-    parser.add_argument("--warm", action="store_true", help="warm start")
     args = parser.parse_args()
 
     project_name: str = args.pn
@@ -36,7 +35,6 @@ if __name__ == "__main__":
     n_pb_dim: int = args.pb
     cov_scale: float = args.cov_scale
     valid_ratio: float = args.valid_ratio
-    warm_start: bool = args.warm
 
     if project_path_str is None:
         project_path = get_project_path(project_name)
@@ -65,5 +63,4 @@ if __name__ == "__main__":
         dataset_config,
         train_config,
         model_type=PBLSTM,
-        warm_start=warm_start,
     )

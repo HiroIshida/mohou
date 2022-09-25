@@ -8,10 +8,10 @@ from mohou.dataset import AutoRegressiveDatasetConfig
 from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule
 from mohou.file import get_project_path
-from mohou.model.lstm import LSTMConfig
+from mohou.model.lstm import LSTM, LSTMConfig
 from mohou.script_utils import create_default_logger, train_lstm
 from mohou.setting import setting
-from mohou.trainer import TrainConfig
+from mohou.trainer import TrainCache, TrainConfig
 from mohou.types import EpisodeBundle
 
 
@@ -101,12 +101,17 @@ if __name__ == "__main__":
         context_list = create_default_image_context_list(project_path)
         model_config.n_static_context = len(context_list[0])
 
+    if warm_start:
+        tcache_pretrained: Optional[TrainCache[LSTM]] = TrainCache.load_latest(project_path, LSTM)
+    else:
+        tcache_pretrained = None
+
     train_lstm(
         project_path,
         encoding_rule,
         model_config,
         dataset_config,
         train_config,
-        warm_start=warm_start,
+        tcache_pretrained=tcache_pretrained,
         context_list=context_list,
     )
