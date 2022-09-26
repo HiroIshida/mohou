@@ -660,11 +660,13 @@ class EpisodeData(HasTypeShapeTable, Hashable):
         all_same_length = len(set(lengths)) == 1
         assert all_same_length
 
-        # check is sequence
-        is_sequence = lengths[0] > 1
-        assert is_sequence
+        assert lengths[0] > 0
 
         if check_terminate_flag:
+            # to terminate flag makes sense, the length must be more than 1
+            is_sequence = lengths[0] > 1
+            assert is_sequence
+
             assert TerminateFlag in sequence_dict
             flag_seq: ElementSequence[TerminateFlag] = sequence_dict[TerminateFlag]  # type: ignore
             cls.validate_terminate_flags(flag_seq)
