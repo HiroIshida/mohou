@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import pickle
 import re
 import uuid
@@ -325,8 +324,9 @@ class TrainCache(Generic[ModelT]):
         **kwargs,
     ) -> "TrainCache[ModelT]":
         def get_cache_time_stamp(tcache: TrainCache) -> float:
-            p = tcache.cache_path(project_path)
-            return os.path.getmtime(p)
+            msg = "legacy tcache {} does not have timestamp".format(tcache.cache_path(project_path))
+            assert tcache.utc_time_saved is not None, msg
+            return tcache.utc_time_saved.timestamp()
 
         tcache_list = cls.load_all(project_path, model_type, **kwargs)
         tcache_list_sorted = sorted(tcache_list, key=get_cache_time_stamp)
