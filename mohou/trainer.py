@@ -1,10 +1,12 @@
 import json
 import logging
 import os
+import pickle
 import re
 import uuid
 import warnings
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
@@ -45,6 +47,11 @@ class TrainCache(Generic[ModelT]):
     train_lossseq_table: Dict[str, List[float]]
     validate_lossseq_table: Dict[str, List[float]]
     file_uuid: str
+    utc_time_created: Optional[datetime] = None
+    utc_time_saved: Optional[datetime] = None
+
+    def __post_init__(self):
+        self.utc_time_created = datetime.now(timezone.utc)
 
     def cache_path(self, project_path: Path) -> Path:
         class_name = self.best_model.__class__.__name__
@@ -141,6 +148,8 @@ class TrainCache(Generic[ModelT]):
         return table
 
     def save(self, project_path: Path):
+        self.utc_time_saved = datetime.now(timezone.utc)
+
         def save():
             base_path = self.cache_path(project_path)
             assert base_path is not None  # for mypy
@@ -149,6 +158,8 @@ class TrainCache(Generic[ModelT]):
             model_config_path = base_path / "config.json"
             valid_loss_path = base_path / "validation_loss.npz"
             train_loss_path = base_path / "train_loss.npz"
+            utc_time_created_path = base_path / "utc_time_created.pkl"
+            utc_time_saved_path = base_path / "utc_time_saved.pkl"
 
             with model_config_path.open(mode="w") as f:
                 d = self.best_model.config.to_dict()
@@ -162,6 +173,10 @@ class TrainCache(Generic[ModelT]):
                 valid_loss_path,
                 **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table),
             )
+            with utc_time_created_path.open(mode="wb") as f:
+                pickle.dump(self.utc_time_created, f)
+            with utc_time_saved_path.open(mode="wb") as f:
+                pickle.dump(self.utc_time_saved, f)
 
         # error handling for keyboard interrupt
         try:
@@ -207,6 +222,8 @@ class TrainCache(Generic[ModelT]):
         model_path = cache_path / "model.pth"
         valid_loss_path = cache_path / "validation_loss.npz"
         train_loss_path = cache_path / "train_loss.npz"
+        utc_time_created_path = cache_path / "utc_time_created.pkl"
+        utc_time_saved_path = cache_path / "utc_time_saved.pkl"
 
         # [mohou < v0.4]
         # (model_type)-(config_hash)-(uuid)
@@ -233,7 +250,12 @@ class TrainCache(Generic[ModelT]):
         best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
-        return cls(best_model, train_loss, valid_loss, file_uuid)
+
+        with utc_time_created_path.open(mode="rb") as f:
+            utc_time_created = pickle.load(f)
+        with utc_time_saved_path.open(mode="rb") as f:
+            utc_time_saved = pickle.load(f)
+        return cls(best_model, train_loss, valid_loss, file_uuid, utc_time_created, utc_time_saved)
 
     @classmethod
     def load_all(
