@@ -260,10 +260,19 @@ class TrainCache(Generic[ModelT]):
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
 
-        with utc_time_created_path.open(mode="rb") as f:
-            utc_time_created = pickle.load(f)
-        with utc_time_saved_path.open(mode="rb") as f:
-            utc_time_saved = pickle.load(f)
+        # must consider that regacy TrainCache may not have utc_time
+        if utc_time_created_path.exists():
+            with utc_time_created_path.open(mode="rb") as f:
+                utc_time_created = pickle.load(f)
+        else:
+            utc_time_created = None
+
+        if utc_time_saved_path.exists():
+            with utc_time_saved_path.open(mode="rb") as f:
+                utc_time_saved = pickle.load(f)
+        else:
+            utc_time_saved = None
+
         return cls(best_model, train_loss, valid_loss, file_uuid, utc_time_created, utc_time_saved)
 
     @classmethod
