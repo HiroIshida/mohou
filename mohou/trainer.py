@@ -7,6 +7,7 @@ import uuid
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
@@ -49,6 +50,14 @@ class TrainCache(Generic[ModelT]):
     file_uuid: str
     utc_time_created: Optional[datetime] = None
     utc_time_saved: Optional[datetime] = None
+
+    class AttrFileName(Enum):
+        model = "model.pth"
+        model_config = "config.json"
+        valid_loss = "validation_loss.npz"
+        train_loss = "train_loss.npz"
+        utc_time_created = "utc_time_created.pkl"
+        utc_time_saved = "utc_time_saved.pkl"
 
     def __post_init__(self):
         self.utc_time_created = datetime.now(timezone.utc)
@@ -154,12 +163,12 @@ class TrainCache(Generic[ModelT]):
             base_path = self.cache_path(project_path)
             assert base_path is not None  # for mypy
             base_path.mkdir(exist_ok=True, parents=True)
-            model_path = base_path / "model.pth"
-            model_config_path = base_path / "config.json"
-            valid_loss_path = base_path / "validation_loss.npz"
-            train_loss_path = base_path / "train_loss.npz"
-            utc_time_created_path = base_path / "utc_time_created.pkl"
-            utc_time_saved_path = base_path / "utc_time_saved.pkl"
+            model_path = base_path / self.AttrFileName.model.value
+            model_config_path = base_path / self.AttrFileName.model_config.value
+            valid_loss_path = base_path / self.AttrFileName.valid_loss.value
+            train_loss_path = base_path / self.AttrFileName.train_loss.value
+            utc_time_created_path = base_path / self.AttrFileName.utc_time_created.value
+            utc_time_saved_path = base_path / self.AttrFileName.utc_time_saved.value
 
             with model_config_path.open(mode="w") as f:
                 d = self.best_model.config.to_dict()
@@ -219,11 +228,11 @@ class TrainCache(Generic[ModelT]):
 
     @classmethod
     def load_from_cache_path(cls, cache_path: Path) -> "TrainCache":
-        model_path = cache_path / "model.pth"
-        valid_loss_path = cache_path / "validation_loss.npz"
-        train_loss_path = cache_path / "train_loss.npz"
-        utc_time_created_path = cache_path / "utc_time_created.pkl"
-        utc_time_saved_path = cache_path / "utc_time_saved.pkl"
+        model_path = cache_path / cls.AttrFileName.model.value
+        valid_loss_path = cache_path / cls.AttrFileName.valid_loss.value
+        train_loss_path = cache_path / cls.AttrFileName.train_loss.value
+        utc_time_created_path = cache_path / cls.AttrFileName.utc_time_created.value
+        utc_time_saved_path = cache_path / cls.AttrFileName.utc_time_saved.value
 
         # [mohou < v0.4]
         # (model_type)-(config_hash)-(uuid)
