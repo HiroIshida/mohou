@@ -1,10 +1,12 @@
 import json
 import logging
-import os
+import pickle
 import re
 import uuid
 import warnings
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
 
@@ -45,6 +47,19 @@ class TrainCache(Generic[ModelT]):
     train_lossseq_table: Dict[str, List[float]]
     validate_lossseq_table: Dict[str, List[float]]
     file_uuid: str
+    utc_time_created: Optional[datetime] = None
+    utc_time_saved: Optional[datetime] = None
+
+    class AttrFileName(Enum):
+        model = "model.pth"
+        model_config = "config.json"
+        valid_loss = "validation_loss.npz"
+        train_loss = "train_loss.npz"
+        utc_time_created = "utc_time_created.pkl"
+        utc_time_saved = "utc_time_saved.pkl"
+
+    def __post_init__(self):
+        self.utc_time_created = datetime.now(timezone.utc)
 
     def cache_path(self, project_path: Path) -> Path:
         class_name = self.best_model.__class__.__name__
@@ -141,14 +156,18 @@ class TrainCache(Generic[ModelT]):
         return table
 
     def save(self, project_path: Path):
+        self.utc_time_saved = datetime.now(timezone.utc)
+
         def save():
             base_path = self.cache_path(project_path)
             assert base_path is not None  # for mypy
             base_path.mkdir(exist_ok=True, parents=True)
-            model_path = base_path / "model.pth"
-            model_config_path = base_path / "config.json"
-            valid_loss_path = base_path / "validation_loss.npz"
-            train_loss_path = base_path / "train_loss.npz"
+            model_path = base_path / self.AttrFileName.model.value
+            model_config_path = base_path / self.AttrFileName.model_config.value
+            valid_loss_path = base_path / self.AttrFileName.valid_loss.value
+            train_loss_path = base_path / self.AttrFileName.train_loss.value
+            utc_time_created_path = base_path / self.AttrFileName.utc_time_created.value
+            utc_time_saved_path = base_path / self.AttrFileName.utc_time_saved.value
 
             with model_config_path.open(mode="w") as f:
                 d = self.best_model.config.to_dict()
@@ -162,6 +181,10 @@ class TrainCache(Generic[ModelT]):
                 valid_loss_path,
                 **self.dump_lossseq_table_as_npz_dict(self.validate_lossseq_table),
             )
+            with utc_time_created_path.open(mode="wb") as f:
+                pickle.dump(self.utc_time_created, f)
+            with utc_time_saved_path.open(mode="wb") as f:
+                pickle.dump(self.utc_time_saved, f)
 
         # error handling for keyboard interrupt
         try:
@@ -204,9 +227,11 @@ class TrainCache(Generic[ModelT]):
 
     @classmethod
     def load_from_cache_path(cls, cache_path: Path) -> "TrainCache":
-        model_path = cache_path / "model.pth"
-        valid_loss_path = cache_path / "validation_loss.npz"
-        train_loss_path = cache_path / "train_loss.npz"
+        model_path = cache_path / cls.AttrFileName.model.value
+        valid_loss_path = cache_path / cls.AttrFileName.valid_loss.value
+        train_loss_path = cache_path / cls.AttrFileName.train_loss.value
+        utc_time_created_path = cache_path / cls.AttrFileName.utc_time_created.value
+        utc_time_saved_path = cache_path / cls.AttrFileName.utc_time_saved.value
 
         # [mohou < v0.4]
         # (model_type)-(config_hash)-(uuid)
@@ -233,7 +258,21 @@ class TrainCache(Generic[ModelT]):
         best_model.put_on_device(torch.device("cpu"))
         train_loss = cls.load_lossseq_table_from_npz_dict(np.load(train_loss_path))
         valid_loss = cls.load_lossseq_table_from_npz_dict(np.load(valid_loss_path))
-        return cls(best_model, train_loss, valid_loss, file_uuid)
+
+        # must consider that regacy TrainCache may not have utc_time
+        if utc_time_created_path.exists():
+            with utc_time_created_path.open(mode="rb") as f:
+                utc_time_created = pickle.load(f)
+        else:
+            utc_time_created = None
+
+        if utc_time_saved_path.exists():
+            with utc_time_saved_path.open(mode="rb") as f:
+                utc_time_saved = pickle.load(f)
+        else:
+            utc_time_saved = None
+
+        return cls(best_model, train_loss, valid_loss, file_uuid, utc_time_created, utc_time_saved)
 
     @classmethod
     def load_all(
@@ -285,8 +324,9 @@ class TrainCache(Generic[ModelT]):
         **kwargs,
     ) -> "TrainCache[ModelT]":
         def get_cache_time_stamp(tcache: TrainCache) -> float:
-            p = tcache.cache_path(project_path)
-            return os.path.getmtime(p)
+            msg = "legacy tcache {} does not have timestamp".format(tcache.cache_path(project_path))
+            assert tcache.utc_time_saved is not None, msg
+            return tcache.utc_time_saved.timestamp()
 
         tcache_list = cls.load_all(project_path, model_type, **kwargs)
         tcache_list_sorted = sorted(tcache_list, key=get_cache_time_stamp)
