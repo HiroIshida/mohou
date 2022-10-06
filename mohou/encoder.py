@@ -99,6 +99,7 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
     model: AutoEncoderBase
 
     def __post_init__(self):
+        assert not self.model.training
         inp_dummy = self.elem_type.dummy_from_shape(self.input_shape[:2])
         out_dummy = self._forward_impl(inp_dummy)
         assert_equal_with_message(out_dummy.shape, (self.output_size,), "shape")
