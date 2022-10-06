@@ -14,6 +14,7 @@ from mohou.types import DepthImage, PrimitiveImageBase, RGBDImage, RGBImage
 def test_autoencoder(S: int, T: Type[PrimitiveImageBase], M: Type):
     config = AutoEncoderConfig(T, n_pixel=S)
     model: AutoEncoder = M(config)  # TODO(HiroIShida) fix this
+    model.eval()
     img: PrimitiveImageBase = T.dummy_from_shape((config.n_pixel, config.n_pixel))
 
     # test forward function
