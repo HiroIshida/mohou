@@ -136,7 +136,7 @@ class LSTMPropagatorBase(PropagatorBase[ModelT]):
         state_with_flag = self.encoding_rule.apply(elem_dict)
         self.fed_state_list.append(state_with_flag)
 
-    def predict(self, n_prop: int) -> List[ElementDict]:
+    def predict(self, n_prop: int, term_threshold: Optional[float] = None) -> List[ElementDict]:
         # prediction
         pred_state_list = self._predict(n_prop)
         elem_dict_list = []
@@ -149,7 +149,9 @@ class LSTMPropagatorBase(PropagatorBase[ModelT]):
 
         return elem_dict_list
 
-    def _predict(self, n_prop: int, force_continue: bool = False) -> List[np.ndarray]:
+    def _predict(
+        self, n_prop: int, force_continue: bool = False, term_threshold: Optional[float] = None
+    ) -> List[np.ndarray]:
         pred_state_list: List[np.ndarray] = []
 
         assert self.static_context is not None, "forgot setting static_context ??"
@@ -168,10 +170,17 @@ class LSTMPropagatorBase(PropagatorBase[ModelT]):
             state_pred_torch = out[0, -1, :]
             state_pred = state_pred_torch.cpu().detach().numpy()
 
+            if term_threshold is None:
+                satisfy_break_condition = False
+            else:
+                satisfy_break_condition = state_pred[-1].item() > term_threshold
+
             if force_continue:
                 state_pred[-1] = CONTINUE_FLAG_VALUE
-
             pred_state_list.append(state_pred)
+
+            if satisfy_break_condition:
+                break
 
         return pred_state_list
 
