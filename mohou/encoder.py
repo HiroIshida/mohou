@@ -1,4 +1,5 @@
 import base64
+import logging
 import pickle
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from mohou.model.common import ModelBase
 from mohou.trainer import TrainCache
 from mohou.types import ElementT, EpisodeBundle, ImageT, VectorT, get_element_type
 from mohou.utils import assert_equal_with_message, assert_isinstance_with_message
+
+logger = logging.getLogger(__name__)
 
 EncoderT = TypeVar("EncoderT", bound="EncoderBase")
 
@@ -99,6 +102,7 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
     model: AutoEncoderBase
 
     def __post_init__(self):
+        assert not self.model.training
         inp_dummy = self.elem_type.dummy_from_shape(self.input_shape[:2])
         out_dummy = self._forward_impl(inp_dummy)
         assert_equal_with_message(out_dummy.shape, (self.output_size,), "shape")
@@ -133,6 +137,11 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
 
     @classmethod
     def from_auto_encoder(cls, model: AutoEncoderBase) -> "ImageEncoder":
+        if model.training:
+            message = "model is loaded with train mode. force to be eval mode"
+            logger.warning(message)
+            model.eval()
+
         image_type = model.image_type
         np_image_shape = (model.config.n_pixel, model.config.n_pixel, model.channel())
         return cls(image_type, np_image_shape, model.config.n_bottleneck, model)
