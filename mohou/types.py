@@ -261,6 +261,9 @@ class ColorImageBase(PrimitiveImageBase, Generic[ColorImageT]):
         dummy_array = np.random.randint(0, high=255, size=shape, dtype=np.uint8)
         return cls(dummy_array)
 
+    def resize(self, shape2d_new: Tuple[int, int]) -> None:
+        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
+
 
 class RGBImage(ColorImageBase["RGBImage"]):
     _channel: ClassVar[int] = 3
@@ -285,9 +288,6 @@ class RGBImage(ColorImageBase["RGBImage"]):
     def to_rgb(self, *args, **kwargs) -> "RGBImage":
         return self
 
-    def resize(self, shape2d_new: Tuple[int, int]) -> None:
-        self._data = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
-
     def bgr2rgb(self) -> "RGBImage":
         data_new = self._data[..., ::-1].copy()
         return RGBImage(data_new)
@@ -311,10 +311,6 @@ class GrayImage(ColorImageBase["GrayImage"]):
     def to_rgb(self, *args, **kwargs) -> RGBImage:
         arr = np.array(cv2.cvtColor(self._data[:, :, 0], cv2.COLOR_GRAY2RGB))
         return RGBImage(arr)
-
-    def resize(self, shape2d_new: Tuple[int, int]) -> None:
-        arr = cv2.resize(self._data, shape2d_new, interpolation=cv2.INTER_AREA)
-        self._data = np.expand_dims(arr, axis=2)
 
 
 def extract_contour_by_laplacian(
