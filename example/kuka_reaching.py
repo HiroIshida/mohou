@@ -4,9 +4,11 @@ import os
 import pickle
 import tempfile
 import uuid
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Type
 
+import matplotlib.pyplot as plt
 import numpy as np
 import psutil
 import pybullet as pb
@@ -16,7 +18,7 @@ import tqdm
 from moviepy.editor import ImageSequenceClip
 
 from mohou.file import create_project_dir, get_project_path
-from mohou.propagator import PropagatorBase, PropagatorSelection
+from mohou.propagator import LSTMPropagatorBase, PropagatorBase, PropagatorSelection
 from mohou.types import (
     AngleVector,
     DepthImage,
@@ -187,26 +189,49 @@ class BulletManager(object):
 
         return rgb_list
 
+    def oneshot_prediction(self, propagator: PropagatorBase, n_pixel=112) -> RGBImage:
+        assert isinstance(
+            propagator, LSTMPropagatorBase
+        ), "currently this function supports only lstm based one"
+        rgb, depth = self.take_photo(n_pixel)
+        av = AngleVector(np.array(self.joint_angles()))
+        ed = ElementDict([rgb, depth, av])
+        propagator.feed(ed)
+        pred = propagator.predict(100, 0.9)
+        av_pred = pred[-1][AngleVector]
+        self.set_joint_angles(av_pred)
+
+        rgb, depth = self.take_photo(n_pixel)
+        return rgb
+
+
+class Mode(Enum):
+    dataset = 0
+    feedback = 1
+    oneshot = 2
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--feedback", action="store_true", help="feedback mode")
     parser.add_argument("-pn", type=str, default="kuka_reaching", help="project name")
     parser.add_argument("-pp", type=str, help="project path name. preferred over pn.")
     parser.add_argument("-n", type=int, default=100, help="epoch num")
     parser.add_argument("-m", type=int, default=112, help="pixel num")
+    parser.add_argument("-mode", type=str, default="dataset", help="mode")
     parser.add_argument(
-        "-model", type=str, default="lstm", help="select prop model if --feedback specified"
+        "-model", type=str, default="lstm", help="select prop model if mode = feedback"
     )
     parser.add_argument("-untouch", type=int, default=5, help="num of untouch episode")
     args = parser.parse_args()
     n_epoch: int = args.n
     n_pixel: int = args.m
-    feedback_mode: bool = args.feedback
     project_name: str = args.pn
     n_untouch: int = args.untouch
     project_path_str: Optional[str] = args.pp
+    mode_str: str = args.mode
     model_str: str = args.model
+
+    mode = Mode[mode_str]
 
     if project_path_str is None:
         assert project_name is not None
@@ -216,7 +241,7 @@ if __name__ == "__main__":
         project_path = Path(project_path_str)
         project_path.mkdir(exist_ok=True)
 
-    if feedback_mode:
+    if mode == Mode.feedback:
         pbdata_path = pybullet_data.getDataPath()
         urdf_path = os.path.join(pbdata_path, "kuka_iiwa", "model.urdf")
         bm = BulletManager(False, urdf_path, "lbr_iiwa_link_7")
@@ -234,7 +259,41 @@ if __name__ == "__main__":
         file_path = project_path / "feedback_simulation.gif"
         clip = ImageSequenceClip([rgb.numpy() for rgb in rgb_list], fps=50)
         clip.write_gif(str(file_path), fps=50)
-    else:
+
+    elif mode == Mode.oneshot:
+        pbdata_path = pybullet_data.getDataPath()
+        urdf_path = os.path.join(pbdata_path, "kuka_iiwa", "model.urdf")
+        bm = BulletManager(False, urdf_path, "lbr_iiwa_link_7")
+
+        prop_type: Type[PropagatorBase] = PropagatorSelection[model_str].value
+        propagator = prop_type.create_default(project_path)
+        assert not propagator.require_static_context
+
+        np.random.seed(12345678)
+        for i in tqdm.tqdm(range(10)):
+            propagator.reset()
+            bm.set_joint_angles([0.2 for _ in range(7)])
+            target_pos, av_ground_truth = bm.get_reachable_target_pos_and_av()
+            bm.set_box(target_pos)
+
+            # esimate
+            rgb_estimated = bm.oneshot_prediction(propagator, n_pixel)
+
+            # ground truth
+            bm.set_joint_angles(av_ground_truth)
+            rgb_ground_truth, _ = bm.take_photo(n_pixel)
+
+            # plot
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            fig.suptitle("left: ground truth, right: esimated angles")
+            ax1.imshow(rgb_ground_truth.to_rgb().numpy())
+            ax2.imshow(rgb_estimated.to_rgb().numpy())
+
+            filename = "oneshot-pred-{}.png".format(i)
+            file_path = project_path / filename
+            plt.savefig(str(file_path))
+
+    elif mode == Mode.dataset:
         with tempfile.TemporaryDirectory() as td:
 
             def data_generation_task(arg):
@@ -280,3 +339,5 @@ if __name__ == "__main__":
             file_path = project_path / "sample.gif"
             clip = ImageSequenceClip([img for img in img_seq], fps=50)
             clip.write_gif(str(file_path), fps=50)
+    else:
+        assert False

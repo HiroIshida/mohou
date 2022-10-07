@@ -31,7 +31,7 @@ function test_batch {
     echo "test_warm_train: $3"
     echo "use_context: $4"
 
-    python3 $example_path/kuka_reaching.py -pn $project_name -n 3 -untouch 1 -m $n_pixel
+    python3 $example_path/kuka_reaching.py -pn $project_name -n 3 -untouch 1 -m $n_pixel -mode dataset
     python3 -m mohou.script.train_autoencoder -pn $project_name -n 2 -image $image_type $vae_option
 
     if [ $test_warm_train = true ]; then
@@ -48,7 +48,7 @@ function test_batch {
 
     if [ $use_context = false ]; then
         python3 -m mohou.script.visualize_lstm_result -pn $project_name -n 5
-        python3 $example_path/kuka_reaching.py -pn $project_name --feedback -m $n_pixel
+        python3 $example_path/kuka_reaching.py -pn $project_name -m $n_pixel -mode feedback
     fi
 
     rm -rf ~/.mohou/$project_name
@@ -57,12 +57,12 @@ function test_batch {
 function test_with_fullpath {
     project_path="/tmp/$(uuidgen)"
     mkdir $project_path
-    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pp $project_path
+    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pp $project_path -mode dataset
     python3 -m mohou.script.train_autoencoder -n 2 -pp $project_path -image RGBImage
     python3 -m mohou.script.visualize_autoencoder_result -n 2 -pp $project_path
     python3 -m mohou.script.train_lstm -valid-ratio 0.5 -n 2 -pp $project_path
     python3 -m mohou.script.visualize_lstm_result -n 2 -pp $project_path
-    python3 $example_path/kuka_reaching.py -pp $project_path --feedback
+    python3 $example_path/kuka_reaching.py -pp $project_path -mode feedback
 }
 
 function test_chimera {
@@ -70,7 +70,7 @@ function test_chimera {
     # TODO: move to test_batch ?
     project_name=_pipeline_test_chimera
     rm -rf ~/.mohou/$project_name
-    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pn $project_name
+    python3 $example_path/kuka_reaching.py -n 3 -untouch 1 -pn $project_name -mode dataset
     python3 -m mohou.script.train_autoencoder -n 2 -pn $project_name -image RGBImage --vae
     python3 -m mohou.script.train_lstm -valid-ratio 0.5 -n 2 -pn $project_name
     python3 -m mohou.script.train_chimera -pn $project_name -n 1 --pretrained_lstm
