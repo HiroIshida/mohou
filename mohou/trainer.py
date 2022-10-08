@@ -21,6 +21,7 @@ import mohou
 from mohou.model import FloatLossDict, ModelT, average_float_loss_dict
 from mohou.utils import (
     change_color_to_yellow,
+    detect_device,
     log_package_version_info,
     log_text_with_box,
     split_with_ratio,
@@ -362,6 +363,7 @@ def train(
     tcache: TrainCache,
     dataset: Dataset,
     config: TrainConfig = TrainConfig(),
+    device: Optional[torch.device] = None,
 ) -> None:
 
     log_package_version_info(logger, mohou)
@@ -370,6 +372,10 @@ def train(
     logger.info("model cache path: {}".format(tcache.cache_path(project_path)))
 
     model = tcache.best_model
+    if device is None:
+        device = detect_device()
+    model.put_on_device(device)
+    logger.info("put model on {}".format(device))
 
     def move_to_device(sample):
         if isinstance(sample, torch.Tensor):
