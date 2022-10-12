@@ -12,7 +12,12 @@ from mohou.encoder import ImageEncoder
 from mohou.encoding_rule import EncodingRule, EncodingRuleBase
 from mohou.model import LSTM, PBLSTM
 from mohou.model.common import ModelT
-from mohou.model.experimental import DisentangleLSTM, ProportionalModel
+from mohou.model.experimental import (
+    DisentangleLSTM,
+    MarkovModelT,
+    MarkovPredictionModel,
+    ProportionalModel,
+)
 from mohou.trainer import TrainCache
 from mohou.types import ElementDict, RGBImage, TerminateFlag
 from mohou.utils import detect_device
@@ -292,15 +297,24 @@ class DisentangleLSTMPropagator(LSTMPropagatorBase[DisentangleLSTM]):
         return pred_torch, hidden
 
 
+MarkovPropagatorT = TypeVar("MarkovPropagatorT", bound="MarkovPropagator")
+
+
 @dataclass
-class ProportionalModelPropagator(PropagatorBase[ProportionalModel]):
-    model: ProportionalModel
+class MarkovPropagator(PropagatorBase[MarkovModelT]):
+    model: MarkovModelT
     encoding_rule: EncodingRuleBase
     fed_vector: Optional[np.ndarray] = None
 
     @classmethod
-    def create_default(cls, project_path: Path) -> "ProportionalModelPropagator":
-        tcache = TrainCache.load(project_path, ProportionalModel)
+    @abstractmethod
+    def get_model_type(cls) -> Type[MarkovModelT]:
+        pass
+
+    @classmethod
+    def create_default(cls: Type[MarkovPropagatorT], project_path: Path) -> MarkovPropagatorT:
+        model_type = cls.get_model_type()
+        tcache = TrainCache.load(project_path, model_type)
         encoding_rule = EncodingRule.create_default(project_path)
         return cls(tcache.best_model, encoding_rule)
 
@@ -330,9 +344,24 @@ class ProportionalModelPropagator(PropagatorBase[ProportionalModel]):
         pass
 
 
+@dataclass
+class ProportionalModelPropagator(MarkovPropagator[ProportionalModel]):
+    @classmethod
+    def get_model_type(cls) -> Type[ProportionalModel]:
+        return ProportionalModel
+
+
+@dataclass
+class MarkovPredictionModelPropagator(MarkovPropagator[MarkovPredictionModel]):
+    @classmethod
+    def get_model_type(cls) -> Type[MarkovPredictionModel]:
+        return MarkovPredictionModel
+
+
 class PropagatorSelection(Enum):
     lstm = LSTMPropagator
     pblstm = PBLSTMPropagator
     chimera = ChimeraPropagator
     proportional = ProportionalModelPropagator
+    markov_prediction = MarkovPredictionModelPropagator
     disentangle = DisentangleLSTMPropagator

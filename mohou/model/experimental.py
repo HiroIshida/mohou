@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Type
+from typing import List, Optional, Tuple, Type, TypeVar, Union
 
 import torch
 import torch.nn as nn
@@ -53,7 +53,42 @@ class MarkoveModelConfig(ModelConfigBase):
             assert self.activation in ("relu", "sigmoid", "tanh")
 
 
+class MarkovPredictionModel(ModelBase):
+    """f(s, a) -> (s, a) type model"""
+
+    def _setup_from_config(self, config: MarkoveModelConfig) -> None:
+        config.n_input
+        layers = build_linear_layers(
+            n_input=config.n_input,
+            n_output=config.n_output,
+            n_hidden=config.n_hidden,
+            n_layer=config.n_layer,
+            activation=config.activation,
+        )
+        self.layer = nn.Sequential(*layers)
+
+    def loss(self, sample: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> LossDict:
+        # NOTE: episode index and static context is not supported in this model
+        # suppose using AutoRegressiveDataset
+        _, seq_sample, _ = sample
+        X0 = seq_sample[:, :-1]
+        X1 = seq_sample[:, 1:]
+
+        X1_pred = self.layer(X0)
+        loss = nn.MSELoss()(X1, X1_pred)
+        return LossDict({"prediction": loss})
+
+    def forward(self, seq_sample: torch.Tensor) -> torch.Tensor:
+        n_batch, n_seq_len, n_dim = seq_sample.shape
+        sample_pre = seq_sample.reshape(-1, n_dim)
+        sample_post = self.layer(sample_pre)
+        seq_sample_post = sample_post.reshape(seq_sample.shape)
+        return seq_sample_post
+
+
 class ControlModel(ModelBase):
+    """f(s, a) -> s type model"""
+
     layer: nn.Sequential
 
     def _setup_from_config(self, config: MarkoveModelConfig) -> None:
@@ -73,7 +108,6 @@ class ControlModel(ModelBase):
         out_obs = self.layer(inp_sample)
         loss = nn.MSELoss()(out_obs_sample, out_obs)
         return LossDict({"prediction": loss})
-        return self.layer(sample)
 
 
 @dataclass
@@ -154,6 +188,9 @@ class ProportionalModel(ModelBase[ProportionalModelConfig]):
         z_post = (1.0 - p_value) * z
         sample_post = self.decoder(z_post)
         return sample_post
+
+
+MarkovModelT = TypeVar("MarkovModelT", bound=Union[MarkovPredictionModel, ProportionalModel])
 
 
 @dataclass
