@@ -52,6 +52,8 @@ def test_lstm(image_av_bundle):  # noqa
     loss_dict_detailed.total().backward()
 
     for param1, param2 in zip(model.parameters(), model2.parameters()):
+        assert param1.grad is not None
+        assert param2.grad is not None
         assert torch.allclose(param1.grad, param2.grad)
 
 

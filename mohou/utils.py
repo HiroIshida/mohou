@@ -3,7 +3,7 @@ import pathlib
 import queue
 import subprocess
 import types
-from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast, Optional
 
 import numpy as np
 import PIL
@@ -35,7 +35,7 @@ class DataclassLightMixin:
         return self.__repr__()
 
 
-def abstract_attribute(obj: Callable[[Any], AnyT] = None) -> AnyT:
+def abstract_attribute(obj: Optional[Callable[[Any], AnyT]] = None) -> AnyT:
     class DummyAttribute:
         pass
 
