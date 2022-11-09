@@ -3,7 +3,7 @@ import pathlib
 import queue
 import subprocess
 import types
-from typing import Any, Callable, Iterator, List, Type, TypeVar, Union, cast, Optional
+from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
 
 import numpy as np
 import PIL
