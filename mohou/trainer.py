@@ -363,7 +363,6 @@ def train_lower(
     tcache: TrainCache,
     train_loader: Iterable,
     validate_loader: Iterable,
-    dataset: Dataset,
     config: TrainConfig = TrainConfig(),
     device: Optional[torch.device] = None,
 ) -> None:
@@ -444,6 +443,4 @@ def train(
     validate_loader = DataLoader(
         dataset=dataset_validate, batch_size=config.batch_size, shuffle=True
     )
-    train_lower(
-        project_path, tcache, train_loader, validate_loader, dataset, config=config, device=device
-    )
+    train_lower(project_path, tcache, train_loader, validate_loader, config=config, device=device)
