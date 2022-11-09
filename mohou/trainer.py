@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar
+from typing import Dict, Generic, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -358,13 +358,18 @@ class TrainCache(Generic[ModelT]):
         return (fig, axes)
 
 
-def train(
+def train_lower(
     project_path: Path,
     tcache: TrainCache,
+    train_loader: Iterable,
+    validate_loader: Iterable,
     dataset: Dataset,
     config: TrainConfig = TrainConfig(),
     device: Optional[torch.device] = None,
 ) -> None:
+    r"""
+    low-level train function that accepts train loader
+    """
 
     log_package_version_info(logger, mohou)
     log_text_with_box(logger, "train log")
@@ -385,12 +390,6 @@ def train(
         else:
             raise RuntimeError
 
-    dataset_train, dataset_validate = split_with_ratio(dataset, config.valid_data_ratio)
-
-    train_loader = DataLoader(dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
-    validate_loader = DataLoader(
-        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True
-    )
     optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
     model.put_on_device()
@@ -426,3 +425,25 @@ def train(
         logger.info("train loss => {}".format(train_ld_mean))
         logger.info("validate loss => {}".format(validate_ld_mean))
         tcache.update_and_save(model, train_ld_mean, validate_ld_mean, project_path)
+
+
+def train(
+    project_path: Path,
+    tcache: TrainCache,
+    dataset: Dataset,
+    config: TrainConfig = TrainConfig(),
+    device: Optional[torch.device] = None,
+) -> None:
+    r"""
+    higher-level train function that auto create dataloader from the dataset
+    """
+
+    dataset_train, dataset_validate = split_with_ratio(dataset, config.valid_data_ratio)
+
+    train_loader = DataLoader(dataset=dataset_train, batch_size=config.batch_size, shuffle=True)
+    validate_loader = DataLoader(
+        dataset=dataset_validate, batch_size=config.batch_size, shuffle=True
+    )
+    train_lower(
+        project_path, tcache, train_loader, validate_loader, dataset, config=config, device=device
+    )
