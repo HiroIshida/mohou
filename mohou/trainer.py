@@ -397,7 +397,7 @@ def train_lower(
 
         model.train()
         train_ld_list: List[FloatLossDict] = []
-        for samples in train_loader:
+        for samples in tqdm.tqdm(train_loader, leave=False):
             optimizer.zero_grad()
             samples = move_to_device(samples)
             loss_dict = model.loss(samples)
