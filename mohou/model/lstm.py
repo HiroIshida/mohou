@@ -60,9 +60,10 @@ class LSTMBase(ModelBase[LSTMConfigBaseT]):
         else:
             lstm_layer = nn.LSTM(n_input, n_hidden, n_layer, batch_first=True)
 
-        output_layers = []
+        output_layers: List[nn.Module] = []
         for _ in range(n_output_layer):
             output_layers.append(nn.Linear(n_hidden, n_hidden))
+            output_layers.append(nn.ReLU())
         output_layers.append(nn.Linear(n_hidden, n_output))
         output_layer = nn.Sequential(*output_layers)
         return lstm_layer, output_layer
