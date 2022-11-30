@@ -13,7 +13,8 @@ install_requires = [
     "tqdm",
     "matplotlib",
     "albumentations",
-    "opencv-python",
+    'opencv-python-headless<4.3.0;python_version<"3.7"',  # because it takes too long to build
+    'opencv-python-headless;python_version>="3.8"',
     "pybullet",
     'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
     "moviepy",
