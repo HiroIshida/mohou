@@ -6,7 +6,7 @@ install_requires = [
     "natsort",
     "numpy",
     "psutil",
-    "sklearn",
+    "scikit-learn",
     "torch",
     "torchvision",
     "tinyfk>=0.4.8",
