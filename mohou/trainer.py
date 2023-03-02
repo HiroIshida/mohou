@@ -90,6 +90,13 @@ class TrainCache(Generic[ModelT]):
         index = int(np.argmin(lossseq))
         return index, lossseq[index]
 
+    @property
+    def min_train_loss(self) -> Tuple[int, float]:
+        """get index and train loss value"""
+        lossseq = self.reduce_to_lossseq(self.train_lossseq_table)
+        index = int(np.argmin(lossseq))
+        return index, lossseq[index]
+
     @staticmethod
     def train_result_base_path(project_path: Path) -> Path:
         base_path = project_path / "models"
