@@ -382,7 +382,7 @@ def train_lower(
     validate_loader: Iterable,
     config: TrainConfig = TrainConfig(),
     device: Optional[torch.device] = None,
-    is_stoppable: Optional[Callable[[TrainCache], None]] = None,
+    is_stoppable: Optional[Callable[[TrainCache], bool]] = None,
 ) -> None:
     r"""
     low-level train function that accepts train loader
@@ -454,7 +454,7 @@ def train(
     dataset: Dataset,
     config: TrainConfig = TrainConfig(),
     device: Optional[torch.device] = None,
-    is_stoppable: Optional[Callable[[TrainCache], None]] = None,
+    is_stoppable: Optional[Callable[[TrainCache], bool]] = None,
 ) -> None:
     r"""
     higher-level train function that auto create dataloader from the dataset
