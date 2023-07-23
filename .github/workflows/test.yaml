@@ -25,7 +25,7 @@ jobs:
 
             - name: pip install this package
               run: |
-                  pip3 install -e .
+                  pip3 install -e .[all]
                   echo "pip freeze"
                   pip3 freeze
 

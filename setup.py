@@ -9,19 +9,19 @@ install_requires = [
     "scikit-learn",
     "torch",
     "torchvision",
-    "tinyfk<0.6",
     "tqdm",
     "matplotlib",
     "albumentations",
     'opencv-python-headless<4.3.0;python_version<"3.7"',  # because it takes too long to build
     'opencv-python-headless;python_version>="3.8"',
-    "pybullet",
     'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
     "moviepy",
     "PyYAML>=5.1",
     "types-PyYAML",
     "gdown",
 ]
+
+extra_all_requires = ["pybullet", "tinyfk<0.6"]
 
 setup(
     name="mohou",
@@ -43,6 +43,7 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     install_requires=install_requires,
+    extras_require={"all": extra_all_requires},
     packages=find_packages(exclude=("tests", "docs")),
     package_data={"mohou": ["py.typed"]},
 )
