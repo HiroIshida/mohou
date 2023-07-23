@@ -9,7 +9,7 @@ install_requires = [
     "scikit-learn",
     "torch",
     "torchvision",
-    "tinyfk>=0.4.8",
+    "tinyfk<0.6",
     "tqdm",
     "matplotlib",
     "albumentations",

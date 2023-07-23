@@ -131,7 +131,7 @@ class WeightDrop(torch.nn.Module):
 
             mask = torch.autograd.Variable(torch.ones(raw_w.size(0), 1))
             if raw_w.is_cuda:
-                mask = mask.cuda()
+                mask = mask.cuda()  # type: ignore[assignment]
             mask = dropout(mask, p=self.dropout, training=True)  # type: ignore
             w = mask.expand_as(raw_w) * raw_w
             setattr(self.module, name_w, w)
