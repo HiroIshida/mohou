@@ -190,6 +190,14 @@ class AngleVector(VectorBase):
     pass
 
 
+class VelocityVector(VectorBase):
+    pass
+
+
+class EffortVector(VectorBase):
+    pass
+
+
 class GripperState(VectorBase):
     pass
 
