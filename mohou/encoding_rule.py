@@ -118,7 +118,7 @@ class CovarianceBasedScaleBalancer(ScaleBalancerBase):
 
         if not isinstance(other, CovarianceBasedScaleBalancer):
             return NotImplemented
-        assert type(self) == type(other)
+        assert type(self) is type(other)
 
         if self.dims != other.dims:
             return False

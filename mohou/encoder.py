@@ -77,7 +77,7 @@ class EncoderBase(ABC, Generic[ElementT]):
         # DO NOT USE dataclass's default __eq__
         if not isinstance(other, EncoderBase):
             return NotImplemented
-        assert type(self) == type(other)
+        assert type(self) is type(other)
         for attr in ["elem_type", "input_shape", "output_size"]:
             if not self.__dict__[attr] == other.__dict__[attr]:
                 return False
@@ -173,7 +173,7 @@ class ImageEncoder(EncoderBase[ImageT], HasAModel):
         # DO NOT USE dataclass's default __eq__
         if not isinstance(other, ImageEncoder):
             return NotImplemented
-        assert type(self) == type(other)
+        assert type(self) is type(other)
 
         if not super().__eq__(other):
             return False
