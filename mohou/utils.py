@@ -3,6 +3,7 @@ import pathlib
 import queue
 import subprocess
 import types
+from importlib.metadata import version
 from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
 
 import numpy as np
@@ -157,7 +158,8 @@ def log_package_version_info(logger, module: types.ModuleType) -> None:
     is_site_package = "site-packages" in init_file_name
     log_text_with_box(logger, "version check")
     if is_site_package:
-        logger.info("version: {}".format(module.__version__))  # type: ignore
+        ver = version(module.__name__)
+        logger.info("version: {}".format(ver))  # type: ignore
     else:
         repo_path = pathlib.Path(init_file_name).parent.parent
 
