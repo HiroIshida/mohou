@@ -25,7 +25,7 @@ extra_all_requires = ["pybullet", "tinyfk<0.6"]
 
 setup(
     name="mohou",
-    version="0.5.10",
+    version="0.5.11",
     description="Visuomotor imitation learning framework",
     author="Hirokazu Ishida",
     author_email="h-ishida@jsk.imi.i.u-tokyo.ac.jp",
