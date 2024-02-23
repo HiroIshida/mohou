@@ -455,6 +455,7 @@ def train(
     config: TrainConfig = TrainConfig(),
     device: Optional[torch.device] = None,
     is_stoppable: Optional[Callable[[TrainCache], bool]] = None,
+    early_stopping_patience: Optional[int] = None,  # set is_stoppable None to use this option
     num_workers: int = 2,
 ) -> None:
     r"""
@@ -484,6 +485,18 @@ def train(
         num_workers=num_workers,
         drop_last=False,  # drop_last is not necessary for validation as batch normalization is not used
     )
+
+    if is_stoppable is None and early_stopping_patience is not None:
+
+        def _is_stoppable(tcache: TrainCache) -> bool:
+            valid_losses = tcache.reduce_to_lossseq(tcache.validate_lossseq_table)
+            n_step = len(valid_losses)
+            idx_min = np.argmin(valid_losses)
+            no_improvement_for_long = bool((n_step - idx_min) > early_stopping_patience)
+            return no_improvement_for_long
+
+        is_stoppable = _is_stoppable
+
     train_lower(
         project_path,
         tcache,
