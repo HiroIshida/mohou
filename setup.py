@@ -15,7 +15,7 @@ install_requires = [
     'opencv-python-headless<4.3.0;python_version<"3.7"',  # because it takes too long to build
     'opencv-python-headless;python_version>="3.8"',
     'imageio==2.15.0;python_version<"3.7"',  # dependency of moviepy
-    "moviepy",
+    "moviepy",  # testing
     "PyYAML>=5.1",
     "types-PyYAML",
     "gdown",
